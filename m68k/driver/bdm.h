@@ -55,7 +55,7 @@
  * Version of the driver. 
  */
 
-#define BDM_DRV_VERSION   0x020a
+#define BDM_DRV_VERSION   0x020b
 
 /*
  * Hook for Linux kernel
@@ -160,16 +160,26 @@ struct BDMioctl {
 /*
  * Input/output requests
  */
+/*
+ * Addition for general register access.
+ *
+ * Note, the control and debug registers has been added at the start
+ *       so the other allocated number do not change.
+ */
+#define BDM_READ_CTLREG    _IOWR('B', 16, struct BDMioctl)
+#define BDM_WRITE_CTLREG   _IOW('B',  17, struct BDMioctl)
+#define BDM_READ_DBREG     _IOWR('B', 18, struct BDMioctl)
+#define BDM_WRITE_DBREG    _IOW('B',  19, struct BDMioctl)
 #define BDM_READ_REG       _IOWR('B', 20, struct BDMioctl)
 #define BDM_READ_SYSREG    _IOWR('B', 21, struct BDMioctl)
 #define BDM_READ_LONGWORD  _IOWR('B', 22, struct BDMioctl)
 #define BDM_READ_WORD      _IOWR('B', 23, struct BDMioctl)
 #define BDM_READ_BYTE      _IOWR('B', 24, struct BDMioctl)
-#define BDM_WRITE_REG      _IOW('B', 25, struct BDMioctl)
-#define BDM_WRITE_SYSREG   _IOW('B', 26, struct BDMioctl)
-#define BDM_WRITE_LONGWORD _IOW('B', 27, struct BDMioctl)
-#define BDM_WRITE_WORD     _IOW('B', 28, struct BDMioctl)
-#define BDM_WRITE_BYTE     _IOW('B', 29, struct BDMioctl)
+#define BDM_WRITE_REG      _IOW('B',  25, struct BDMioctl)
+#define BDM_WRITE_SYSREG   _IOW('B',  26, struct BDMioctl)
+#define BDM_WRITE_LONGWORD _IOW('B',  27, struct BDMioctl)
+#define BDM_WRITE_WORD     _IOW('B',  28, struct BDMioctl)
+#define BDM_WRITE_BYTE     _IOW('B',  29, struct BDMioctl)
 
 /*
  * Detect the driver version, processor or interface type
@@ -177,6 +187,14 @@ struct BDMioctl {
 #define BDM_GET_DRV_VER    _IOR('B', 30, int)
 #define BDM_GET_CPU_TYPE   _IOR('B', 31, int)
 #define BDM_GET_IF_TYPE    _IOR('B', 32, int)
+
+/*
+ * Coldfire specific call to control the user of the
+ * PST signals.
+ */
+
+#define BDM_GET_CF_PST     _IOR('B', 33, int)
+#define BDM_SET_CF_PST     _IOR('B', 34, int)
 
 /*
  * bits in status word returned by BDM_GET_STATUS ioctl
