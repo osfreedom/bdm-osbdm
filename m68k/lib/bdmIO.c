@@ -843,7 +843,7 @@ bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
   if (bdmRead (cbuf, nbytes) < 0)
     return -1;
   if (mustSwap) {
-    int i;
+    unsigned int i;
     char c;
     for (i = 0 ; i < (nbytes-1) ; i += 2) {
       c = cbuf[i];
@@ -907,7 +907,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
   if (nbytes == 0)
     return 0;
   if (mustSwap) {
-    int i;
+    unsigned int i;
     char c;
     for (i = 0 ; i < (nbytes-1) ; i += 2) {
       c = cbuf[i];
@@ -917,7 +917,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
   }
   ret = bdmWrite (cbuf, nbytes);
   if (mustSwap) {
-    int i;
+    unsigned int i;
     char c;
     for (i = 0 ; i < (nbytes-1) ; i += 2) {
       c = cbuf[i];

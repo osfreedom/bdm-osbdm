@@ -249,9 +249,9 @@ get_message (char *buf, int buf_len)
  */
 
 int
-decode_id (int id)
+decode_id (unsigned long id)
 {
-  if (id < (sizeof (ioctl_code_table) / sizeof (int)))
+  if (id < (sizeof (ioctl_code_table) / sizeof (ioctl_code_table[0])))
     return ioctl_code_table[id];
 
   errno = EINVAL;
@@ -265,7 +265,7 @@ decode_id (int id)
 enum bdm_message_id
 decode_message (char *message)
 {
-  int  id;
+  unsigned id;
   char *c;
   char *s;
 

@@ -1,4 +1,4 @@
-/* $Id: cpu32-check.c,v 1.3 2003/09/18 20:07:14 joewolf Exp $
+/* $Id: cpu32-check.c,v 1.4 2003/09/19 20:41:09 joewolf Exp $
 0        1         2         3         4         5         6         7
 123456789012345678901234567890123456789012345678901234567890123456789012345678
  * 
@@ -381,10 +381,10 @@ verify_internal_ram(int loops)
 	void initialize_system(void);
  
 	unsigned long buf[SRAM_BUF_SIZE];
+	unsigned int  test;
+	unsigned int  i;
 	int           sram_ok;
-	int           test;
 	int           loop = 0;
-	int           i;
 
 	printf("Internal DPAM Test, %d loops\n", loops);
 	initialize_system();
@@ -392,7 +392,7 @@ verify_internal_ram(int loops)
 	while (loop < loops) {
 		loop++;
     	printf(" %5i : ", loop);
-    	for (test = 0; test < sizeof(test_pattern)/sizeof(unsigned long); 
+    	for (test = 0; test < sizeof(test_pattern)/sizeof(test_pattern[0]); 
 			  test++) {
       	for (i = 0; i < SRAM_BUF_SIZE; i++) {
         		buf[i] = test_pattern[test];
@@ -445,7 +445,7 @@ check_registers(int loops)
   int           reg_check_loop_failed = 0;
   int           reg_check_failed = 0;
   int           loop = 0;
-  int           i;
+  unsigned int  i;
   
   while (loop < loops) {
     loop++;
@@ -453,7 +453,7 @@ check_registers(int loops)
     printf("Register test, %4d of %4d : \n", loop, loops);
     for (reg = BDM_REG_D0; reg <= BDM_REG_A7; reg++) {
       printf("   %c%02d : ", reg < BDM_REG_A0 ? 'D' : 'A', reg);
-      for (i = 0; i < sizeof(test_pattern) / sizeof(unsigned long); i++) {
+      for (i = 0; i < sizeof(test_pattern) / sizeof(test_pattern[0]); i++) {
         if (bdmWriteRegister(reg, test_pattern[i]) < 0) {
           reg_check_failed = reg_check_loop_failed = 1;
           if(stop_quiet)

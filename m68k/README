@@ -256,7 +256,7 @@ Step 2 -- Compile and install the library and user programs
   The prefix defaults to the platform specific default. Please refer to your
   documentation for this default setting or just try and see what happens.
 
-  Note, the BDM librarys is now installed under the package directory of 'bdm'
+  Note, the BDM library is now installed under the package directory of 'bdm'
   under the prefix. For example a prefix of '/usr/local' as found on Linux
   results in the library being under '/usr/local/lib/bdm/libBDM.a'.
 
@@ -455,7 +455,7 @@ The ioperm support performs the following when opening the BDM port:
      is succeeds the kernel driver is used.
 
   3. If the driver call fails an attempt to connect to a local BDM
-     BDM server is performed. Therefore if ioperm and driver opens fail the
+     server is performed. Therefore if ioperm and driver opens fail the
      following check command:
 
        $ ./chk /dev/bdmcf0

@@ -217,7 +217,7 @@ bdm_cleanup_module (int fd)
   if (bdm_dev_registered)
   {
     if ((fd >= 0) &&
-        (fd < (sizeof(bdm_device_info) / sizeof(bdm_device_info[0]))))
+        (((unsigned)fd) < (sizeof(bdm_device_info)/sizeof(*bdm_device_info))))
     {
       struct BDM *self = &bdm_device_info[fd];
       ioperm (self->portBase, 3, 0);

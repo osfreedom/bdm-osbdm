@@ -147,9 +147,9 @@ bdmRemoteStrerror (int error_no)
 static int
 bdmGenerateIOId (int code)
 {
-  int id = 0;
+  unsigned int id = 0;
 
-  while (id < (sizeof (ioctl_code_table) / sizeof (int)))
+  while (id < (sizeof (ioctl_code_table) / sizeof (ioctl_code_table[0])))
     if (ioctl_code_table[id] == code)
       return id;
     else

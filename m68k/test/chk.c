@@ -330,10 +330,10 @@ coldfireSramVerify (int loops)
 #define SRAM_BUF_SIZE  (SRAM_BYTE_SIZE / sizeof(unsigned long))
   
   unsigned long buf[SRAM_BUF_SIZE];
+  unsigned int  test;
+  unsigned int  i;
   int           sram_ok;
-  int           test;
   int           loop = 0;
-  int           i;
 
   printf ("Read/Write SRAM Test, %d loops\n", loops);
   
@@ -343,7 +343,7 @@ coldfireSramVerify (int loops)
   while (loop < loops) {
     loop++;
     printf (" %5i : ", loop);
-    for (test = 0; test < sizeof(test_pattern) / sizeof (unsigned long); test++) {
+    for (test = 0; test < sizeof(test_pattern) / sizeof (test_pattern[0]); test++) {
       for (i = 0; i < SRAM_BUF_SIZE; i++) {
         buf[i] = test_pattern[test];
       }
@@ -391,10 +391,10 @@ checkRegisters (int cpu, int loops)
 {
   int           reg;
   unsigned long reg_value;
+  unsigned int  i;
   int           reg_chk_loop_failed = 0;
   int           reg_chk_failed = 0;
   int           loop = 0;
-  int           i;
   
   while (loop < loops) {
     loop++;
@@ -404,7 +404,7 @@ checkRegisters (int cpu, int loops)
     printf ("Register test, %4d of %4d : \n", loop, loops);
     for (reg = BDM_REG_D0; reg <= BDM_REG_A7; reg++) {
       printf ("   %c%02d : ", reg < BDM_REG_A0 ? 'D' : 'A', reg);
-      for (i = 0; i < sizeof(test_pattern) / sizeof (unsigned long); i++) {
+      for (i = 0; i < sizeof(test_pattern) / sizeof (test_pattern[0]); i++) {
         if (bdmWriteRegister (reg, test_pattern[i]) < 0) {
           reg_chk_failed = reg_chk_loop_failed = 1;
           if (stop_quite)
