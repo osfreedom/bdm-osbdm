@@ -90,7 +90,11 @@ static const int ioctl_code_table[] = {
   BDM_WRITE_BYTE,
   BDM_GET_DRV_VER,
   BDM_GET_CPU_TYPE,
-  BDM_GET_IF_TYPE
+  BDM_GET_IF_TYPE,
+  BDM_READ_CTLREG,    /* At the end to not break existing servers. */
+  BDM_WRITE_CTLREG,
+  BDM_READ_DBREG,
+  BDM_WRITE_DBREG
 };
 
 /*
@@ -209,9 +213,9 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
       memset (buf, 0, buf_len);
 
 #if defined (__WIN32__)
-      cread = recv (fd, buf, buf_len-1, 0);
+      cread = recv (fd, buf, buf_len - 1, 0);
 #else
-      cread = read (fd, buf, buf_len-1);
+      cread = read (fd, buf, buf_len - 1);
 #endif
 
       if (cread > 0) {
@@ -439,7 +443,7 @@ bdmRemoteOpen (const char *name)
   }
 
   if (reties == BDM_REMOTE_OPEN_WAIT) {
-    printf ("bdm-remote:open: %s:%d%s failed\n", lname, port, device);
+    printf ("bdm-remote:open: %s:%d:%s failed\n", lname, port, device);
     errno = ENXIO;
     return -1;
   }
