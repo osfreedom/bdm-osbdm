@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.6 2003/11/24 23:37:59 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.7 2003/11/25 22:22:41 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -26,10 +26,12 @@
 # include <stdlib.h>
 # include <stdio.h>
 # include <unistd.h>
-# include <BDMlib.h>
 # include <string.h>
-# include <bfd.h>
 # include <time.h>
+
+# include <bfd.h>
+
+# include "BDMlib.h"
 
 static void do_command (size_t argc, char **argv);
 
@@ -46,6 +48,7 @@ static int verbosity=1;
 static int fatal_errors=0;
 static char *progname;
 static int cpu_type;
+static time_t base_time; /* when bdmctrl was started */
 
 static unsigned int patcnt=0; /* number of test patterns */
 static unsigned long *pattern=NULL;
@@ -471,16 +474,19 @@ static int write_value (unsigned long adr, unsigned long val, char size)
 
 /* Write a buffer to the target.
  */
-static void write_memory (unsigned long adr, char *buf, int cnt)
+unsigned long write_memory (unsigned long adr, unsigned char *buf,
+			    unsigned long cnt)
 {
     if (bdmWriteMemory (adr, buf, cnt) < 0)
 	fatal ("\nCan not download 0x%08x bytes to addr 0x%08lx: %s\n",
 	       cnt, adr, bdmErrorString());
+    return cnt;
 }
 
 /* Read a buffer from the target.
  */
-static void read_memory (unsigned long adr, char *buf, int cnt)
+static void read_memory (unsigned long adr, unsigned char *buf,
+			 unsigned long cnt)
 {
     if (bdmReadMemory (adr, buf, cnt) < 0)
 	fatal ("\nCan not upload 0x%08x bytes from addr 0x%08lx: %s\n",
@@ -579,8 +585,8 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		break;
 
     if (verbosity) {
-	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s\n",
-		addr, addr+length, length, flags, sec->name);
+	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s 0x%08x:   ",
+		addr, addr+length, length, flags, sec->name, off);
 	fflush (stdout);
     }
 
@@ -598,11 +604,6 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		continue;
 	    }
 
-	    if (verbosity) {
-		printf ("\r  0x%08x: ", off);
-		fflush (stdout);
-	    }
-
 	    write_memory (addr+off, buf, cnt);
 
 	    if (verify) {
@@ -612,15 +613,17 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 			   addr+off);
 	    }
 
-	    if (verbosity)
-		printf ("OK");
+	    if (verbosity) {
+		printf ("\b\b\b\b\b\b\b\b\b\b\b\b\b\b0x%08x: OK", off+cnt);
+		fflush (stdout);
+	    }
 	}
 
 	write_register ("dfc", dfc);
 
-	if (verbosity) printf (" OK\n");
+	if (verbosity) printf ("\b\bOK\n");
     } else {
-	if (verbosity) printf (" Skip\n");
+	if (verbosity) printf ("\b\bSkip\n");
     }
 }
 
@@ -756,7 +759,7 @@ static void cmd_check_mem (size_t argc, char **argv)
     unsigned long off;
     unsigned long *wbuf;
     unsigned long *rbuf;
-    char *sav;
+    unsigned char *sav;
 
     base = eval_string (argv[1]);
     size = eval_string (argv[2]);
@@ -774,8 +777,8 @@ static void cmd_check_mem (size_t argc, char **argv)
     }
 
     read_memory (base, sav, size);           /* save original contents */
-    write_memory (base, (char *)wbuf, size); /* write pattern */
-    read_memory (base, (char *)rbuf, size);  /* read it back */
+    write_memory (base, (unsigned char *)wbuf, size); /* write pattern */
+    read_memory (base, (unsigned char *)rbuf, size);  /* read it back */
 
     if (memcmp (wbuf, rbuf, size))
 	warn (" Readback failed at 0x%08lx\n", base);
@@ -985,6 +988,13 @@ static void cmd_wait (size_t argc, char **argv)
     if (verbosity) printf ("OK\n");
 }
 
+/* print out seconds since start
+ */
+static void cmd_time (size_t argc, char **argv)
+{
+    printf (" %ld seconds\n", time(NULL) - base_time);
+}
+
 /* sleep for a while
  */
 static void cmd_sleep (size_t argc, char **argv)
@@ -1052,6 +1062,7 @@ static struct command_s {
     { "read",           1, INT_MAX, cmd_read },
     { "sleep",          2,       2, cmd_sleep },
     { "wait",           1,       1, cmd_wait },
+    { "time",           1,       1, cmd_time },
     { "echo",           1, INT_MAX, cmd_echo },
     { "exit",           1,       1, cmd_exit },
     { "source",         1, INT_MAX, cmd_source },
@@ -1112,7 +1123,7 @@ int main (int argc, char *argv[])
     if (debug_driver)              bdmSetDriverDebugFlag(debug_driver);
     if (delay)                     bdmSetDelay(delay);
 
-    srand (time (NULL));
+    srand (base_time = time (NULL));
     cmd_patterns (37, NULL);  /* generate a prime number of test patterns */
     qsort (regnames, NUMOF(regnames), sizeof(regnames[0]), cmpreg);
 

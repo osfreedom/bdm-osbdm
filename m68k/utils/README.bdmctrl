@@ -69,6 +69,12 @@ Supported commands and their parameters
 reset
   reset the target.
 
+time
+  print seconds since bdmctrl was started.
+
+exit
+  exit bdmctrl immediately.
+
 sleep <seconds>
   sleep for <seconds>.
 
