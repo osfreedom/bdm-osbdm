@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.4 2004/03/30 02:05:30 codewiz Exp $
+## $Id: Makefile.am,v 1.5 2004/04/25 14:24:53 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -30,6 +30,10 @@ EXTRA_DIST = \
 	driver/freebsd/device_if.h \
 	driver/freebsd/isa_if.h \
 	driver/freebsd/setdefs.h \
+	driver/openbsd/Makefile \
+	driver/openbsd/README \
+	driver/openbsd/bdm-install.sh \
+	driver/openbsd/openbsd-bdm.c \
 	driver/linux/linux-bdm.c \
 	driver/linux/Makefile \
 	driver/linux-2.6/bdm.c \
