@@ -105,11 +105,25 @@ mem_dump (char *buf)
   long len, l;
   int i, ret;
   u_char mem[16];
-  if (sscanf (buf, " %li %li", &l, &len) != 2)
+  char *dump_fname = NULL;
+  FILE *dump_file = NULL;
+  i = sscanf (buf, " %li %li %as", &l, &len, &dump_fname);
+  if (i < 2)
     {
-      printf ("use : dump address len\n");
+      printf ("use : dump address len [file]\n");
       return -1;
     }
+  if(dump_fname && *dump_fname) 
+    { dump_file=fopen(dump_fname,"wb");
+      if(dump_file==NULL)
+        {
+          printf ("mem_dump : file \"%s\" open for write error\n", dump_fname);
+          free(dump_fname);
+          return -1;
+        }
+      free(dump_fname);
+    }
+
   adr = (caddr_t) l;
   while (len)
     {
@@ -119,15 +133,21 @@ mem_dump (char *buf)
 	{
 	  printf ("error to read 0x%lx len 0x%lx ret %d\n",
 		  (u_long) adr, l, ret);
+          if(dump_file!=NULL) 
+            fclose(dump_file);
 	  return -2;
 	}
       printf ("%06lx:", (u_long) adr);
       for (i = 0; i < l; i++)
 	printf (" %02x", mem[i]);
       printf ("\n");
+      if(dump_file!=NULL) 
+        fwrite(mem, l, 1, dump_file);
       len -= l;
       adr += l;
     }
+  if(dump_file!=NULL) 
+    fclose(dump_file);
   return 0;
 }
 
