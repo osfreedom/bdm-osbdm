@@ -112,25 +112,19 @@ stat (const char *file_name, struct stat *buf)
 
 /*
  ************************************************************************
- *     Add the missing the write/read define.                           *
- ************************************************************************
- */
-
-#define IOC_OUTIN   0x10000000      /* copy in parameters */
-
-#define _IOWR(x,y,t) (IOC_OUTIN|(((long)sizeof(t)&IOCPARM_MASK)<<16)|(x<<8)|y)
-
-/*
- ************************************************************************
  *   Windows driver support routines                                    *
  ************************************************************************
  */
 
-#ifdef __CYGWIN__
+#if defined (__CYGWIN__)
 
 #define udelay usleep
 
 #else
+
+#ifndef HZ
+#define HZ 1000
+#endif
 
 void
 udelay(int usecs)
@@ -196,7 +190,7 @@ bdm_delay (int counter)
 {
   while (counter--) {
 
-#ifdef __CYGWIN__
+#if defined (__GNUC__)
     asm volatile ("nop");
 #else
     __asm nop
