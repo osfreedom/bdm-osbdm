@@ -1484,21 +1484,16 @@ cf_pe_init_hardware (struct BDM *self)
 /*
  * Clock a word to/from the target
  */
-static int
-cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
+/*
+ * Clock a word to/from the target
+ */
+static void
+cf_pe_serial_clocker (struct BDM *self, unsigned short wval, int holdback)
 {
   unsigned long shiftRegister;
   unsigned char dataBit;
   unsigned int  counter;
-  unsigned int  status = cf_pe_get_direct_status (self);
 
-  if (status & BDM_TARGETRESET)
-    return BDM_FAULT_RESET;
-  if (status & BDM_TARGETNC)
-    return BDM_FAULT_CABLE;
-  if (status & BDM_TARGETPOWER)
-    return BDM_FAULT_POWER;
-  
   shiftRegister = wval;
   counter       = 17 - holdback;
   
@@ -1533,6 +1528,21 @@ cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
   if (self->debugFlag > 2)
     PRINTF (" cf_pe_serial_clock -- send 0x%x  receive 0x%x\n",
             wval, self->readValue);
+}
+
+static int
+cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
+{
+  unsigned int  status = cf_pe_get_direct_status (self);
+
+  if (status & BDM_TARGETRESET)
+    return BDM_FAULT_RESET;
+  if (status & BDM_TARGETNC)
+    return BDM_FAULT_CABLE;
+  if (status & BDM_TARGETPOWER)
+    return BDM_FAULT_POWER;
+  
+  cf_pe_serial_clocker (self, wval, holdback);
   
   if (self->readValue & 0x10000) {
     if (self->readValue == 0x10001) {
@@ -1542,10 +1552,20 @@ cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
       return BDM_FAULT_BERR;
     }
     else if (self->readValue != 0x10000) {
+      int i;
       if (self->debugFlag > 1)
         PRINTF (" cf_pe_serial_clock -- failure NVC, send 0x%x receive 0x%x\n",
                 wval, self->readValue);
       return BDM_FAULT_NVC;
+      for (i = 0; i < 4; i++)
+        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
+#if EXPERIMENTAL_RECOVER
+      for (i = 17; i > 0; i--)
+        if ((self->readValue & (1 << 16)) == 0)
+          break;
+      if (i && (i < 17))
+        cf_pe_serial_clocker (self, BDM_NOP_CMD, 17 - i);
+#endif
     }
   }
   return 0;
