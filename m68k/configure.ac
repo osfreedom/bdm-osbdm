@@ -13,12 +13,15 @@ AC_PREREQ(2.57)
 AC_INIT([bdm], [2.0], [bdm-devel@lists.sourceforge.net])
 AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_SYSTEM
-AM_INIT_AUTOMAKE
+AM_INIT_AUTOMAKE([-Wall])
 
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_INSTALL
 AC_PROG_LEX
+
+dnl bernie: we should fix all warnings before enabling this
+dnl AX_CFLAGS_WARN_ALL
 
 CFLAGS=${CFLAGS-"-Wall -O2 -g"}
 AC_CHECK_TOOL(CC, gcc, gcc)
@@ -33,7 +36,6 @@ AC_CHECK_TOOL(RANLIB, ranlib, ranlib)
 AC_SUBST(RANLIB)
 AC_CHECK_TOOL(LD, ld, ld)
 AC_SUBST(LD)
-AC_SUBST(INCLUDES, ${INCLUDES})
 
 
 dnl
