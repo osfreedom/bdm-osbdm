@@ -226,7 +226,6 @@ get_message (char *buf, int buf_len)
 {
   int    numfds;
   fd_set readfds;
-  int    cread;
 
   while (1) {
     FD_ZERO (&readfds);
@@ -551,6 +550,7 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
 void
 quit ()
 {
+  bdmClose ();
   syslog (LOG_INFO, "host finished: %s (%s)", current_host, current_addr);
   exit (0);
 }
@@ -732,6 +732,8 @@ main (int argc, char **argv)
       fflush (stdout);
     }
   }
-  
+
+  bdmClose ();
+
   return 0;
 }
