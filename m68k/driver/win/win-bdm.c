@@ -6,16 +6,16 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- * 
+ *
  * Windows support by:
  * Chris Johns
  * Cybertec Pty Ltd.
@@ -26,7 +26,7 @@
  * Integrated Chipware
  * 1861 Wiehle Ave.
  * Reston, Virginia  20190, USA
- * 
+ *
  * mikec@chipware.com
  *
  * Rick Haubenstricker
@@ -100,7 +100,6 @@ stat (const char *file_name, struct stat *buf)
      {
         return fd;
      }
-     
   }
 }
 
@@ -139,7 +138,7 @@ udelay(int usecs)
   static LONGLONG      lpf2;
 
   /*
-   * First time through, get frequency of high-resolution 
+   * First time through, get frequency of high-resolution
    *  performance counter  (value is counts per second)
    */
   if (first_time) {
@@ -161,17 +160,17 @@ udelay(int usecs)
   final_usecs = ((lpc2 * (LONGLONG) 1000000) / lpf2) + (LONGLONG) usecs;
 
   /*
-   * Loop until current count when converted to usecs is greater 
+   * Loop until current count when converted to usecs is greater
    *  than final time
    */
   do {
     /*
-     * Get current value of high-resolution performance 
+     * Get current value of high-resolution performance
      *  counter (value in counts)
      */
     QueryPerformanceCounter (&lpc);
     lpc2 = *(LONGLONG *) &lpc;
-      
+
     /*
      * Calculate current time in usecs
      */
@@ -202,7 +201,7 @@ bdm_delay (int counter)
 /*
  * Delay specified number of milliseconds
  */
-void 
+void
 bdm_sleep (unsigned long time)
 {
   udelay (time * 1000);
@@ -315,7 +314,7 @@ win_bdm_init ()
   BOOL          bOsVersionInfoEx;
 
   /*
-   * Determine which operating system in use, if NT or 2000, 
+   * Determine which operating system in use, if NT or 2000,
    * we need to enable the port.
    */
   ZeroMemory (&osvi, sizeof(OSVERSIONINFO));
@@ -326,7 +325,7 @@ win_bdm_init ()
      * If OSVERSIONINFOEX doesn't work, try OSVERSIONINFO.
      */
      osvi.dwOSVersionInfoSize = sizeof (OSVERSIONINFO);
-     if (! GetVersionEx ((OSVERSIONINFO *) &osvi)) 
+     if (! GetVersionEx ((OSVERSIONINFO *) &osvi))
         return FALSE;
   }
 
@@ -342,7 +341,7 @@ win_bdm_init ()
     }
     CloseHandle (h);
   }
-  
+
 #ifdef BDM_VER_MESSAGE
   printf ("bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
@@ -362,9 +361,9 @@ win_bdm_init ()
     /*
      * First set the default debug level.
      */
-    
+
     self->debugFlag = BDM_DEFAULT_DEBUG;
-    
+
     /*
      * Choose a port number
      */
@@ -383,9 +382,9 @@ win_bdm_init ()
     /*
      * See if the port exists
      */
-    
+
     self->exists = 1;
-    
+
     outb (0x00, port);
     udelay (50);
     if (inb (port) != 0x00) {
@@ -395,13 +394,13 @@ win_bdm_init ()
                                BDM_IFACE_MINOR (minor) + 1);
       continue;
     }
-    
+
     sprintf (self->name, "bdm%d", minor);
     self->portBase    = self->dataPort = port;
     self->statusPort  = port + 1;
-    self->controlPort = port + 2;  
+    self->controlPort = port + 2;
     self->delayTimer  = 0;
-    
+
     switch (BDM_IFACE (minor)) {
       case BDM_CPU32_PD:     cpu32_pd_init_self (self); break;
       case BDM_CPU32_ICD:    cpu32_icd_init_self (self); break;
@@ -412,7 +411,7 @@ win_bdm_init ()
         return -EIO;
     }
   }
-  
+
   return 0;
 }
 
@@ -443,6 +442,12 @@ win_bdm_open (const char *device, int flags, ...)
   {
     port = 0;
     device += 5;  /* s.b. 5 */
+  }
+  /* Allow ICD access under cygwin */
+  else if (strncmp (device, "icd", 3) == 0)
+  {
+    port = 8;
+    device += 3;
   }
   else if (strncmp (device, "cf", 2) == 0)
   {
@@ -507,7 +512,7 @@ win_bdm_ioctl (int fd, unsigned int cmd, ...)
   if (!bdm_dev_registered) {
 
     switch (cmd) {
-      case BDM_DEBUG:      
+      case BDM_DEBUG:
         err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
         break;
     }
@@ -516,14 +521,14 @@ win_bdm_ioctl (int fd, unsigned int cmd, ...)
 
     if (debugLevel > 3)
       printf ("win_bdm_ioctl cmd:0x%08x\n", cmd);
-  
+
     switch (cmd) {
       case BDM_DEBUG:
         debugLevel = iarg;
         break;
     }
   }
-       
+
   errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
   if (errno)
     return -1;
