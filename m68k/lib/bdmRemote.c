@@ -288,6 +288,7 @@ bdmRemoteOpen (const char *name)
   struct hostent     *hostent;
   struct sockaddr_in sockaddr;
   struct protoent    *protoent;
+  struct servent     *servent;
   int                reties;
   int                optarg;
   char               buf[BDM_REMOTE_BUF_SIZE];
@@ -302,6 +303,7 @@ bdmRemoteOpen (const char *name)
 #endif
 
   strncpy (lname, name, 256);
+  lname[255]=0;
 
   port_str = strchr (lname, ':');
 
@@ -315,8 +317,14 @@ bdmRemoteOpen (const char *name)
    * We cannot have a port of 0.
    */
 
-  if (port == 0)
+  if (port == 0) {
+    if ((servent = getservbyname ("bdm", "tcp"))) {
+      port = ntohs (servent->s_port);
+    }
+  }
+  if (port == 0) {
     port = 6543;
+  }
 
   /*
    * If we have another colon in the string we must assume
@@ -431,7 +439,7 @@ bdmRemoteOpen (const char *name)
   }
 
   if (reties == BDM_REMOTE_OPEN_WAIT) {
-    printf ("bdm-remote:open: failed\n");
+    printf ("bdm-remote:open: %s:%d%s failed\n", lname, port, device);
     errno = ENXIO;
     return -1;
   }
