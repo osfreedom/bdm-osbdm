@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.2 2003/12/28 16:51:22 ppisa Exp $
+ * $Id: bdm.c,v 1.3 2004/05/21 21:43:45 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1831,11 +1831,12 @@ init_module(void)
 #ifdef WITH_PARPORT_SUPPORT
 	int num;
 	struct parport *port;
+	int num_offset=0;
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.2 $", "$Date: 2003/12/28 16:51:22 $");
-		   /*"$Id: bdm.c,v 1.2 2003/12/28 16:51:22 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.3 $", "$Date: 2004/05/21 21:43:45 $");
+		   /*"$Id: bdm.c,v 1.3 2004/05/21 21:43:45 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1851,12 +1852,21 @@ init_module(void)
 
 #ifdef WITH_PARPORT_SUPPORT
 	printk("BDM init_module: compiled with PARPORT support\n");
-  	for(num=0,port=parport_enumerate(); port && (num < PARPORT_MAX) && (num < MAX_BDM_PORTS); port = port->next,num++)
+  	for(num=0; num < MAX_BDM_PORTS; num++)
   	{
+		port=NULL;
+		do{
+			if(num+num_offset >= PARPORT_MAX) break;
+			port=parport_find_number(num+num_offset);
+			if(port) break;
+			num_offset++;
+		}while(1);
+		if(!port) break;
 		bdm_parports[num] = parport_register_device(port, "bdm", bdm_preempt, NULL, NULL,0,NULL);
 		if (!bdm_parports[num]){
 			printk("BDM init_module: Can't register device no.: %d",num);
 		}
+		parport_put_port(port);
 	}
 #endif
 
@@ -1902,14 +1912,13 @@ void
 cleanup_module(void)
 {
 #ifdef WITH_PARPORT_SUPPORT
-	struct parport *port;
 	int num;
 #endif
 
 #ifdef WITH_PARPORT_SUPPORT
 	printk("BDM init_module: compiled with PARPORT support\n");
-  	for(num=0,port=parport_enumerate(); port && (num < PARPORT_MAX) && (num < MAX_BDM_PORTS); port = port->next,num++)
-  	{
+  	for(num=0; num < MAX_BDM_PORTS; num++)
+  	{	
 		if (bdm_parports[num])
     			parport_unregister_device(bdm_parports[num]);
 		bdm_parports[num] = NULL;
