@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.8 2003/11/26 20:34:31 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.9 2003/11/30 01:15:05 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -666,11 +666,51 @@ static void check_alignment (unsigned long adr, char size)
    functions now
  */
 
+/* Generate random test patterns for register/memory checks. We use only
+   bits 3..18 of the generated numbers since the lower bits are less random
+   and bit 31 would always be zero on a typical host.
+ */
+static void cmd_patterns (size_t argc, char *argv[])
+{
+    unsigned int i;
+
+    if (argc==3 && STREQ (argv[1], "random")) {
+	argc = strtoul (argv[2], NULL, 0);
+	argv = 0;
+    }
+
+    if (!(pattern = realloc (pattern, argc*sizeof(*pattern))))
+	fatal ("Out of memory\n");
+
+    if (argv) {
+	argc--;
+	for (i=0; i<argc; i++) {
+	    pattern[i] = eval_string (argv[i+1]);
+	}
+    } else {
+	for (i=0; i<2*argc; i++) {
+	    ((unsigned short*)pattern)[i] = (rand() >> 3) & 0x0ffff;
+	}
+    }
+
+    patcnt = argc;
+
+    if (verbosity) {
+	printf ("\n");
+	for (i=0; i<patcnt; i++) {
+	    printf (" pattern %d: 0x%08lx\n", i, pattern[i]);
+	}
+    }
+}
+
 /* check registers
  */
 static void cmd_check_register (size_t argc, char **argv)
 {
     unsigned int i;
+
+    if (!patcnt)
+	cmd_patterns (37, NULL);  /* generate prime number of test patterns */
 
     if (verbosity) printf ("\n");
 
@@ -760,6 +800,9 @@ static void cmd_check_mem (size_t argc, char **argv)
     unsigned long *wbuf;
     unsigned long *rbuf;
     unsigned char *sav;
+
+    if (!patcnt)
+	cmd_patterns (37, NULL);  /* generate prime number of test patterns */
 
     base = eval_string (argv[1]);
     size = eval_string (argv[2]);
@@ -887,43 +930,6 @@ static void cmd_execute (size_t argc, char **argv)
     if (verbosity) printf ("Run at 0x%08lx\n", addr);
 
     if (bdmGo () < 0) fatal ("Can not run the taget at 0x%08lx\n", addr);
-}
-
-/* Generate random test patterns for register/memory checks. We use only
-   bits 3..18 of the generated numbers since the lower bits are less random
-   and bit 31 would always be zero on a typical host.
- */
-static void cmd_patterns (size_t argc, char *argv[])
-{
-    unsigned int i;
-
-    if (argc==3 && STREQ (argv[1], "random")) {
-	argc = strtoul (argv[2], NULL, 0);
-	argv = 0;
-    }
-
-    if (!(pattern = realloc (pattern, argc*sizeof(*pattern))))
-	fatal ("Out of memory\n");
-
-    if (argv) {
-	argc--;
-	for (i=0; i<argc; i++) {
-	    pattern[i] = eval_string (argv[i+1]);
-	}
-    } else {
-	for (i=0; i<2*argc; i++) {
-	    ((unsigned short*)pattern)[i] = (rand() >> 3) & 0x0ffff;
-	}
-    }
-
-    patcnt = argc;
-
-    if (verbosity) {
-	printf ("\n");
-	for (i=0; i<patcnt; i++) {
-	    printf (" pattern %d: 0x%08lx\n", i, pattern[i]);
-	}
-    }
 }
 
 /* set a variable
@@ -1124,7 +1130,6 @@ int main (int argc, char *argv[])
     if (delay)                     bdmSetDelay(delay);
 
     srand (base_time = time (NULL));
-    cmd_patterns (37, NULL);  /* generate a prime number of test patterns */
     qsort (regnames, NUMOF(regnames), sizeof(regnames[0]), cmpreg);
 
     /* print information we can retrieve from driver
