@@ -135,7 +135,9 @@ static const int ioctl_code_table[] = {
   BDM_GET_DRV_VER,
   BDM_GET_CPU_TYPE,
   BDM_GET_IF_TYPE,
-  BDM_READ_CTLREG,    /* At the end to not break existing servers. */
+  BDM_GET_CF_PST,     /* At the end to not break existing servers. */
+  BDM_SET_CF_PST,
+  BDM_READ_CTLREG,
   BDM_WRITE_CTLREG,
   BDM_READ_DBREG,
   BDM_WRITE_DBREG
