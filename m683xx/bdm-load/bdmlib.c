@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.c,v 1.3 2003/08/15 14:32:48 ppisa Exp $
+ * $Id: bdmlib.c,v 1.4 2004/12/05 13:20:09 ppisa Exp $
  *
  * Remote debugging interface for 683xx via Background Debug Mode
  * needs a driver, which controls the BDM interface.
@@ -1444,7 +1444,8 @@ bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
 	else
 		addr = bfd_section_lma(abfd, sec);
 
-	if ((load_bytes = bfd_get_section_size_before_reloc(sec)) == 0)
+	/* there used to be bfd_get_section_size_before_reloc() */
+	if ((load_bytes = bfd_section_size(abfd,sec)) == 0)
 		return;
 	offset = 0;
 	while (load_bytes) {
