@@ -1,0 +1,43 @@
+Plain gdb and insight (that is the GUI extended gdb) can be built with
+just one build: download insight-5.3 instead of gdb-5.3. Then apply both,
+gdb-5.3-bdm-683xx-patch and insight-5.3-bdm-683xx-patch. This builds
+m68k-bdm-coff-gdb (this is plain gdb) and m68k-bdm-coff-insight (this is
+GUI-enabled gdb)
+
+To get insight running I needed to put the following into my .gdbinit68 file:
+
+  set prompt (gdb-bdm) 
+  set hash 1
+  bdm_log off
+  bdm_setdelay 0
+  bdm_autoreset on
+  bdm_timetocomeup 0
+  bdm_load_use_lma 1
+  #target bdm /dev/pd_bdm0
+  target bdm /dev/icd_bdm0
+  bdm_debug_driver 0
+
+  # this macro is called by insight directly after attaching to target but
+  # just before the processor is let to run.
+  #
+  define reset
+    bdm_reset
+    bdm_entry gdb_entry
+    set $pc = gdb_entry
+    set $vbr = __s_text
+    set $sp = ((unsigned long *)$vbr)[0]
+    #
+    # insert breakpoints on positions that indicate big trouble.
+    #
+    delete
+    break excpt_handl
+    break halt_system
+    break uninit_irq
+  end
+
+There is still a problem with insight: On start up insight sometimes get
+into an endless loop trying to read a cycle of stack frames. I don't know
+what triggers this loop, but when it happens once it is perfectly
+reproducable. Deleting ~/.gdbtkinit helps in this case, but I have no idea
+why it helps.
+
