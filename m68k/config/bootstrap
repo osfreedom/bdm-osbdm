@@ -1,0 +1,33 @@
+#! /bin/sh
+#
+# $Id: bootstrap,v 1.1 2003/09/17 15:24:44 cjohns Exp $
+#
+# Copyright (c) 2002, Cybertec Pty Ltd.
+# All rights reserved.
+#
+# Bootstrap the auto* stuff.
+#
+
+configure_list=`find . -name configure.ac | sed -e "s/^\.\///g"`
+
+if [ ! -d config ]; then
+  mkdir config || \
+   { echo "error: cannot make a config directory" >&2
+   { (exit 1); exit 1; }; }
+fi
+
+for c in $configure_list 
+do
+  echo "Processing $c"
+
+  config=`echo $c | sed -e "s/[^\/]*\//..\//g" -e "s/configure.ac/config/g"`
+
+  pushd `dirname $c` > /dev/null
+
+  aclocal -I config
+  grep -q "AC_CONFIG_HEADERS" configure.ac && autoheader
+  automake --foreign --add-missing --copy
+  autoconf
+
+  popd > /dev/null
+done
