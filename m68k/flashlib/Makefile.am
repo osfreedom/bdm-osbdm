@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.5 2004/03/21 01:48:20 codewiz Exp $
+## $Id: Makefile.am,v 1.6 2004/06/25 01:30:37 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -27,5 +27,7 @@ libbdmflash_a_SOURCES = \
 	bdmflash.c \
 	flash_filter.c \
 	flash29.c
+
+EXTRA_DIST = README tcompile
 
 endif
