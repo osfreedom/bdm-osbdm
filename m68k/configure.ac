@@ -165,7 +165,7 @@ AC_ARG_ENABLE(bdmflash,
  [bdm_bdmflash=true])
 
 AC_ARG_ENABLE(bdmmon,
- [  --enable-bdmflash Build the bdmmon utility (enabled)],
+ [  --enable-bdmmon Build the bdmmon utility (enabled)],
  [case "${enableval}" in
     yes) bdm_bdmmon=true ;;
     no)  bdm_bdmmon=false ;;
