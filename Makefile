@@ -1,10 +1,13 @@
 #
-# $Id: Makefile,v 1.2 2003/07/04 22:21:50 codewiz Exp $
+# $Id: Makefile,v 1.3 2003/10/06 00:01:08 codewiz Exp $
 #
 # Build distribution archives - crude but effective
 # Author: Bernardo Innocenti <bernie@develer.com>
 #
 # $Log: Makefile,v $
+# Revision 1.3  2003/10/06 00:01:08  codewiz
+# Fix source distribution for autoconfiscated m68k-bdm.
+#
 # Revision 1.2  2003/07/04 22:21:50  codewiz
 # Add missing -o to find command line.
 #
@@ -18,7 +21,7 @@ CP	= cp -a
 GZIP	= gzip
 BZIP2	= bzip2
 
-M68K_DISTDATE	= 20030701
+M68K_DISTDATE	= 20030921
 M68K_DISTDIR	= m68k-bdm-$(M68K_DISTDATE)
 M68K_TARGZ	= m68k-bdm-$(M68K_DISTDATE).tar.gz
 M68K_TARBZ2	= m68k-bdm-$(M68K_DISTDATE).tar.bz2
@@ -49,7 +52,9 @@ dist-m68k:
 			-name '*.a' -o \
 			-name '*.ko*' -o \
 			-name '.*.cmd' -o \
-			-name '*.mod.c' \
+			-name '*.mod.c' -o \
+			-name '.libs' -o \
+			-name '.deps' \
 		| xargs $(RM_R)
 	tar -c -v $(M68K_DISTDIR) | $(GZIP) >"$(M68K_TARGZ)"
 	tar -c -v $(M68K_DISTDIR) | $(BZIP2) >"$(M68K_TARBZ2)"
@@ -65,7 +70,9 @@ dist-m683xx:
 			-name '*.a' -o \
 			-name '*.ko*' -o \
 			-name '.*.cmd' -o \
-			-name '*.mod.c' \
+			-name '*.mod.c' -o \
+			-name '.libs' -o \
+			-name '.deps' \
 		| xargs $(RM_R)
 	tar -c -v $(M683XX_DISTDIR) | $(GZIP) >"$(M683XX_TARGZ)"
 	tar -c -v $(M683XX_DISTDIR) | $(BZIP2) >"$(M683XX_TARBZ2)"
