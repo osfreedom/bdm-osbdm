@@ -1,3 +1,9 @@
+2004-04-18  Bernardo Innocenti  <bernie@develer.com>
+
+	* openbsd/openbsd-bdm.c: Add OpenBSD driver derived from the FreeBSD
+	driver by an unknown author.  Contributed by Aaron J. Grier
+	<aaron@frye.com>.
+
 2001-12-12  Chris Johns  <cjohns@ybertec.com.au>
 
 	* bdm.c: ICD step fix from Thomas Andrews (tandrews@mindspring.co.za).
