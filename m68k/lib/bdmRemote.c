@@ -4,15 +4,13 @@
  *
  * Based on `ser-tcp.c' in the gdb sources.
  *
- * 31-11-1999 Chris Johns (ccj@acm.org)
+ * 31-11-1999 Chris Johns (cjohns@users.sourceforge.net)
  * Extended to support remote operation. See bdmRemote.c for details.
  *
  * Chris Johns
  * Objective Design Systems
- * 35 Cairo Street
- * Cammeray, Sydney, 2062, Australia
  *
- * ccj@acm.org
+ * cjohns@users.sourceforge.net
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,14 +32,20 @@
 */
 
 #include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+
+#include "bdmRemote.h"
 
 #define BDM_REMOTE_OPEN_WAIT (15)
 #define BDM_REMOTE_TIMEOUT   (5)
@@ -85,21 +89,12 @@ static const int ioctl_code_table[] = {
 
 #include <netinet/tcp.h>
 
-#define remote_close close
-#define remote_write write
-#define remote_read  read
-
 #endif
-
-/*
- * Reference in the open.
- */
-static int bdmRemoteClose (int fd);
 
 /*
  * Like strerror(), but knows about BDM driver errors, too.
  */
-static const char *
+const char *
 bdmRemoteStrerror (int error_no)
 {
   switch (error_no) {
@@ -158,7 +153,7 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
     else {
       memset (buf, 0, buf_len);
       
-      cread = remote_read (fd, buf, buf_len);
+      cread = read (fd, buf, buf_len);
 
       if (cread > 0) {
 #ifdef BDM_MESSAGE_DEBUG        
@@ -175,12 +170,19 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
   return -1;
 }
 
-static int
+int
 bdmRemoteName (const char *name)
 {
   char           lname[MAXHOSTNAMELEN];
   char           *port;
   struct hostent *hostent;
+
+  /*
+   * We need a ':' in the name to be remote.
+   */
+
+  if (!strchr (name, ':'))
+    return 0;
 
   /*
    * If the user supplies a port, strip it.
@@ -207,7 +209,7 @@ bdmRemoteName (const char *name)
  *
  *       host:port/device
  */
-static int
+int
 bdmRemoteOpen (const char *name)
 {
   int                fd = -1;
@@ -307,7 +309,7 @@ bdmRemoteOpen (const char *name)
     if (setsockopt (fd, SOL_SOCKET, SO_REUSEADDR,
                     (char *) &optarg, sizeof (optarg)) < 0) {
       int save_errno = errno;
-      remote_close (fd);
+      close (fd);
       fd = -1;
       errno = save_errno;
       return -1;
@@ -321,7 +323,7 @@ bdmRemoteOpen (const char *name)
     if (setsockopt (fd, SOL_SOCKET, SO_KEEPALIVE,
                     (char *) &optarg, sizeof (optarg)) < 0) {
       int save_errno = errno;
-      remote_close (fd);
+      close (fd);
       fd = -1;
       errno = save_errno;
       return -1;
@@ -339,7 +341,7 @@ bdmRemoteOpen (const char *name)
                   sizeof (sockaddr)))
       break;
 
-    remote_close (fd);
+    close (fd);
     fd = -1;
     
     /*
@@ -360,7 +362,7 @@ bdmRemoteOpen (const char *name)
   
   protoent = getprotobyname ("tcp");
   if (!protoent) {
-    remote_close (fd);
+    close (fd);
     return -1;
   }
   
@@ -368,7 +370,7 @@ bdmRemoteOpen (const char *name)
   if (setsockopt (fd, protoent->p_proto,
                   TCP_NODELAY, (char *) &optarg, sizeof (optarg))) {
     int save_errno = errno;
-    remote_close (fd);
+    close (fd);
     fd = -1;
     errno = save_errno;
     return -1;
@@ -389,7 +391,7 @@ bdmRemoteOpen (const char *name)
   buf_len += sprintf (buf + buf_len, "%s", device);
   buf_len++;
 
-  if (remote_write (fd, buf, buf_len) != buf_len)
+  if (write (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -423,21 +425,21 @@ bdmRemoteOpen (const char *name)
 /*
  * Close a remote link.
  */
-static int
+int
 bdmRemoteClose (int fd)
 {
   char buf[BDM_REMOTE_BUF_SIZE];
   
   strcpy (buf, "QUIT Later.");
-  remote_write (fd, buf, strlen (buf) + 1);
+  write (fd, buf, strlen (buf) + 1);
 
-  return remote_close (fd);
+  return close (fd);
 }
 
 /*
  * Do an int-argument  BDM ioctl
  */
-static int
+int
 bdmRemoteIoctlInt (int fd, int code, int *var)
 {
   char buf[BDM_REMOTE_BUF_SIZE];
@@ -465,7 +467,7 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
   buf_len += sprintf (buf + buf_len, "0x%x,0x%x", id, *var);
   buf_len++;
     
-  if (remote_write (fd, buf, buf_len) != buf_len)
+  if (write (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -499,7 +501,7 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
 /*
  * Do a command (no-argument) BDM ioctl
  */
-static int
+int
 bdmRemoteIoctlCommand (int fd, int code)
 {
   char buf[BDM_REMOTE_BUF_SIZE];
@@ -527,7 +529,7 @@ bdmRemoteIoctlCommand (int fd, int code)
   buf_len += sprintf (buf + buf_len, "0x%x", id);
   buf_len++;
 
-  if (remote_write (fd, buf, buf_len) != buf_len)
+  if (write (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -557,7 +559,7 @@ bdmRemoteIoctlCommand (int fd, int code)
 /*
  * Do a BDMioctl-argument BDM ioctl
  */
-static int
+int
 bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
 {
   char buf[BDM_REMOTE_BUF_SIZE];
@@ -586,7 +588,7 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
                       id, ioc->address, ioc->value);
   buf_len++;
 
-  if (remote_write (fd, buf, buf_len) != buf_len)
+  if (write (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -624,7 +626,7 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
 /*
  * Do a BDM read
  */
-static int
+int
 bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
 {
   char          buf[BDM_REMOTE_BUF_SIZE];
@@ -646,7 +648,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
   buf_len += sprintf (buf + buf_len, "%ld", nbytes);
   buf_len++;
   
-  if (remote_write (fd, buf, buf_len) != buf_len)
+  if (write (fd, buf, buf_len) != buf_len)
     return -1;
 
   buf_len = bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE);
@@ -736,7 +738,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
 /*
  * Do a BDM write
  */
-static int
+int
 bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
 {
   char          buf[BDM_REMOTE_BUF_SIZE];
@@ -769,7 +771,7 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
       bytes++;
     }
   
-    if (remote_write (fd, buf, buf_len) != buf_len)
+    if (write (fd, buf, buf_len) != buf_len)
       return -1;
 
     buf_len = 0;
