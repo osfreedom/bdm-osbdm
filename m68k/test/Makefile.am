@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.2 2003/11/06 21:02:25 joewolf Exp $
+## $Id: Makefile.am,v 1.3 2004/01/08 20:37:25 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -9,9 +9,7 @@
 ## GNU General Public License for more details.
 ##
 
-INCLUDES = @INCLUDES@ -I$(srcdir)/../driver -I$(srcdir)/../lib
-
-CFLAGS = @CFLAGS@
+AM_CPPFLAGS = -I$(srcdir)/../driver -I$(srcdir)/../lib
 
 ##
 ## Only way I know of anding in automake.

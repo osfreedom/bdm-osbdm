@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.3 2003/11/26 21:20:26 codewiz Exp $
+## $Id: Makefile.am,v 1.4 2004/01/08 20:37:25 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -9,20 +9,19 @@
 ## GNU General Public License for more details.
 ##
 
-INCLUDES = @INCLUDES@ -I$(srcdir)/../driver
-
-CFLAGS = @CFLAGS@
+AM_CPPFLAGS = -I$(srcdir)/../driver
+AM_CFLAGS =
 
 if BDM_IOPERM
-CFLAGS += -DBDM_IOPERM
+AM_CFLAGS += -DBDM_IOPERM
 endif
 
 if BDM_REMOTE
-CFLAGS += -DBDM_DEVICE_REMOTE
+AM_CFLAGS += -DBDM_DEVICE_REMOTE
 endif
 
 if BDM_DRIVER
-CFLAGS += -DBDM_DEVICE_LOCAL
+AM_CFLAGS += -DBDM_DEVICE_LOCAL
 endif
 
 pkglib_LIBRARIES = libBDM.a
