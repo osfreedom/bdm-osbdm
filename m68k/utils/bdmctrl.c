@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.1 2003/10/28 22:41:23 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.2 2003/11/03 21:05:39 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -390,7 +390,7 @@ static void write_memory (unsigned long adr, char *buf, int cnt)
 static void read_memory (unsigned long adr, char *buf, int cnt)
 {
     if (bdmReadMemory (adr, buf, cnt) < 0)
-	fatal ("\nCan not download 0x%08x bytes to addr 0x%08lx: %s\n",
+	fatal ("\nCan not upload 0x%08x bytes from addr 0x%08lx: %s\n",
 	       cnt, adr, bdmErrorString());
 }
 
@@ -487,7 +487,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 	fflush (stdout);
     }
 
-    if (flags & SEC_LOAD && (!off || sec_names[off])) {
+    if ((flags & SEC_LOAD) && (flags & SEC_HAS_CONTENTS) && (!off || sec_names[off])) {
 	read_register ("dfc", &dfc);
 	write_register ("dfc", flags & SEC_CODE ? 6 : 5);
 
@@ -809,6 +809,17 @@ static void cmd_sleep (size_t argc, char **argv)
     sleep (strtoul (argv[1], NULL, 0));
 }
 
+/* output a line of text
+ */
+static void cmd_echo (size_t argc, char **argv)
+{
+    int i;
+
+    for (i=1; i<argc; i++)
+	printf ("%s%s", i>1 ? " " : "", argv[i]);
+    printf ("\n");
+}
+
 /* read commands from a file and execute them
  */
 static void cmd_source (size_t argc, char **argv)
@@ -856,6 +867,7 @@ static struct command_s {
     { "execute",        1,       2, cmd_execute },
     { "sleep",          2,       2, cmd_sleep },
     { "wait",           1,       1, cmd_wait },
+    { "echo",           1, INT_MAX, cmd_echo },
     { "source",         1, INT_MAX, cmd_source },
     { "patterns",       2, INT_MAX, cmd_patterns },
 };
