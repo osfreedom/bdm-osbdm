@@ -18,12 +18,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
@@ -46,7 +46,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <syslog.h> 
+#include <syslog.h>
 #include <unistd.h>
 
 #ifndef __CYGWIN32__
@@ -66,7 +66,7 @@ void xfree (char *p);
 /*
  * Local data.
  */
-static const char *version_string = "0.0";
+static const char *version_string = "1.0.0";
 static char       myname[MAXHOSTNAMELEN];
 static char       *current_host;
 static char       *current_addr;
@@ -89,7 +89,7 @@ enum bdm_message_id
   QUIT,
   INVALID
 };
-  
+
 struct bdm_message
 {
   char                *label;
@@ -134,7 +134,11 @@ static const int ioctl_code_table[] = {
   BDM_WRITE_BYTE,
   BDM_GET_DRV_VER,
   BDM_GET_CPU_TYPE,
-  BDM_GET_IF_TYPE
+  BDM_GET_IF_TYPE,
+  BDM_READ_CTLREG,    /* At the end to not break existing servers. */
+  BDM_WRITE_CTLREG,
+  BDM_READ_DBREG,
+  BDM_WRITE_DBREG
 };
 
 /*
@@ -152,10 +156,10 @@ get_name (struct in_addr *host)
 #endif
 
   hp = gethostbyaddr ((char *) host, sizeof (host), AF_INET);
-  
+
   if (hp == NULL)
     return NULL;
-  
+
   i = strlen (hp->h_name);
   buf = (char *) xmalloc (i + 1);
   strcpy (buf, hp->h_name);
@@ -186,9 +190,9 @@ start_connection ()
 {
   struct sockaddr_in s;
   int                len;
-  
+
   len = sizeof (s);
-  
+
   if (getpeername (0, (struct sockaddr *) &s, &len) < 0)
   {
     if (!isatty (0))
@@ -207,10 +211,10 @@ start_connection ()
               "?", (long) s.sin_family);
       exit (1);
     }
-    
+
     current_addr = (char *) inet_ntoa (s.sin_addr);
     current_host = get_name (&s.sin_addr);
-    
+
     if (!current_host) {
       current_host = current_addr;
     }
@@ -230,7 +234,7 @@ get_message (char *buf, int buf_len)
   while (1) {
     FD_ZERO (&readfds);
     FD_SET (0, &readfds);
-  
+
     numfds = select (0 + 1, &readfds, 0, 0, 0);
 
     if (numfds > 0) {
@@ -274,22 +278,22 @@ decode_message (char *message)
   /*
    * Make the first field (the message label) uppercase.
    */
-   
+
   s = strchr (message, ' ');
   if (!s)
     s = message + strlen (message);
   for (c = message; c < s; c++)
     *c = toupper (*c);
-  
+
   for (id = 0; id < (sizeof messages / sizeof (struct bdm_message)); id++)
     if (strncmp (message, messages[id].label, strlen (messages[id].label)) == 0)
       return messages[id].id;
-  
+
   syslog (LOG_INFO, "invalid message: %s", message);
-  
+
   return INVALID;
 }
-    
+
 /*
  * Open the port using the requested device.
  */
@@ -298,7 +302,7 @@ void
 helo (char *device)
 {
   device += sizeof "HELO";
-  
+
   if (bdmOpen (device) < 0) {
     syslog (LOG_INFO, "open error: %s (%d), opening `%s'",
             bdmErrorString (), errno, device);
@@ -314,7 +318,7 @@ void
 server_control (char *message)
 {
   char *s = message + sizeof "SRVCTL";
-  
+
   if (strncmp (s, "DEBUG", sizeof "DEBUG" - 1) == 0) {
     s = strchr (s, '=');
     if (!s) {
@@ -351,7 +355,7 @@ ioint (char *message)
   if (bdmIoctlInt (code, &var) < 0) {
     syslog (LOG_INFO, "ioint error: %s (%d)", bdmErrorString (), errno);
   }
-  
+
   printf ("IOINT %d,0x%x.", errno, var);
 }
 
@@ -365,7 +369,7 @@ iocmd (char *message)
   int id;
   int code;
 
-  message += sizeof "IOCMD";  
+  message += sizeof "IOCMD";
   id       = strtoul (message, NULL, 0);
 
   code = decode_id (id);
@@ -376,7 +380,7 @@ iocmd (char *message)
   if (bdmIoctlCommand (code) < 0) {
     syslog (LOG_INFO, "iocmd error: %s (%d)", bdmErrorString (), errno);
   }
-  
+
   printf ("IOCMD %d.", errno);
 }
 
@@ -390,14 +394,14 @@ ioio (char *message)
   int             id;
   int             code;
   struct BDMioctl ioc;
-    
-  message    += sizeof "IOIO";  
+
+  message    += sizeof "IOIO";
   id          = strtoul (message, NULL, 0);
   message     = strchr (message, ',') + 1;
   ioc.address = strtoul (message, NULL, 0);
   message     = strchr (message, ',') + 1;
   ioc.value   = strtoul (message, NULL, 0);
-  
+
   code = decode_id (id);
   if (code == -1) {
     syslog (LOG_INFO, "ioio error: invalid ioctl id decode (%d)", errno);
@@ -406,7 +410,7 @@ ioio (char *message)
   if (bdmIoctlIo (code, &ioc) < 0) {
     syslog (LOG_INFO, "ioio error: %s (%d)", bdmErrorString (), errno);
   }
-  
+
   printf ("IOIO %d,0x%x,0x%x.", errno, ioc.address, ioc.value);
 }
 
@@ -427,22 +431,22 @@ bdm_read (char *message)
   buf      = xmalloc (nbytes);
 
   read_nbytes = bdmRead (buf, nbytes);
-  
+
   if (debug)
     syslog (LOG_INFO, "read: nbytes %ld (%ld), have read %ld",
             nbytes, nbytes * 2, read_nbytes);
-      
+
   if (read_nbytes < 0) {
     syslog (LOG_INFO, "read error: %s (%d)", bdmErrorString (), errno);
   }
-  
+
   printf ("READ %d,%ld,", errno, read_nbytes);
 
   if (read_nbytes > 0) {
     for (byte = 0; byte < read_nbytes; byte++)
       printf ("%02x", buf[byte]);
   }
-  
+
   xfree (buf);
 }
 
@@ -460,21 +464,22 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
   unsigned long msg_bytes;
   int           msg_index;
   unsigned char octet = 0;
-  char *msg;
+  char          *msg;
 
-  nbytes    = strtoul (message + sizeof "WRITE", &msg, 0);
-  if (*msg==',') msg++;
+  nbytes = strtoul (message + sizeof "WRITE", &msg, 0);
+  if (*msg == ',')
+    msg++;
 
   buf       = xmalloc (nbytes);
   byte      = 0;
   msg_bytes = 0;
 
-  msg_len  -= msg-message;
-  msg_buf_len -= msg-message;
-  
+  msg_len     -= msg - message;
+  msg_buf_len -= msg - message;
+
   if (debug)
     syslog (LOG_INFO, "write: nbytes %ld (%ld)", nbytes, nbytes * 2);
-      
+
   while (byte < nbytes) {
     msg_index = 0;
     if (msg_len < 2) {
@@ -487,15 +492,17 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       }
       msg_len += new_read;
     }
-    
-    if (msg_len>0 && !msg[msg_len-1]) msg_len--;
+
+    if ((msg_len > 0) && !msg[msg_len - 1])
+      msg_len--;
 
     if (debug) {
       syslog (LOG_INFO, "write read: msg len is %d (%ld/%ld)",
               msg_len, msg_bytes,  msg_len + msg_bytes);
-      syslog (LOG_INFO, "write read msg: %s", msg+msg_index);
-      if (msg_len>900) syslog (LOG_INFO, "write read msg end: %s",
-			   msg+msg_len-100);
+      syslog (LOG_INFO, "write read msg: %s", msg + msg_index);
+      if (msg_len > 900)
+        syslog (LOG_INFO, "write read msg end: %s",
+                msg + msg_len - 100);
     }
 
     while ((byte < nbytes) && ((msg_len - msg_index) > 1)) {
@@ -509,10 +516,10 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
         syslog (LOG_INFO, "write read: hbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
                 byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
-      
+
       msg_index++;
       msg_bytes++;
-      
+
       octet <<= 4;
 
       if ((msg[msg_index] >= '0') && (msg[msg_index] <= '9'))
@@ -525,7 +532,7 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
         syslog (LOG_INFO, "write read: lbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
                 byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
-    
+
       msg_index++;
       msg_bytes++;
 
@@ -534,18 +541,18 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       byte++;
     }
 
-    memcpy (msg, msg+msg_index, msg_len-msg_index);
+    memcpy (msg, msg + msg_index, msg_len - msg_index);
     msg_len -= msg_index;
   }
 
   written_nbytes = bdmWrite (buf, nbytes);
-  
+
   if (written_nbytes < 0) {
     syslog (LOG_INFO, "write error: %s (%d)", bdmErrorString (), errno);
   }
-  
+
   printf ("WRITE %d,%ld", errno, written_nbytes);
-  
+
   xfree (buf);
 }
 
@@ -570,12 +577,12 @@ void
 process_message (char *message, int msg_len, int msg_buf_len)
 {
   errno = 0;
-  
+
   switch (decode_message (message)) {
     case HELO:
       helo (message);
       break;
-      
+
     case SRVCTL:
       server_control (message);
       break;
@@ -583,15 +590,15 @@ process_message (char *message, int msg_len, int msg_buf_len)
     case IOINT:
       ioint (message);
       break;
-      
+
     case IOCMD:
       iocmd (message);
       break;
-      
+
     case IOIO:
       ioio (message);
       break;
-      
+
     case READ:
       bdm_read (message);
       break;
@@ -599,7 +606,7 @@ process_message (char *message, int msg_len, int msg_buf_len)
     case WRITE:
       bdm_write (message, msg_len, msg_buf_len);
       break;
-    
+
     case QUIT:
       quit ();
       break;
@@ -638,9 +645,9 @@ main (int argc, char **argv)
   int            not_inetd = 0;
   char           buf[BDM_SERVER_BUF_SIZE];
   int            cread;
-  
+
   program_name = argv[0];
-  
+
   while ((optc = getopt (argc, argv, "dnVh")) != EOF)
   {
     switch (optc)
@@ -669,37 +676,38 @@ main (int argc, char **argv)
    */
 
   umask (022);
-  
+
   /*
    * chdir
    */
 
   fflush (stderr);
   fflush (stdout);
-  
+
   closelog ();
-  
+
 #ifdef LOG_DAEMON
   openlog ("bdmd", (LOG_PID|LOG_CONS), LOG_DAEMON);
 #else
   openlog ("bdmd", LOG_PID);
 #endif
-  
+
   if (gethostname (myname, MAXHOSTNAMELEN)) {
     fprintf (stderr, "%s: cannot find out the name of this host\n",
              program_name);
     exit (1);
   }
-  myname[MAXHOSTNAMELEN-1] = 0;
+
+  myname[MAXHOSTNAMELEN - 1] = 0;
 
   /*
    * Now see if we can get a FQDN for this host.
    */
-  
+
   hp = gethostbyname (myname);
   if (hp && (strlen (hp->h_name) > strlen (myname)))
     strncpy (myname, hp->h_name, MAXHOSTNAMELEN);
-  myname[MAXHOSTNAMELEN-1] = 0;
+  myname[MAXHOSTNAMELEN - 1] = 0;
 
   bdmLogSyslog ();
 
@@ -707,7 +715,7 @@ main (int argc, char **argv)
    * Don't pay attention to SIGPIPE; read will give us the problem
    * if it happens.
    */
-  
+
   signal (SIGPIPE, SIG_IGN);
 
   if (!not_inetd)
@@ -723,11 +731,11 @@ main (int argc, char **argv)
 
   if (debug)
     syslog (LOG_INFO, "host connected: %s (%s)", current_host, current_addr);
-  
+
   /*
    * Say hello to the remote end. It will be waiting.
    */
-  
+
   while (1) {
     cread = get_message (buf, BDM_SERVER_BUF_SIZE);
 
@@ -737,9 +745,10 @@ main (int argc, char **argv)
 
     if (cread > 0) {
       if (debug > 1) {
-	int len = strlen (buf);
-	syslog (LOG_INFO, "msg: %s", buf);
-	if (len>900) syslog (LOG_INFO, "msg end: %s", buf+len-100);
+        int len = strlen (buf);
+        syslog (LOG_INFO, "msg: %s", buf);
+        if (len>900)
+          syslog (LOG_INFO, "msg end: %s", buf + len - 100);
       }
 
       process_message (buf, cread, BDM_SERVER_BUF_SIZE);
