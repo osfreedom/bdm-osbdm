@@ -31,7 +31,10 @@
  *		E-mail: support@castrov.cuug.ab.ca, wuth@acm.org]
  *
  * HISTORY:
- * $Log: bdm_mon.lex,v $
+ * $Log: bdmmon.l,v $
+ * Revision 1.1  2003/12/29 22:19:11  codewiz
+ * Move bdmmon and bdmflash to m68k/utils.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *

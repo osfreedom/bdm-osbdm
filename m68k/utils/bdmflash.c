@@ -27,7 +27,10 @@
  *		E-mail: support@castrov.cuug.ab.ca, wuth@acm.org]
  *
  * HISTORY:
- * $Log: BDMFlash.c,v $
+ * $Log: bdmflash.c,v $
+ * Revision 1.1  2003/12/29 22:19:11  codewiz
+ * Move bdmmon and bdmflash to m68k/utils.
+ *
  * Revision 1.2  2003/07/04 22:33:01  codewiz
  * Applied SST block-erase patch.
  *
