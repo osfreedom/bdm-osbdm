@@ -44,8 +44,6 @@
  * Coldfire support by:
  * Chris Johns
  * Objective Design Systems
- * 35 Cairo Street
- * Cammeray, Sydney, 2062, Australia
  *
  * ccj@acm.org
  *
@@ -65,10 +63,14 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
  
 #include "BDMlib.h"
+
+#if defined (BDM_DEVICE_REMOTE)
+
+#include "bdmRemote.h"
+
+#endif
 
 /*
  * If on Cygwin assume Windows.
@@ -77,6 +79,17 @@
 #if defined (__CYGWIN__)
 
 #include "../driver/win/win-bdm.c"
+
+#else
+
+/*
+ * See if this is an ioperm build.
+ */
+#if defined (BDM_IOPERM)
+
+#include "../driver/ioperm/ioperm.c"
+
+#endif
 
 #endif
 
@@ -140,22 +153,6 @@ bdmSetDebugFlag (int flag)
 {
   debugFlag = flag;
 }
-
-
-#if defined (BDM_DEVICE_REMOTE)
-/*
- * Include the remote interface to keep the internal interfaces
- * static without letting this module get too large.
- */
-#include "bdmRemote.c"
-
-void
-bdmAtExitClose ()
-{
-  bdmClose ();
-}
-
-#endif
 
 /*
  * Verify that device is open
@@ -367,6 +364,22 @@ writeTarget (int command, unsigned long address, unsigned long l)
   return 0;
 }
 
+static int
+remoteOpen (const char *name)
+{
+  int fd = -1;
+#if defined (BDM_DEVICE_REMOTE)
+  if (bdmRemoteName (name)) {
+    bdmRemote = 1;
+    if ((fd = bdmRemoteOpen (name)) < 0) {
+      bdmIO_lastErrorString = bdmStrerror (errno);
+      bdmRemote = 0;
+    }
+  }
+#endif
+  return fd;
+}
+
 /*
  * Return string describing most recent error
  */
@@ -382,9 +395,6 @@ bdmErrorString (void)
 int
 bdmOpen (const char *name)
 {
-#if defined (BDM_DEVICE_REMOTE)
-  struct stat name_stat;
-#endif
 #if defined (BDM_LIB_CHECKS_VERSION)
   unsigned int ver;
 #endif
@@ -425,6 +435,9 @@ bdmOpen (const char *name)
    * Open the interface. Name could be an ip:port address
    * which results in tring to open a connection to the
    * the remote server.
+   *
+   * First we try to open a remote connection if remote is
+   * supported. If this fails we attempt to open the driver.
    */
     
   if (fd >= 0) {
@@ -437,37 +450,18 @@ bdmOpen (const char *name)
       close (fd);
 #endif
   }
+
+  fd = -1;
   
-#if defined (BDM_DEVICE_REMOTE)
-#if defined (__CYGWIN__)
-  if (win_bdm_stat (name, &name_stat)) {
-#else
-  if (stat (name, &name_stat)) {
-#endif
-    if (bdmRemoteName (name)) {
-      bdmRemote = 1;
-      if ((fd = bdmRemoteOpen (name)) < 0) {
-        bdmIO_lastErrorString = bdmStrerror (errno);
-        bdmRemote = 0;
-        return -1;
-      }
-      /*
-       * Attach the close to the atexit handler chain. I am
-       * not sure if this is the done thing, how-ever I really
-       * wish to have the server terminated.
-       */
-      atexit (bdmAtExitClose);
-    }
-  }
+  if ((fd = remoteOpen (name)) < 0) {
 #if !defined (BDM_DEVICE_LOCAL)
-  else {
     bdmIO_lastErrorString = bdmStrerror (2);
     return -1;
-  }
 #endif
-#endif
+  }  
+
 #if defined (BDM_DEVICE_LOCAL)
-  else {
+  if (fd == -1) {
     if ((fd = open (name, O_RDWR)) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
