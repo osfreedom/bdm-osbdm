@@ -143,6 +143,12 @@ execute [<address>]
   loaded a file with an entry address definition.
   <address> can be a number, a register or a symbol.
 
+step [<address>]
+  Step the target at <address>. If <address> is omitted, the target will
+  step on %rpc. In this case you probably want to make sure that you have
+  loaded a file with an entry address definition.
+  <address> can be a number, a register or a symbol.
+
 source [ <file> [ <arguments> ... ] ]
   Execute commands from <file>. Withhin <file>, the variables $1, $2, $3 (and
   so on) are replaced by the specified arguments. When all the commands from
@@ -171,6 +177,10 @@ long run
 --------
  - Implement a "flash" command. This command will use code on the target
    to erase/write the flash.
+
+ - implement breakpoints.
+
+ - implement disassembler.
 
  - Rewrite parsing to flex/bison. (This one will probably never be done)
 

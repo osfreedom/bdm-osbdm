@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.9 2003/11/30 01:15:05 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.10 2003/12/02 22:58:55 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -932,6 +932,21 @@ static void cmd_execute (size_t argc, char **argv)
     if (bdmGo () < 0) fatal ("Can not run the taget at 0x%08lx\n", addr);
 }
 
+/* single step target
+ */
+static void cmd_step (size_t argc, char **argv)
+{
+    unsigned long addr;
+
+    if (argc>=2) write_register ("rpc", eval_string (argv[1]));
+
+    read_register ("rpc", &addr);
+
+    if (verbosity) printf ("Step at 0x%08lx\n", addr);
+
+    if (bdmStep () < 0) fatal ("Can not step the taget at 0x%08lx\n", addr);
+}
+
 /* set a variable
  */
 static void cmd_set (size_t argc, char *argv[])
@@ -1064,6 +1079,7 @@ static struct command_s {
     { "write",          4,       4, cmd_write },
     { "load",           2, INT_MAX, cmd_load },
     { "execute",        1,       2, cmd_execute },
+    { "step",           1,       2, cmd_step },
     { "set",            3,       3, cmd_set },
     { "read",           1, INT_MAX, cmd_read },
     { "sleep",          2,       2, cmd_sleep },
