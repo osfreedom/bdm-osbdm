@@ -9,6 +9,10 @@
 #include <string.h>
 #include <BDMlib.h>
 
+#if defined (__WIN32__)
+#define sleep _sleep
+#endif
+
 static const char *const sysreg_name[BDM_MAX_SYSREG] = {
   "RPC",  "PCC",    "SR",   "USP",
   "SSP",  "SFC",    "DFC",  "ATEMP",
@@ -735,6 +739,8 @@ main (int argc, char **argv)
     Usage();
   }
 
+  printf ("BDM Check for Coldfire processors.\n");
+  
   for (arg = 1; arg < argc; arg++) {
     if (argv[arg][0] != '-') {
       if (dev) {
@@ -828,6 +834,8 @@ main (int argc, char **argv)
     exit (1);
   }
 
+  printf ("Device: %s\n", dev);
+  
   /*
    * Open the BDM interface driver
    */
@@ -846,7 +854,7 @@ main (int argc, char **argv)
   if (bdmGetDrvVersion (&ver) < 0)
     showError ("GetDrvVersion");
 
-  printf ("Driver Ver : %x.%x\n", ver >> 8, ver & 0xff);
+  printf ("Driver Ver : %i.%i\n", ver >> 8, ver & 0xff);
 
   /*
    * Get the processor
