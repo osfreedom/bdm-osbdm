@@ -13,6 +13,7 @@ Bdmctrl is invoked like this:
 
   bdmctrl [options] <device> [<command> [arguments [...]]]
     where options are one ore more of:
+      -h <cmd>   Get additional description for command <cmd>.
       -d <level> (default=0) Choose driver debug level.
       -v <level> (default=1) Choose verbosity level.
       -D <delay> (default=0) Delay count for BDM clock generation.
@@ -70,122 +71,8 @@ will be looked up in the open symbol files.
 Supported commands and their parameters
 =======================================
 
-reset
-  reset the target.
-
-time
-  print seconds since bdmctrl was started.
-
-exit
-  exit bdmctrl immediately.
-
-sleep SEC
-  sleep for SEC seconds.
-
-echo [ ARG ... ]
-  print a line of text.
-
-set VAR VAL
-  define variable VAR and set its value to VAL
-
-read [ VAR ... ]
-  read a line from stdin, split it into arguments and assign the arguments
-  to specified variables.
-
-wait
-  wait until target is halted/stopped.
-
-patterns PAT [ PAT ... ]
-  The provided arguments numbers are taken as test patterns for the
-  "check-register" and "check-mem" commands. The patterns are 32 bits wide.
-  On startup, bdmctrl generates 37 random testpatterns.
-  In general, a prime number of random patterns is best to _detect_ errors.
-  This is why 37 randoms are generated at startup, so you don't need to do
-  this yourself.
-  Once an error is detected, you might want to define your own patterns in
-  order to locate/isolate/understand why the check-XXX command fails.
-
-random-patterns CNT
-  Generate CNT random test patterns. See description of "patterns" command
-  for more information.
-
-check-register REG [ REG ... ]
-  The specified registers are checked with random testpatterns. After the
-  test, the original values of the registers are restored.
-
-dump-register REG [ REG ... ]
-  The contents of the specified registers are dumped to stdout.
-
-check-mem ADR SIZ
-  The specified memory region is checked with a random testpattern. In
-  addition, an alingnment test is done. After the test the original memory
-  contents are restored.
-  ADR and SIZ can be a number, a register or a symbol.
-
-dump-mem ADR SIZ WIDTH [ FN ]
-  Dump memory contents to stdout. The WIDTH argument speciefies whether
-  bytes, words or longwords are dumped.
-  ADR and SIZ can be a number, a register or a symbol.
-  WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
-  if FN is specified, the contents are dumped to the named file.
-
-write DST VAL WIDTH
-  Write a VAL with WIDTH to destination DST. VAL and DST can be an absolute
-  memory address, a register or a symbol.
-  DST and VAL can be a number, a register or a symbol.
-  WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
-
-load [-v] FN [ SEC ... ]
-  Load object file FN into the target. Only the specified sections are
-  loaded. When no sections are specified, only sections with the SEC_LOAD flag
-  are loaded. If FN has an entry address specified, %rpc is set to
-  this address. With the -v flag, the written contents are read back and
-  verified.
-  After the load, the symbols from the loaded file are known to the commands
-  which can deal with symbols.
-  Please note that s-record and intel-hex don't have section names. In this
-  cases BFD assigns ".sec1", ".sec2" and so forth as section names.
-
-execute [ADR]
-  Run the target at ADR. If ADR is omitted, the target will run
-  from %rpc. In this case you probably want to make sure that you have
-  loaded a file with an entry address definition.
-  ADR can be a number, a register or a symbol.
-
-step [ADR]
-  Step the target at ADR. If ADR is omitted, the target will
-  step on %rpc. In this case you probably want to make sure that you have
-  loaded a file with an entry address definition.
-  ADR can be a number, a register or a symbol.
-
-source [ FN [ ARG ... ] ]
-  Execute commands from FN. Withhin FN, the variables $1, $2, $3 (and
-  so on) are replaced by the specified arguments. When all the commands from
-  FN are executed, control returns to the original position, so recursive
-  execution is possible. When FN is omitted, commands are read from
-  stdin. Please note that it doesn't make much sense to source stdin more
-  than one time.
-
-flash-plugin ADR LEN FN [ FN ... ]
-  Load and register a target-assisted flash driver plugin(s) from file FN.
-  ADR and LEN define a memory region on the target that can be used as
-  temporary memory to download driver and flash contents.
-
-flash ADR
-  Autodetect flash chip(s) on ADR. Currently only 29Fxxx and 49Fxxx
-  types of chips are supported.
-  Note that there is no dedicated command for the actual flash operation. The
-  usual memory write command "load" will automatically call the correct driver
-  for registered memory areas.
-
-erase BASE OFF
-  Submit erase command to sector with OFF on flash chip at BASE.
-  OFF==-1 indicates erase the whole chip. For 29Fxxx and 49Fxxx types of
-  chips multiple erase commands can be issued simultanously before the
-  erase-wait command is issued.
-
-erase-wait BASE
-  Wait for the flash chip on BASE to finish the issued erase operation(s).
+Please use "bdmctrl -h" to get a list of available commands.
+Please use "bdmctrl -h COMMAND" to get information on the command.
 
 
 Plans for the future
