@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.10 2003/12/02 22:58:55 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.11 2003/12/29 23:02:28 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -32,6 +32,9 @@
 # include <bfd.h>
 
 # include "BDMlib.h"
+# include "flash_filter.h"
+
+# define HAVE_FLASHLIB 1  /* this should be provided by autoconf */
 
 static void do_command (size_t argc, char **argv);
 
@@ -472,6 +475,7 @@ static int write_value (unsigned long adr, unsigned long val, char size)
     return size;
 }
 
+# if !HAVE_FLASHLIB
 /* Write a buffer to the target.
  */
 unsigned long write_memory (unsigned long adr, unsigned char *buf,
@@ -482,6 +486,22 @@ unsigned long write_memory (unsigned long adr, unsigned char *buf,
 	       cnt, adr, bdmErrorString());
     return cnt;
 }
+int flash_plugin (unsigned long adr, unsigned long len, char *argv[])
+{
+    fatal ("No flash support available\n");
+    return 0;
+}
+int flash_register (unsigned long adr)
+{
+    fatal ("No flash support available\n");
+    return 0;
+}
+int flash_erase (unsigned long adr, long sec_offs)
+{
+    fatal ("No flash support available\n");
+    return 0;
+}
+# endif
 
 /* Read a buffer from the target.
  */
@@ -571,7 +591,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
     unsigned long addr;
     unsigned long length;
     unsigned long dfc;
-    unsigned char buf[1024], rbuf[1024];
+    unsigned char buf[1*1024], rbuf[1*1024];
 
     /* FIXME: should use bfd_perror() bfd_errmsg()
      */
@@ -1021,6 +1041,7 @@ static void cmd_time (size_t argc, char **argv)
 static void cmd_sleep (size_t argc, char **argv)
 {
     sleep (strtoul (argv[1], NULL, 0));
+    if (verbosity) printf ("OK\n");
 }
 
 /* output a line of text
@@ -1032,6 +1053,42 @@ static void cmd_echo (size_t argc, char **argv)
     for (i=1; i<argc; i++)
 	printf ("%s%s", i>1 ? " " : "", argv[i]);
     printf ("\n");
+}
+
+/* autodetect flash hardware
+ */
+static void cmd_flash (size_t argc, char **argv)
+{
+    char name[1024];
+
+    if (flash_register (name, strtoul (argv[1], NULL, 0)) && verbosity)
+	printf ("%s\n", name);
+}
+
+/* load target flash driver
+ */
+static void cmd_flashplug (size_t argc, char **argv)
+{
+    char name[1024];
+    unsigned long adr = strtoul (argv[1], NULL, 0);
+    unsigned long len = strtoul (argv[2], NULL, 0);
+
+    flash_plugin (adr, len, argv+3);
+    printf ("\n");
+}
+
+/* erase flash hardware
+ */
+static void cmd_erase (size_t argc, char **argv)
+{
+    unsigned long adr = strtoul (argv[1], NULL, 0);
+
+    if (STREQ (argv[2], "wait")) {
+	flash_erase_wait (adr);
+    } else {
+	flash_erase (adr, strtol (argv[2], NULL, 0));
+    }
+    if (verbosity) printf ("OK\n");
 }
 
 /* read commands from a file and execute them
@@ -1089,6 +1146,9 @@ static struct command_s {
     { "exit",           1,       1, cmd_exit },
     { "source",         1, INT_MAX, cmd_source },
     { "patterns",       2, INT_MAX, cmd_patterns },
+    { "flash-plugin",   3, INT_MAX, cmd_flashplug },
+    { "flash",          2,       2, cmd_flash },
+    { "erase",          2,       3, cmd_erase },
 };
 
 /* search a command and execute it

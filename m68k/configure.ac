@@ -37,7 +37,7 @@ dnl
 dnl Defaults.
 dnl
 
-bdm_subdirs="lib test utils"
+bdm_subdirs="lib flashlib test utils"
 bdm_win32=false
 
 AC_SUBST(INCLUDES, ${INCLUDES})

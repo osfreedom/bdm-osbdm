@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.3 2003/11/07 23:30:28 joewolf Exp $
+## $Id: Makefile.am,v 1.4 2003/12/29 23:02:28 joewolf Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -9,7 +9,9 @@
 ## GNU General Public License for more details.
 ##
 
-INCLUDES = @INCLUDES@ -I$(srcdir)/../driver -I$(srcdir)/../lib
+INCLUDES = @INCLUDES@ -I$(srcdir)/../driver \
+		      -I$(srcdir)/../lib \
+		      -I$(srcdir)/../flashlib
 
 CFLAGS = @CFLAGS@
 
@@ -36,8 +38,9 @@ bdmctrl_SOURCES = \
 #	-I${prefix}/${host_alias}/${target_alias}/include \
 #	-I${prefix}/include
 bdmctrl_LDFLAGS = -static
-bdmctrl_LDADD = ../lib/libBDM.a	-lbfd -liberty \
-	-L${prefix}/${host_alias}/${target_alias}/lib
+bdmctrl_LDADD = ../lib/libBDM.a ../flashlib/libbdmflash.a \
+	${prefix}/${host_alias}/${target_alias}/lib/libbfd.a \
+	${prefix}/lib/libiberty.a
 
 
 bdmreset_SOURCES = \

@@ -157,6 +157,26 @@ source [ <file> [ <arguments> ... ] ]
   stdin. Please note that it doesn't make much sense to source stdin more
   than one time.
 
+flash-plugin <address> <length> <file> [ <file> ... ]
+  Load and register a target-assisted flash driver plugin(s) from <file>.
+  <address> and <length> define a memory region on the target that can be
+  used as temporary memory to download driver and flash contents.
+
+flash <address>
+  Autodetect flash chip(s) on <address>. Currently only 29Fxxx and 49Fxxx
+  types of chips are supported.
+  Note that there is no dedicated command for the actual flash operation. The
+  usual memory write command "load" will automatically call the correct driver
+  for registered memory areas.
+
+erase <base> <sector_offset>
+  Submit erase command to sector with <sector_offset> on flash chip at <base>.
+  <sector_offset>==-1 indicates the whole chip. For 29Fxxx and 49Fxxx types of
+  chips multiple erase commands can be issued simultanously.
+
+erase <base> wait
+  Wait for the flash chip on <base> to finish the issued erase operation(s).
+
 
 Plans for the future
 ====================
@@ -165,6 +185,8 @@ short time
 ----------
  - Fix the issues marked with "FIXME"
 
+ - Extend "write" command to automatically call flash driver.
+
  - Cleanup/extend output to make it easier to analyze hardware defects.
 
  - Extend the "execute" command to pass arguments to the target function.
@@ -172,12 +194,10 @@ short time
    for the stack that is needed to put the arguments (and the bgnd
    instruction)
    This extension is a prerequisite for the "flash" command. 
+   [ Is this remark stilll valid? ]
 
 long run
 --------
- - Implement a "flash" command. This command will use code on the target
-   to erase/write the flash.
-
  - implement breakpoints.
 
  - implement disassembler.
