@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: bootstrap,v 1.1 2003/09/17 15:24:44 cjohns Exp $
+# $Id: bootstrap,v 1.2 2004/04/09 17:19:02 codewiz Exp $
 #
 # Copyright (c) 2002, Cybertec Pty Ltd.
 # All rights reserved.
@@ -14,6 +14,13 @@ if [ ! -d config ]; then
   mkdir config || \
    { echo "error: cannot make a config directory" >&2
    { (exit 1); exit 1; }; }
+fi
+
+
+if test -z "`automake --version 2>&1|head -n 1|egrep '1.[7-9]'`";
+then
+  echo "Automake 1.7 or higher is required! Aborting...";
+  exit 1;
 fi
 
 for c in $configure_list 
