@@ -1,52 +1,67 @@
+
+                     BDM GDB DRIVER AND LIBRARY PACKAGE
+                     ==================================
+
 INTRODUCTION
 ============
 
-This package contains everything you need to be able to run GDB on Linux, 
-FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
-Coldfire (5206/5307) target through a standard PC parallel port.  
+This package contains everything you need to know to be able to run GDB on
+Linux, FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
+Coldfire (5206/5307) target through a standard PC parallel port.
 
-The CPU32 interfaces supported are PD and the IDC interface. GDB should now
-operate with the CPU32 processor without error.
+ o The CPU32 interfaces supported are PD and the IDC interface. GDB 
+   should now operate with the CPU32 processor without error.
 
-The Coldfire interface is the P&E type interface.
+ o The Coldfire interface is the P&E type interface.
 
-You can build Insight if you apply the Insight patch. See the Insight 
-README in this directory.
+ o You can build Insight if you apply the Insight patch. See the 
+   Insight README in this directory.
 
-For WindowsNT or Window2000 you will need the GiveIO package. You are best
-to search the net for the GiveIO (giveio.sys) package.
+ o For WindowsNT or Window2000 you will need the GiveIO package. You 
+   are best to search the net for the GiveIO (giveio.sys) package.
+
+ o For Unix users the library is built with I/O perm support by 
+   default. The same library allows an application to directly 
+   access the hardware or use an installed BDM kernel driver.
+
+   I/O Permission is a means getting at the parallel port hardware
+   without the need for a kernel driver. This BDM package still provides
+   support to build a kernel driver, but you do not need to if you to avoid
+   kernel drivers. Some people wish to use kernel drivers and some do not.
+
+   If you wish to learn more about I/O Perm support please refer to the
+   section at the end of the file.
+
+   You can disable I/O perm support by editing the Makefile. It is hoped
+   autoconf support in the future will provide a better way to handle this.
 
 The subdirectories contain:
 
-driver
-	Source for a Linux, SCO and Windows BDM device driver module.
+  driver
+	Source for a Linux, SCO, FreeBSD, I/O Perm, and Windows BDM device 
+	driver module.
 
-gdbPatches
-	Contains patches to add BDM support to gdb-5.0 and pre 5.0
-        snapshots.
+  gdbPatches
+	Move to outside this tree. Please refer to the Sourceforge
+        project for the patches.
 
-gdbScripts
+  gdbScripts
 	Example GDB command scripts that show how to initialize and run
 	a Motorola 68360 system using standard GDB commands.
 
-lib
+  lib
 	User-level library routines for accessing the BDM device driver.
 
-local_scripts
+  local_scripts
         Scripts to run on the host machine the driver is being installed
         on.
 
-Schematics
-	Schematic drawings for a PC parallel port to CPU32 BDM interface.  
-        This directory also contains printed-circuit board drawings and
-	assembly drawings for the interface.
-
-server
+  server
         The BDM server. This is a daemon which interfaces to the local
         BDM driver remotely. The BDM library can be built to support
         local and remote, just local or just remote access.
 
-test
+  test
 	Programs to test the BDM library and driver routines.
 
 QUICK START
@@ -57,6 +72,8 @@ driver for you.
 
        $ ./local_script/built-it
 
+You will need to jump to the install parts in the section below.
+
 INSTALLATION
 ============
 
@@ -65,16 +82,31 @@ results in /usr/{bin,lib,.....}.
 
 On FreeBSD remember to use `gmake' rather than `make'.
 
-Note: For Windows move to step 2 as the driver is built into the
+Notes:
+
+   1. For Windows move to Step 2 as the driver is built into the
       library. You may also need to add `CC=gcc' to make's command 
       line.
 
-You can specify a different `prefix' for the installation directory by
-running all the `make install' commands described below as:
+   2. For I/O Permission users move to step 2 as the driver is built
+      into the library. 
+
+   3. Driver users will still have a library with I/O perm support 
+      unless the default of the library Makefile is manually changed.
+
+   4. You can specify a different `prefix' for the installation 
+      directory by running all the `make install' commands 
+      described below as:
 
 	$ make prefix=/some/directory install
 
 Step 1 -- Compile and install the BDM device driver
+
+	If you do not wish to use a driver and just want the I/O
+	perm support move to Step 2.
+
+	Make sure the kernel source code is installed under the
+	/usr/src path.
 
 	Support for more than Linux has been added. You must
 	enter the OS specific directory then enter the make
@@ -91,8 +123,8 @@ Step 1 -- Compile and install the BDM device driver
 	version and will use the PST signals if it detects a version 1
 	debug module. The debug version 1 is found on the 5307.
 
-	cd driver/linux
-	make install
+	  # cd driver/linux
+	  # make all install
 
 	You may get a bunch of error messages like:
 		In file included from /usr/include/linux/fs.h:277,
@@ -101,6 +133,7 @@ Step 1 -- Compile and install the BDM device driver
 		/usr/include/linux/hpfs_fs_i.h:5: warning: no semicolon at \
 						end of struct or union
 		/usr/include/linux/hpfs_fs_i.h:12: parse error before `:'
+
 	If this happens, try adding `-I /usr/include' to the beginning of
 	the CFLAGS definition in the Makefile in driver/linux.
 
@@ -109,13 +142,13 @@ Step 1 -- Compile and install the BDM device driver
 
 	To make the special files by hand you can enter:
 
-	mknod /dev/bdmcpu320 c 34 0
-                               ^^ ^
-	                       |  |
-	                       |  +--Minor device number (see below).
-	                       |
-			       +--This value must match the
-				  BDM_MAJOR_NUMBER in driver/bdm.h
+	  # mknod /dev/bdmcpu320 c 34 0
+                                 ^^ ^
+	                         |  |
+	                         |  +--Minor device number (see below).
+	                         |
+			         +--This value must match the
+				    BDM_MAJOR_NUMBER in driver/bdm.h
 
 	To have the module module loaded by kerneld when needed
 	adding to /etc/conf.modules the line:
@@ -125,14 +158,23 @@ Step 1 -- Compile and install the BDM device driver
 	To automaticially load the driver into the kernel every time
 	you reboot you can add the line:
 
-		/sbin/insmod bdm
+	   # /sbin/insmod bdm
 
 	to your startup script, such as /etc/rc.d/rc.local.
 		
 Step 2 -- Compile and install the BDM library
 
-	cd lib
-	make install
+	  $ cd lib
+	  $ make all
+
+	You do not need to install the library. If you wish to just build
+	GDB version you can follow the instructions in Step 6 to have
+	GDB see the BDM header files and library where they are built. If you 
+	develop BDM applications you may wish to install the library.
+
+        To install you will need to be root:
+
+	  # make install
 
 	The library can be built to access a BDM driver locally via
 	the kernel's ioctl interface, or remotely via a TCP/IP
@@ -144,25 +186,92 @@ Step 2 -- Compile and install the BDM library
 
         On Windows 2000 install the GiveIO driver.
 
-Step 3 -- (Optional) Testing the driver.
+Step 3 -- Make the Server
+
+	You only need the BDM server if you intend to use the ioperm
+        method of accessing the parallel port, or you wish to support
+	remote access. If you wish to use a driver and your access is
+	local to your development machine then this step may be skipped.
+
+	The server runs from the xindetd or inetd daemon. Build and install
+	the server. It installs into the '/usr/sbin' directory.
+
+	  $ cd server
+	  $ make all
+
+	You need to be root to perform the install:
+
+	  # make install
+
+	For inetd users:
+
+	  You need to edit the /etc/services file to add the port 
+	  number bdmd users. Add this line at the bottom of 
+	  the /etc/services file:
+
+	  bdm             6543/tcp                        # BDM server
+
+	  You need to edit the /etc/inetd.conf file. Add this line at the
+	  end of /etc/inetd.conf:
+
+	  bdm     stream  tcp     nowait  root  /usr/sbin/bdmd bdmd 
+
+	  You can specify any user including root. If you are wishing to
+	  use the ioperm support then the user must be root.
+
+	For xinetd users as root install the follow in a file called:
+
+	     /etc/xinetd.d/bdm
+
+		service bdm
+		{
+			socket_type	= stream
+			port		= 6543 
+			wait		= no
+			user		= root
+			server		= /usr/sbin/bdmd
+			server_args	= -n
+			log_on_failure	+= USERID
+			disable		= no
+		}
+
+	then get xinetd to reload its configuration.
+
+Step 4 -- (Optional) Testing the driver.
 
 	It a good idea to build and run the test program called 
 	`chk'. This will show the library built	correctly, the driver
-	 loads and functions, and your hardware	is connected correctly
-	 and functioning.
+	loads and functions, and your hardware	is connected correctly
+	and functioning.
 
 	You will need to select the correct device for the Coldfire.
 	The example below is for the CPU32 interface on LPT1 with
-	the devices made by the local script MAKEDEV.
+	the devices made by the local script MAKEDEV:
 
-	cd test
-	make
-	./chk /dev/bdmcpu320
+	  # ./local_scripts/MAKEDEV
 
-Step 4 -- Patch your GDB distribution
+	To test do the following:
 
-	cd /where/you/keep/gdb-5.0
-	patch -p1 < /where/you/unpacked/this/BDM/gdbPatches/gdb-5.0-patch
+	  $ cd test
+	  $ make
+
+	To test a CPU32 processor do:
+
+	  $ ./chk /dev/bdmcpu320
+
+	To test a Coldfire processor do:
+
+          $ ./chk /dev/bdmcf0
+
+	Note, the number at the end of the device path is the parallel 
+	port number your pod hardware is connected too. The device nodes
+	start from 0, while the standard PC LPT ports number from 1. This
+	means '/dev/bdmcf0' will look for a Coldfire processor on LPT1.
+
+Step 5 -- Patch your GDB distribution
+
+	  $ cd /where/you/keep/gdb-5.3
+	  $ patch -p1 < /where/you/unpacked/this/BDM/gdbPatches/gdb-5.3-patch
 
 	Don't worry about complaints like:
 	mkdir: Failed to make directory "gdb"; File exists
@@ -170,7 +279,7 @@ Step 4 -- Patch your GDB distribution
 	(Please adjust the patch file name if you are using a snapshot 
 	release which is dated.)
 
-Step 5 -- Compile and install the cross-GDB with BDM support
+Step 6 -- Compile and install the cross-GDB with BDM support
 
 	There is an example script I use to configure, build, and install
 	the cross-GDB on my Linux machine in local_scripts/makegdb68kbdm.
@@ -182,7 +291,7 @@ Step 5 -- Compile and install the cross-GDB with BDM support
         This means the single configure target will do both the CPU32 and
         Coldfire.
 
-        $ ../gdb-5.0-bdm/configure --target=m68k-bdm-elf --prefix=???
+          $ ../gdb-5.3-bdm/configure --target=m68k-bdm-elf --prefix=???
 
         where ??? is your local prefix path. A prefix path is where
 	gdb and the other files it needs are installed too. Providing
@@ -192,14 +301,29 @@ Step 5 -- Compile and install the cross-GDB with BDM support
 	a test path in the prefix so an installed and working gdb is
 	not over written until you have tested the new version.
 
-Step 6 -- (Optional) Install the GDB scripts
+	Once you have configured GDB you can build it. If you decided not
+	to install the BDM library above you will need to do more than
+	just enter make as shown here:
 
-	cd gdbScripts
-	make install
+	  $ make
+
+	For user who have not installed the BDM library you need to:
+
+	  $ make \
+	     CFLAGS="-I/fix-this-path/m68k/lib \
+	             -I/fix-this-path/m68k/driver" \
+	     LDFLAGS="-L/fix-this-path/m68k/lib"
+
+	where 'fix-this-path' is the path to your built BDM library.
+
+Step 7 -- (Optional) Install the GDB scripts
+
+	  $ cd gdbScripts
+	  $ make install
 
 	You will have to change the scripts to match your CPU32(+) hardware.
 
-Step 6 -- Build a BDM interface
+Step 8 -- Build a BDM interface
 
 	See the Schematics directory for an example circuit.
 
@@ -207,28 +331,82 @@ Step 7 -- Try it out
 
 	This is left as an exercise for the reader.....
 
-Step 8 -- (Optional) Make the Server
+I/O PERM SUPPORT
+================
 
-	The server runs from the inetd daemon. Build and install the 
-	server. It installs into the /usr/sbin directory.
+The I/O Permission support is based around the 'ioperm' system call. This call
+allows a root executed program direct access to the I/O ports of a PC. Unix
+programs such as X windows use this call to gain control of the video card I/O
+ports without the need for a driver.
 
-	cd server
-	make install
+The support for the ioperm call has been added to the BDM package because it:
 
-        You need to edit the /etc/services file to add the port number
-	bdmd users. Add this line at the bottom of the /etc/services file:
+    1. Allows a user to build a BDM application without installing kernel 
+       sources.
 
-	bdm             6543/tcp                        # BDM server
+    2. The BDM driver is included in the user land application rather than
+       the kernel. A kernel upgrade or change does not require the building
+       of the BDM driver.
 
-	You need to edit the /etc/inetd.conf file. Add this line at the
-	end of /etc/inetd.conf:
+    3. Binary programs can be created and distributed removing the need for
+       users to build a driver to use them.
 
-	bdm     stream  tcp     nowait  root  /usr/sbin/bdmd bdmd 
+    4. Stops the kernel jitter seen when downloading.
 
-	You can specify any user including root. The server has a known
-	problem. If GDB is terminated by a kill the link is not closed so 
-	the server stays up locking the port. You need to log into the
-	remote box and kill the running server.
+The library that BDM applications link to by default now contains the ioperm
+call as well as the BDM driver code. If you link the default library to GDB it
+will contain the ioperm call. Having an application such as GDB make an ioperm
+call will fail unless GDB is executing as root. The ioperm call requires the
+program making the call be executing as root and executing GDB as root is not
+recommended and is actively discouraged.
+
+The remote protocol that is also built by default into the BDM library provides
+an easy means to have GDB executing as a user and the BDM server executing as
+root. The BDM server being root can make the ioperm call and gain direct
+control of the parallel ports.
+
+To use the ioperm call make sure you install the BDM server. See Step 3 of the
+INSTALLATION procedure above.
+
+The ioperm support performs the following when opening the BDM port:
+
+   1. Issue the ioperm call. If it passes the direct I/O accessing of the
+      parallel port is performed.
+
+   2. If the ioperm call fails, the kernel driver open is attempted. If
+      is succeeds the kernel driver is used.
+
+   3. If the driver call fails an attempt to connect to a local BDM
+      BDM server is performed. Therefore if ioperm and driver opens fail the
+      following check command:
+
+        $ ./chk /dev/bdmcf0
+
+      is transformed into the equivalent command line command of:
+
+        $ ./chk localhost:/dev/bdmcf0
+
+      where we are attempting to open LPT1 for a Coldfire target. The
+      device entry at the end should be changed to suite your specific
+      parallel port and processor.
+
+A side effect of the current I/O perm implementation is the simulation of
+device nodes under the '/dev' tree. This design is copied from the Windows
+version of the BDM package. The Windows build is a kind of I/O perm driver
+where the GiveIO driver provides the Windows application direct access to the
+parallel port rather than the ioperm system call. The simulation of BDM device
+nodes under the '/dev' directory is used to keep the documentation consisent,
+and to allow GDB scripts or BDM programs a common way to operate on different
+platforms. The simulation means you will not find device nodes under a '/dev'
+tree. This can be confusing for experienced Unix users accustomed to finding
+device nodes in the '/dev' directory.
+
+The I/O perm interface has about the same performance as the kernel
+module. This is based on limited testing. The kernel module should be a little
+faster for most block read/write operations. This is mostly due to the kernel
+being blocked while the bit bashing occurs. If you perform a large number of
+small BDM requests the performance will about the same for the ioperm direct
+accesses and the kernel driver.
 
 The Library
 ===========
@@ -239,17 +417,20 @@ requiring you to make low level Linux driver calls.
 The library interface consists of two parts:
 
   1) The driver interface, and
-  2) The download interface.
+  2) The remote protocol.
 
-The driver interface is all but the download functions. The download
-functions allow you to write a downloader which accepts file formats for
-which the BFD library was compiled for. You can check which file
-formats are supported by running the m68k version of objdump without
-any command line arguments.
+The driver interface make Unix driver calls via the open, close, read, write
+and ioctl system calls.
 
-The library is built using a local copy of the BFD header file
-`bfd.h'. This version is taken from the gdb-5.0 sources so should not
-cause any problems when building gdb-5.0.
+The library also contains the remote protocol that talks to the BDM
+server. This protocol is not the GDB remote protocol. It operates at a much
+lower level than the GDB remote protocol and is designed to support a server
+operating from xinetd or inetd. It also allows flash programming tools built
+with the BDM library to work remotely.
+
+The library does not contain the download support anymore. The need to contain
+a specific BFD header file is broken. The GDB patch contains the code to
+perform a download to target.
 
 Windows 9x,NT,2000
 ==================
@@ -334,12 +515,10 @@ the Coldfire's BDM hardware.
 WHERE TO GET HELP
 =================
 
-If you've got any questions about any of this, please feel free to
-e-mail me at `eric@cls.usask.ca'.
+If you've got any questions about any of this, please contact the BDM project
+mailing list on the SourceForge web site:
 
-For the Coldfire and any general questions please send me a mail
-to `cjohns@cybertec.com.au' or `ccj@acm.org'.
+  http://sourceforge.net/projects/bdm/
 
-I'd like to hear any success stories, too.  Suggestions for improvements
-are also welcome.
+We like to hear any success stories, as well as suggestions for improvements.
 
