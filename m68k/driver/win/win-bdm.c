@@ -204,7 +204,7 @@ bdm_delay (int counter)
 void
 bdm_sleep (unsigned long time)
 {
-  udelay (time * 1000);
+  udelay (time * (1000 * (1000 / HZ)));
 }
 
 /*
