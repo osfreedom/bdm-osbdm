@@ -43,6 +43,49 @@ bdm_win32=false
 
 AC_SUBST(INCLUDES, ${INCLUDES})
 
+
+dnl
+dnl libbfd and libiberty are required to build bdmctrl
+dnl
+
+AC_ARG_WITH(libbfd,
+ [  --with-libbfd=FILE     path to libbfd.a library to use],
+ [ac_libbfd=$withval],
+ [ac_libbfd=NONE]
+)
+
+LIBBFD="$ac_libbfd"
+AC_SUBST(LIBBFD)
+
+AC_ARG_WITH(libiberty,
+ [  --with-libiberty=FILE  path to libiberty.a library to use ],
+ [ac_libiberty=$withval],
+ [ac_libiberty=NONE]
+)
+
+LIBIBERTY="$ac_libiberty"
+AC_SUBST(LIBIBERTY)
+
+AC_ARG_WITH(bfd-include-dir,
+ [  --with-bfd-include-dir=DIR  include path for correct bfd.h ],
+ [ ac_bfd_include_dir=$withval ],
+ [ ac_bfd_include_dir=NONE ]
+)
+
+BFD_INCLUDE="-I$ac_bfd_include_dir"
+AC_SUBST(BFD_INCLUDE)
+
+if test "$ac_libbfd" = "NONE" -o "$ac_libiberty" = "NONE" -o "$ac_bfd_include_dir" = "NONE" ; then
+	echo "WARNING: To build bdmctrl, you need to specify the location of target-specific"
+	echo "WARNING: libbfd.a and libiberty.a libraries from the binutils org GDB package."
+	echo "WARNING: "
+	echo "WARNING: Please re-run configure with the following options:"
+	echo "WARNING:   ./configure --with-bfd-include-dir=<dir> --with-libbfd=<libbfd.a> --with-libiberty=<libiberty.a>"
+	ac_bdmctrl_auto=false
+else
+	ac_bdmctrl_auto=true
+fi
+
 dnl
 dnl Handle our configuration options.
 dnl
@@ -105,7 +148,7 @@ AC_ARG_ENABLE(bdmctrl,
     no)  bdm_bdmctrl=false ;;
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmctrl) ;;
    esac],
- [bdm_bdmctrl=false])
+ [bdm_bdmctrl=$ac_bdmctrl_auto])
 
 AM_CONDITIONAL(BDMCTRL, test x$bdm_bdmctrl = xtrue)
 

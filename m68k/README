@@ -260,11 +260,10 @@ Step 2 -- Compile and install the library and user programs
     --enable-bdmctrl:  Turn on building of the bdmctrl utility. Since there
                        might be problems to locate bfd.h/libbfd.a which
                        know how to handle target object files, building
-                       the bdmctrl utility is diabled by default. If you
-                       want to turn it on, you will probably need to specify
-                       "--target=m68k-xxx --host=xxx-yyy" along with it.
-                       Chances are that you will need to define the
-                       INCLUDES variable, too.
+                       the bdmctrl utility is disabled unless you have
+		       specified the configure options --with-libbfd,
+		       --with-libiberty and --with-bfd-include-dir.
+
 
   To turn off an option use '--disable-*' where '*' is one of the above.
 

@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.5 2003/12/29 23:43:26 codewiz Exp $
+## $Id: Makefile.am,v 1.6 2004/01/07 05:20:20 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -41,31 +41,32 @@ endif
 
 bdmctrl_SOURCES = \
 	bdmctrl.c
-#bdmctrl_CFLAGS = \
-#	@CFLAGS@ \
-#	-I${prefix}/${host_alias}/${target_alias}/include \
-#	-I${prefix}/include
+bdmctrl_CFLAGS = \
+	@BFD_INCLUDE@ @CFLAGS@
 bdmctrl_LDFLAGS = -static
-bdmctrl_LDADD = ../lib/libBDM.a ../flashlib/libbdmflash.a \
-	${prefix}/${host_alias}/${target_alias}/lib/libbfd.a \
-	${prefix}/lib/libiberty.a
-
+bdmctrl_LDADD = \
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/flashlib/libbdmflash.a \
+	@LIBBFD@ \
+	@LIBIBERTY@
 
 bdmreset_SOURCES = \
 	bdmreset.c
-bdmreset_LDADD = ../lib/libBDM.a
+bdmreset_LDADD = \
+	$(top_builddir)/lib/libBDM.a
 
-
-bdmflash_SOURCES = bdmflash.c
-bdmflash_CFLAGS = @CFLAGS@ -I$(top_srcdir)/bdmabstraction
+bdmflash_SOURCES = \
+	bdmflash.c
+bdmflash_CFLAGS = \
+	@CFLAGS@ -I$(top_srcdir)/bdmabstraction
 bdmflash_LDADD = \
-	-L$(top_builddir)/bdmabstraction -lbdmabstraction \
-	-L$(top_builddir)/lib -lBDM
+	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
+	$(top_builddir)/lib/libBDM.a
 
-
-bdmmon_SOURCES = bdmmon.l
+bdmmon_SOURCES = \
+	bdmmon.l
 bdmmon_CFLAGS = @CFLAGS@ -I$(top_srcdir)/bdmabstraction
 bdmmon_LDADD = \
-	-L$(top_builddir)/bdmabstraction -lbdmabstraction \
-	-L$(top_builddir)/lib -lBDM
+	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
+	$(top_builddir)/lib/libBDM.a
 
