@@ -1,9 +1,6 @@
-
-THIS PATCH IS EXPERIMENTAL - PLEASE USE GDB 6.2 INSTEAD
-
 diff -Nrup gdb-6.3.orig/gdb/Makefile.in gdb-6.3/gdb/Makefile.in
 --- gdb-6.3.orig/gdb/Makefile.in	2004-11-04 03:18:49.000000000 +0100
-+++ gdb-6.3/gdb/Makefile.in	2004-12-04 08:23:53.000000000 +0100
++++ gdb-6.3/gdb/Makefile.in	2004-12-05 08:26:48.000000000 +0100
 @@ -1403,7 +1403,7 @@ ALLDEPFILES = \
  	ppcobsd-nat.c ppcobsd-tdep.c \
  	procfs.c \
@@ -183,19 +180,19 @@ diff -Nrup gdb-6.3.orig/gdb/configure.tgt gdb-6.3/gdb/configure.tgt
  m68*-tandem-*)		gdb_target=st2000 ;;
 diff -Nrup gdb-6.3.orig/gdb/doc/Makefile.in gdb-6.3/gdb/doc/Makefile.in
 --- gdb-6.3.orig/gdb/doc/Makefile.in	2004-01-21 19:44:52.000000000 +0100
-+++ gdb-6.3/gdb/doc/Makefile.in	2004-12-05 08:14:50.523599806 +0100
-@@ -41,7 +41,7 @@ gdbdir = $(srcdir)/..
- TEXIDIR=${gdbdir}/../texinfo
++++ gdb-6.3/gdb/doc/Makefile.in	2004-12-05 08:42:24.000000000 +0100
+@@ -299,7 +299,7 @@ gdb.pdf: ${GDB_DOC_FILES}
  
- # where to find makeinfo, preferably one designed for texinfo-2
--MAKEINFO=makeinfo
-+MAKEINFO=makeinfo --force
+ # GDB MANUAL: info file
+ gdb.info: ${GDB_DOC_FILES}
+-	$(MAKEINFO) -I ${READLINE_DIR} -I ${GDBMI_DIR} -I $(srcdir) \
++	-$(MAKEINFO) -I ${READLINE_DIR} -I ${GDBMI_DIR} -I $(srcdir) \
+ 		-o gdb.info $(srcdir)/gdb.texinfo
  
- # Note that texinfo 4.0's makeinfo --html can only generate a
- # single file, which would be too large, so continue to use
+ # GDB MANUAL: roff translations
 diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
 --- gdb-6.3.orig/gdb/doc/gdb.texinfo	2004-10-08 21:19:03.000000000 +0200
-+++ gdb-6.3/gdb/doc/gdb.texinfo	2004-12-05 08:16:07.237238804 +0100
++++ gdb-6.3/gdb/doc/gdb.texinfo	2004-12-05 08:16:07.000000000 +0100
 @@ -6975,7 +6975,7 @@ experiment.
  This command takes no arguments.  It ends the trace experiment, and
  stops collecting data.
@@ -343,7 +340,7 @@ diff -Nrup gdb-6.3.orig/gdb/infcmd.c gdb-6.3/gdb/infcmd.c
  	  gcc_compiled = BLOCK_GCC_COMPILED (SYMBOL_BLOCK_VALUE (function));
 diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 --- gdb-6.3.orig/gdb/remote-m68k-bdm.c	1970-01-01 01:00:00.000000000 +0100
-+++ gdb-6.3/gdb/remote-m68k-bdm.c	2004-12-05 08:02:11.942548895 +0100
++++ gdb-6.3/gdb/remote-m68k-bdm.c	2004-12-05 08:02:11.000000000 +0100
 @@ -0,0 +1,1877 @@
 +/*
 + * Motorola Background Debug Mode Target
@@ -408,7 +405,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 + */
 +
 +/*
-+ * $Revision: 1.1 $    $Date: 2004/12/05 07:25:53 $   $Author: codewiz $
++ * $Revision: 1.2 $    $Date: 2005/03/17 06:08:24 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
@@ -1652,7 +1649,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      /* N.B. The UI may destroy our world (for instance by calling
 +         remote_stop,) in which case we want to get out of here as
 +         quickly as possible.  It is not safe to touch scb, since
-+         someone else might have freed it.  The deprecated_ui_loop_hook signals that 
++         someone else might have freed it.  The ui_loop_hook signals that 
 +         we should exit by returning 1. */
 +
 +      if (deprecated_ui_loop_hook)
