@@ -66,8 +66,11 @@ int
 driver_ioctl (int fd, unsigned long int request, ...)
 {
   va_list args;
+  unsigned long arg;
+
   va_start (args, request);
-  return ioctl (fd, request, args);
+  arg = va_arg (args, unsigned long *);
+  return ioctl (fd, request, arg);
 }
 
 int
