@@ -1,29 +1,56 @@
 BUGS 
 ==== 
 
-1) Dell Pentium III machines seem to not work. Not really sure why but clearing
-the parallel port register for the CF processors causes the parallel port to
-either initialise or reset and not work.
+- Missing 5282 support (patch needed).
 
-2) Coldfire - support to detect version of the debug module for auto detection
-of the PST lines has problems if a BDM pod is not connected to the target or
-the target is not powered.
+- Duplicated debug output on windows.
 
-3) The 5407 BDM hardware does not implement the SSI bit and the driver tries to
-use it. No idea why this bit was removed as it was just stupid. The work
-arounds for the driver are complex and not yet implemented.
+- PCI parallel ports with non-standard port-addresses not supported.
 
-3) For m68k ELF systems you need to be careful about the binutils mix you
-use. Binutils of versions 2.9.5.* will not work with gdb-4.18 or earilier. You
-will get core dumps. Earilier version of gcc and binutils as used by the uLinux
-project have some problems.
+- Probing of different access methods (driver, ioperm, bdmd) with
+  irritating error messages.
+  This one and the PCI parallel ports above would probably best be resolved
+  by a new naming sheme for the target devices.
+
+- In insight-5.3, when "Run" button is hit, no bdm_reset is executed. This
+  leads to the effect that _first_ "Run" works (since you can/should put
+  bdm_reset into the setup-and-load macro). But the _second_ "Run" will
+  fail since IRQs are left enabled and some registers are writeable only
+  once after reset.
+
+- Insight-6.0 don't work at all.
+
+- The target is hardwired to /dev/bdmcf0 in insight.
+
+- Parallel port on Elitegroup ECS K7S5A (sis735 chipset) motherboard seems not
+  to work. The port pins are active only for a couple milliseconds after an
+  edge of the strobe signal and set tri-state thereafter. The bdm adaptor
+  requires that the pins have valid signals all the time. Tri-stating the pins
+  result in loss of control over the adaptor/target.
+
+- Dell Pentium III machines seem to not work. Not really sure why but clearing
+  the parallel port register for the CF processors causes the parallel port to
+  either initialise or reset and not work.
+
+- Coldfire - support to detect version of the debug module for auto detection
+  of the PST lines has problems if a BDM pod is not connected to the target or
+  the target is not powered.
+
+- The 5407 BDM hardware does not implement the SSI bit and the driver tries to
+  use it. No idea why this bit was removed as it was just stupid. The work
+  arounds for the driver are complex and not yet implemented.
+
+- For m68k ELF systems you need to be careful about the binutils mix you use.
+  Binutils of versions 2.9.5.* will not work with gdb-4.18 or earilier. You
+  will get core dumps. Earilier version of gcc and binutils as used by the
+  ucLinux project have some problems.
 
                     ---------------------------
 
 Reporting Them:
 
-If you've got any questions about any of this, please contact the BDM project
-mailing list on the SourceForge web site:
+If you've got any questions/remarks about any of this, please contact the BDM
+project mailing list on the SourceForge web site:
 
   http://sourceforge.net/projects/bdm/
 
