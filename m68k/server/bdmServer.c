@@ -235,10 +235,7 @@ get_message (char *buf, int buf_len)
     numfds = select (0 + 1, &readfds, 0, 0, 0);
 
     if (numfds > 0) {
-      cread = read (0, buf, buf_len);
-
-      if (cread > 0)
-        return cread;
+      return read (0, buf, buf_len);
     }
   }
 }
@@ -721,6 +718,10 @@ main (int argc, char **argv)
   
   while (1) {
     cread = get_message (buf, BDM_SERVER_BUF_SIZE);
+
+    if (cread == 0) {
+      break;
+    }
 
     if (cread > 0) {
       if (debug > 1)
