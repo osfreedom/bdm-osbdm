@@ -1,0 +1,9 @@
+#
+alias char-major-9 st
+alias char-major-27 ftape
+# alias char-major-30 oldbdm
+# now obsolete
+alias char-major-53 bdm
+alias sl0 slhc
+alias eth0 wd
+options wd irq=5 io=0x300

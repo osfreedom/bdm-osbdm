@@ -1,0 +1,28 @@
+Begin4
+Title:		gdb-5.2.1-bdm-patches
+Version:	1.8.3
+Entered-date:	2002-11-04
+Description:	Background Debug Mode interface for Motorola CPU32 and Linux
+		These are the patches for gdb-5.2.1 to enable remote debugging
+		for a 683xx target with BDM under Linux	and Linux kernel BDM
+		driver sources.
+		Patches are usable for insight-5.2.1 as well.
+		Both Public Domain and ICD interfaces are supported.
+		* More info can be found at
+		    http://cmp.felk.cvut.cz/~pisa/m683xx/bdm_driver.html
+		* WWW access to patches
+		    http://cmp.felk.cvut.cz/~pisa/m683xx/
+Keywords:	debugger GDB m68k 68332 683xx BDM ICE driver embedded
+Author:		Scott_Howard-SCN088@email.mot.com
+		Jeff@RyeHam.EE.Ryerson.Ca (D.Jeff Dionne)
+		magin@skil.camelot.de (Gunter Magin)
+		pisa@cvlinux.felk.cvut.cz (Pavel Pisa)
+Maintained-by:	pisa@cvlinux.felk.cvut.cz (Pavel Pisa)
+Primary-site:	metalab.unc.edu /pub/Linux/devel/debuggers
+		320 kB gdb-5.2.1-bdm-patches-pi1.tar.gz
+Alternate-site:	ftp.cygnus.com /pub/embedded
+		320 kB gdb-5.2.1-bdm-patches-pi1.tar.gz
+Original-site:	freeware.aus.sps.mot.com
+Platforms:	Linux 2.0.xx, 2.2.yy, 2.4.zz ( last tested 2.4.7 )
+Copying-policy:	GPL
+End

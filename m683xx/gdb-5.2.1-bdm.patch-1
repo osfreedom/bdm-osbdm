@@ -1,0 +1,4645 @@
+diff -c -r -P gdb-5.2.1.original/gdb/Makefile.in gdb-5.2.1/gdb/Makefile.in
+*** gdb-5.2.1.original/gdb/Makefile.in	Fri Jul 19 20:22:06 2002
+--- gdb-5.2.1/gdb/Makefile.in	Sat Nov  2 17:19:49 2002
+***************
+*** 1049,1054 ****
+--- 1049,1059 ----
+  	mv version.c-tmp version.c
+  version.o: version.c $(version_h)
+  
++ 
++ # m683xx BDM support
++ bdmlib.o:	bdmlib.c bdmlib.h bdm.h
++ bdmflash.o:	bdmflash.c bdmlib.h bdmflash.h bdm.h
++ 
+  # c-exp.tab.c is generated in objdir from c-exp.y if it doesn't exist
+  # in srcdir, then compiled in objdir to c-exp.tab.o.
+  
+***************
+*** 1200,1205 ****
+--- 1205,1211 ----
+  	remote-adapt.c remote-array.c remote-bug.c remote-e7000.c remote-eb.c \
+  	remote-es.c remote-hms.c remote-mips.c \
+  	remote-mm.c remote-nindy.c remote-os9k.c remote-rdp.c remote-sim.c \
++ 	remote-bdm.c \
+  	remote-st.c remote-utils.c dcache.c \
+  	remote-udi.c remote-vx.c remote-vx29k.c \
+  	rs6000-nat.c rs6000-tdep.c \
+***************
+*** 1916,1921 ****
+--- 1922,1930 ----
+  
+  # OBSOLETE remote-mm.o: remote-mm.c $(bfd_h) $(defs_h) $(inferior_h) \
+  # OBSOLETE	minimon.h $(target_h) $(terminal_h) $(gdb_string_h) $(regcache_h)
++ 
++ remote-bdm.o: remote-bdm.c bdmlib.h bdmflash.h bdm.h gdb_wait.h \
++ 	$(command_h) $(defs_h) $(gdbcore_h) target.h
+  
+  remote-nindy.o: remote-nindy.c $(floatformat_h) $(command_h) \
+  	$(defs_h) $(gdbcore_h) $(inferior_h) \
+diff -c -r -P gdb-5.2.1.original/gdb/bdm.h gdb-5.2.1/gdb/bdm.h
+*** gdb-5.2.1.original/gdb/bdm.h	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/bdm.h	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,115 ----
++ #ifndef LINUX_BDM_H
++ #define LINUX_BDM_H
++ /*
++  * $Id: gdb-5.2.1-bdm.patch-1,v 1.1 2003/06/04 01:31:31 ppisa Exp $
++  *
++  * Linux Device Driver for Public Domain BDM Interface
++  * based on the PD driver package by Scott Howard, Feb 93
++  * ported to Linux by M.Schraut
++  * tested for kernel version 1.2.4
++  * (C) 1995 Technische Universitaet Muenchen, Lehrstuhl fuer Prozessrechner
++ 
++ This program is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2, or (at your option)
++ any later version.
++ 
++ This program is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ 
++ You should have received a copy of the GNU General Public License
++ along with this program; see the file COPYING.  If not, write to
++ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
++ 
++  */
++ 
++ #define BDM_MAJOR_NUMBER	53
++ 
++ /* error codes */
++ #define BDM_FAULT_UNKNOWN  -610   /*Error-definitions*/
++ #define BDM_FAULT_POWER    -611 
++ #define BDM_FAULT_CABLE    -612
++ #define BDM_FAULT_RESPONSE -613   /*NOT Ready */
++ #define BDM_FAULT_RESET    -614
++ #define BDM_FAULT_PORT     -615
++ #define BDM_FAULT_BERR     -616
++ #define BDM_FAULT_NVC      -617   /*no valid command */
++ 
++ /* Debug Levels  */
++ #define BDM_DEBUG_NONE     0
++ #define BDM_DEBUG_SOME     1
++ #define BDM_DEBUG_ALL      2
++ 
++ /* supported ioctls */
++ #define BDM_INIT           0		/* no argument */
++ #define BDM_DEINIT         1		/* no argument */
++ #define BDM_RESET_CHIP     2		/* no argument */
++ #define BDM_RESTART_CHIP   3		/* no argument */
++ #define BDM_STOP_CHIP      4		/* no argument */
++ #define BDM_STEP_CHIP      5		/* no argument */
++ #define BDM_GET_STATUS     6		/* no argument */
++ #define BDM_SPEED          7		/* arg = speed */
++ #define	BDM_RELEASE_CHIP   8		/* no argument */
++ #define BDM_DEBUG_LEVEL    9		/* arg = level */
++ #define BDM_GET_VERSION   10		/* arg = &int  */
++ #define	BDM_SENSECABLE    11		/* arg =on/off */
++ 
++ #define BDM_NORETURN		0		/* no error, no ret value */
++ /* functional bits of ioctl BDM_GET_STATUS */
++ #define BDM_TARGETRESET 	(1<<0)	/* Target reset                      */
++ #define BDM_TARGETSTOPPED 	(1<<2)	/* Target (was already) stopped      */
++ #define BDM_TARGETPOWER 	(1<<3)	/* Power failed                      */
++ #define BDM_TARGETNC 		(1<<4)	/* Target not Connected              */
++ 
++ /* command codes for bdm interface */
++ #define	BDM_RREG_CMD		0x2180
++ #define	BDM_WREG_CMD		0x2080
++ #define	BDM_RSREG_CMD		0x2580
++ #define	BDM_WSREG_CMD		0x2480
++ #define	BDM_READ_CMD		0x1900
++ #define	BDM_WRITE_CMD		0x1800
++ #define	BDM_DUMP_CMD		0x1d00
++ #define	BDM_FILL_CMD		0x1c00
++ #define	BDM_GO_CMD			0x0c00
++ #define	BDM_CALL_CMD		0x0800
++ #define	BDM_RST_CMD			0x0400
++ #define	BDM_NOP_CMD			0x0000
++ 
++ /* system register for RSREG/WSREG */
++ #define	BDM_REG_RPC			0x0
++ #define	BDM_REG_PCC			0x1
++ #define	BDM_REG_SR			0xb
++ #define	BDM_REG_USP			0xc
++ #define	BDM_REG_SSP			0xd
++ #define	BDM_REG_SFC			0xe
++ #define	BDM_REG_DFC			0xf
++ #define	BDM_REG_ATEMP		0x8
++ #define	BDM_REG_FAR			0x9
++ #define	BDM_REG_VBR			0xa
++ 
++ /* system register for RREG/WREG */
++ #define	BDM_REG_D0			0x0
++ #define	BDM_REG_D1			0x1
++ #define	BDM_REG_D2			0x2
++ #define	BDM_REG_D3			0x3
++ #define	BDM_REG_D4			0x4
++ #define	BDM_REG_D5			0x5
++ #define	BDM_REG_D6			0x6
++ #define	BDM_REG_D7			0x7
++ #define	BDM_REG_A0			0x8
++ #define	BDM_REG_A1			0x9
++ #define	BDM_REG_A2			0xa
++ #define	BDM_REG_A3			0xb
++ #define	BDM_REG_A4			0xc
++ #define	BDM_REG_A5			0xd
++ #define	BDM_REG_A6			0xe
++ #define	BDM_REG_A7			0xf
++ 
++ /* op size for READ/WRITE */
++ #define	BDM_SIZE_BYTE		0x0000
++ #define	BDM_SIZE_WORD		0x0040
++ #define	BDM_SIZE_LONG		0x0080
++ 
++ #endif
+diff -c -r -P gdb-5.2.1.original/gdb/bdmflash.c gdb-5.2.1/gdb/bdmflash.c
+*** gdb-5.2.1.original/gdb/bdmflash.c	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/bdmflash.c	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,684 ----
++ /*******************************************************************
++   Flash programming algorithms for use with BDM flash utility
++ 
++   bdmflash.c      - test driver implementation
++ 
++   (C) Copyright 2000 by  Pavel Pisa <pisa@waltz.felk.cvut.cz>
++ 
++   This souce is distributed under the Gnu General Public Licence.
++   See file COPYING for details.
++ 
++   Source could be used under any other license for embeded systems,
++   but in such case enhancements must be sent to original author.
++   If some of contributors does not agree with above two lines,
++   he can delete them and only GPL will apply.
++  *******************************************************************/
++ /*
++   Revision history
++ 
++     2001-01-16	Added experimental support of single 8 bit flash memory
++ 		based on Avi Cohen Stuart <astuart@baan.nl> changes
++ 
++     2001-07-10	Added support for amd_29f010 with x8x2 configuration
++ 		based on John S. Gwynne <jsg@jsgpc.mrcday.com> changes
++ 		Trying to solve x8x2 race condition with shortest 
++ 		possible code - needs more tests
++ 
++     2001-08-30	Added alg-info for at_49f040 with x8x2 configuration
++ 		x8x2 configuration needs more testing, may be broken
++ */
++ 
++ #include <sys/types.h>
++ #include "bdm.h"
++ #include "bdmlib.h"
++ #include "bdmflash.h"
++ 
++ /* predefined flash algorithms metods */
++ 
++ int bdmflash_check_id_x16(flash_alg_info_t const *alg, void *addr, u_int16_t retid[2]);
++ int bdmflash_prog_x16(flash_alg_info_t const *alg, void *addr, u_int16_t val);
++ int bdmflash_erase_x16(flash_alg_info_t const *alg, void *addr, long size);
++ 
++ int bdmflash_check_id_x8(flash_alg_info_t const *alg, void *addr, u_int16_t retid[2]);
++ int bdmflash_prog_x8(flash_alg_info_t const *alg, void *addr, u_int16_t val);
++ int bdmflash_erase_x8(flash_alg_info_t const *alg, void *addr, long size);
++ 
++ /* predefined flash types */
++ 
++ flash_alg_info_t amd_29f800_x16={
++   check_id:   bdmflash_check_id_x16,
++   prog:       bdmflash_prog_x16,
++   erase:      bdmflash_erase_x16,
++   addr_mask:  0xfffff,	/* 1MB */
++   reg1_addr:  0x555*2,
++   reg2_addr:  0x2aa*2,
++   sec_size:   0x10000,
++   width:      FLASH_ALG_BITS_x16,
++   cmd_unlock1:0xaa,	/* reg1 */
++   cmd_unlock2:0x55,	/* reg2 */
++   cmd_rdid:   0x90,	/* reg1 */
++   cmd_prog:   0xa0,	/* reg1 */
++   cmd_erase:  0x80,	/* reg1 */
++   cmd_reset:  0xf0,	/* any */
++   erase_all:  0x10,	/* reg1 */
++   erase_sec:  0x30,	/* sector */
++   fault_bit:  0x20,
++   manid:      1,
++   devid:      0x2258,
++   alg_name:   "amd29f800"
++ };
++ 
++ flash_alg_info_t amd_29f400_x16={
++   check_id:   bdmflash_check_id_x16,
++   prog:       bdmflash_prog_x16,
++   erase:      bdmflash_erase_x16,
++   addr_mask:  0x7ffff,	/* 0.5MB */
++   reg1_addr:  0x555*2,
++   reg2_addr:  0x2aa*2,
++   sec_size:   0x10000,
++   width:      FLASH_ALG_BITS_x16,
++   cmd_unlock1:0xaa,	/* reg1 */
++   cmd_unlock2:0x55,	/* reg2 */
++   cmd_rdid:   0x90,	/* reg1 */
++   cmd_prog:   0xa0,	/* reg1 */
++   cmd_erase:  0x80,	/* reg1 */
++   cmd_reset:  0xf0,	/* any */
++   erase_all:  0x10,	/* reg1 */
++   erase_sec:  0x30,	/* sector */
++   fault_bit:  0x20,
++   manid:      1,
++   devid:      0x22ab,
++   alg_name:   "amd29f400"
++ };
++ 
++ flash_alg_info_t amd_29f040_x8={
++   check_id:   bdmflash_check_id_x8,
++   prog:       bdmflash_prog_x8,
++   erase:      bdmflash_erase_x8,
++   addr_mask:  0x7ffff,	/* 0.5MB */
++   reg1_addr:  0x555,
++   reg2_addr:  0x2aa,
++   sec_size:   0x10000,
++   width:      FLASH_ALG_BITS_x8,
++   cmd_unlock1:0xaa,	/* reg1 */
++   cmd_unlock2:0x55,	/* reg2 */
++   cmd_rdid:   0x90,	/* reg1 */
++   cmd_prog:   0xa0,	/* reg1 */
++   cmd_erase:  0x80,	/* reg1 */
++   cmd_reset:  0xf0,	/* any */
++   erase_all:  0x10,	/* reg1 */
++   erase_sec:  0x30,	/* sector */
++   fault_bit:  0x20,
++   manid:      1,
++   devid:      0xa4,
++   alg_name:   "amd29f040"
++ };
++ 
++ flash_alg_info_t amd_29f010_x8x2={
++   check_id:   bdmflash_check_id_x16,
++   prog:       bdmflash_prog_x16,
++   erase:      bdmflash_erase_x16,
++   addr_mask:  0x3ffff,	/* 2x128kB = 256kB */
++   reg1_addr:  0x5555*2,
++   reg2_addr:  0x2aaa*2,
++   sec_size:   0x10000,
++   width:      FLASH_ALG_BITS_x8x2,
++   cmd_unlock1:0xaaaa,	/* reg1 */
++   cmd_unlock2:0x5555,	/* reg2 */
++   cmd_rdid:   0x9090,	/* reg1 */
++   cmd_prog:   0xa0a0,	/* reg1 */
++   cmd_erase:  0x8080,	/* reg1 */
++   cmd_reset:  0xf0f0,	/* any */
++   erase_all:  0x1010,	/* reg1 */
++   erase_sec:  0x3030,	/* sector */
++   fault_bit:  0x2020,
++   manid:      0x0101,
++   devid:      0x2020,
++   alg_name:   "amd29f010x2"
++ };
++ 
++ flash_alg_info_t at_49f040_x16x2={
++   check_id:   bdmflash_check_id_x16,
++   prog:       bdmflash_prog_x16,
++   erase:      bdmflash_erase_x16,
++   addr_mask:  0xfffff,	/* 2x0.5MB = 1MB */
++   reg1_addr:  0x5555*2,
++   reg2_addr:  0x2aaa*2,
++   sec_size:   0x10000,
++   width:      FLASH_ALG_BITS_x8x2,
++   cmd_unlock1:0xaaaa,	/* reg1 */
++   cmd_unlock2:0x5555,	/* reg2 */
++   cmd_rdid:   0x9090,	/* reg1 */
++   cmd_prog:   0xa0a0,	/* reg1 */
++   cmd_erase:  0x8080,	/* reg1 */
++   cmd_reset:  0xf0f0,	/* any */
++   erase_all:  0x1010,	/* reg1 */
++   erase_sec:  0x3030,	/* sector */
++   fault_bit:  0x2020,
++   manid:      0x1F1F,
++   devid:      0x1313,
++   alg_name:   "at49f040x2"
++ };
++ 
++ /* please keep sorted by flash sizes, smallest first */
++ flash_alg_info_t *flash_alg_infos_def[]={
++   &amd_29f010_x8x2,
++   &amd_29f040_x8,
++   &amd_29f400_x16,
++   &amd_29f800_x16,
++   &at_49f040_x16x2,
++   NULL
++ };
++ 
++ flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
++ 
++ #if 0
++   #define FLASH_WR16(adr,val) (*(volatile u_int16_t*)(adr)=(val))
++   #define FLASH_RD16(adr) (*(volatile u_int16_t*)(adr))
++   #define FLASH_WR8(adr,val) (*(volatile u_int8_t*)(adr)=(val))
++   #define FLASH_RD8(adr) (*(volatile u_int8_t*)(adr))
++ #else
++   #define FLASH_WR16(adr,val) \
++   		({ \
++   		  if(bdmlib_write_var(adr,BDM_SIZE_WORD,val)<0) \
++   		  	goto mem_op_error; \
++   		  val; \
++   		})
++   #define FLASH_RD16(adr) \
++   		({ u_int16_t temp_val; \
++   		  if(bdmlib_read_var(adr,BDM_SIZE_WORD,&temp_val)<0) \
++   		  	goto mem_op_error; \
++   		  temp_val; \
++   		})
++   #define FLASH_WR8(adr,val) \
++   		({ \
++   		  if(bdmlib_write_var(adr,BDM_SIZE_BYTE,val)<0) \
++   		  	goto mem_op_error; \
++   		  val; \
++   		})
++   #define FLASH_RD8(adr) \
++   		({ u_int8_t temp_val; \
++   		  if(bdmlib_read_var(adr,BDM_SIZE_BYTE,&temp_val)<0) \
++   		  	goto mem_op_error; \
++   		  temp_val; \
++   		})
++ #endif
++ 
++ /*******************************************************************/
++ /* routines for 16 bit wide Intel or AMD flash or two interleaved 
++    8 bit flashes */
++ 
++ int bdmflash_check_id_x16(flash_alg_info_t const *alg, void *addr, u_int16_t retid[2])
++ {
++   int ret=0;
++   u_int16_t devid, manid;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR16(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* read manufacturer ID */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_rdid);
++   manid=FLASH_RD16(a+0);
++   if(manid!=alg->manid) ret=-1;
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR16(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* read device ID */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_rdid);
++   devid=FLASH_RD16(a+2);
++   if(devid!=alg->devid) ret=-1;
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   if(retid)
++     {retid[0]=manid;retid[1]=devid;};
++   return ret;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ int bdmflash_prog_x16(flash_alg_info_t const *alg, void *addr, u_int16_t val)
++ {
++   int ret=0;
++   u_int16_t old,new,fault;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   /* check if programming needed */
++   if(1){
++     old=FLASH_RD16(addr);
++     if(old==val) return ret;
++   }
++   /* security sequence */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR16(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* program command */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_prog);
++   FLASH_WR16(addr,val);
++   /* wait for result */
++   old=FLASH_RD16(addr);
++   while((new=FLASH_RD16(addr))!=old){
++     if((fault=old&new&alg->fault_bit)){
++       old=new;
++       /* check for some false fault at finish or race of x8x2 */
++       if(!(old^=(new=FLASH_RD16(addr)))) break; /* finished now */
++       else{
++         /* one chip of x8x2 configuration can finish earlier */
++         if(!(old&0x00ff)||(fault&0x00ff))
++           if(!(old&0xff00)||(fault&0xff00)) 
++             {ret=-2;break;}
++       }
++     }
++     old=new;
++   }
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   if(FLASH_RD16(addr)!=val) ret--;
++   return ret;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ int bdmflash_erase_x16(flash_alg_info_t const *alg, void *addr, long size)
++ {
++   u_int16_t old,new,fault;
++   int ret=0;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR16(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* erase command */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_erase);
++   /* security sequence */
++   FLASH_WR16(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR16(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* select erase range */
++   a=addr;
++   if(size==0)
++     FLASH_WR16(a+alg->reg1_addr,alg->erase_all);
++   else{
++     FLASH_WR16(addr,alg->erase_sec);
++   }  
++   /* wait for result */
++   old=FLASH_RD16(addr);
++   while((new=FLASH_RD16(addr))!=old){
++     if((fault=old&new&alg->fault_bit)){
++       old=new;
++       /* check for some false fault at finish or race of x8x2 */
++       if(!(old^=(new=FLASH_RD16(addr)))) break; /* finished now */
++       else{
++         /* one chip of x8x2 configuration can finish earlier */
++         if(!(old&0x00ff)||(fault&0x00ff))
++           if(!(old&0xff00)||(fault&0xff00)) 
++             {ret=-2;break;}
++       }
++     }
++     old=new;
++   }
++   /* reset */
++   FLASH_WR16(a,alg->cmd_reset);
++   if(FLASH_RD16(addr)!=0xffff) ret--;    
++   return ret;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ /*******************************************************************/
++ /* routines for single 8 bit wide Intel or AMD flash */
++ 
++ int bdmflash_check_id_x8(flash_alg_info_t const *alg, void *addr, 
++ 		   u_int16_t retid[2])
++ {
++   int ret=0;
++   u_int16_t devid, manid;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR8(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* read manufacturer ID */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_rdid);
++   manid=FLASH_RD8(a+0);
++   if(manid!=alg->manid) ret=-1;
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR8(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* read device ID */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_rdid);
++   devid=FLASH_RD8(a+1);
++   if(devid!=alg->devid) ret=-1;
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   if(retid)
++     {retid[0]=manid;retid[1]=devid;};
++   return ret;
++   
++  mem_op_error:
++   fprintf(stderr, "bdm memory access error\n");
++   return -5;
++ }
++ 
++ int bdmflash_prog_x8(flash_alg_info_t const *alg, void *addr, u_int16_t val)
++ {
++   int ret=0;
++   u_int8_t old,new;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   val=(u_int8_t)val;
++   /* check if programming needed */
++   if(1){
++     old=FLASH_RD8(addr);
++     if(old==val) return ret;
++   }
++   /* security sequence */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR8(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* program command */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_prog);
++   FLASH_WR8(addr,val);
++   /* wait for result */
++   old=FLASH_RD8(addr);
++   while((new=FLASH_RD8(addr))!=old){
++     if((old&alg->fault_bit)&&(new&alg->fault_bit)){
++       if((FLASH_RD8(addr))!=new) ret=-2;
++       break;
++     }
++     old=new;
++   }
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   if(FLASH_RD8(addr)!=val) ret--;
++   return ret;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ int bdmflash_erase_x8(flash_alg_info_t const *alg, void *addr, long size)
++ {
++   u_int8_t old,new;
++   int ret=0;
++   caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   /* security sequence */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR8(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* erase command */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_erase);
++   /* security sequence */
++   FLASH_WR8(a+alg->reg1_addr,alg->cmd_unlock1);
++   if(alg->cmd_unlock2)
++     FLASH_WR8(a+alg->reg2_addr,alg->cmd_unlock2);
++   /* select erase range */
++   a=addr;
++   if(size==0)
++     FLASH_WR8(a+alg->reg1_addr,alg->erase_all);
++   else{
++     FLASH_WR8(addr,alg->erase_sec);
++   }  
++   old=FLASH_RD8(addr);
++   while((new=FLASH_RD8(addr))!=old){
++     if((old&alg->fault_bit)&&(new&alg->fault_bit)){
++       if((FLASH_RD8(addr))!=new) ret=-2;
++       break;
++     }
++     old=new;
++   }
++   /* reset */
++   FLASH_WR8(a,alg->cmd_reset);
++   if(FLASH_RD16(addr)!=0xffff) ret--;    
++   return ret;
++   
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ 
++ /*******************************************************************/
++ 
++ /* flash type independent check_id */
++ int bdmflash_check_id(flash_alg_info_t const *alg, void *addr, u_int16_t retid[2])
++ {
++   if(alg->check_id)
++     return alg->check_id(alg, addr, retid);
++   else
++     return -10;	/* we really need to define error constants in future */
++ }
++ 
++ /* flash type independent program one location */
++ int bdmflash_prog(flash_alg_info_t const *alg, void *addr, u_int16_t val)
++ {
++   if(alg->prog)
++     return alg->prog(alg,addr,val);
++   else
++     return -10;
++ }
++ 
++ /* flash type independent erase region */
++ int bdmflash_erase(flash_alg_info_t const *alg, void *addr, long size)
++ {
++   if(alg->erase)
++     return alg->erase(alg,addr,size);
++   else
++     return -10;
++ }
++ 
++ flash_alg_info_t const *
++ bdmflash_alg_from_id(u_int16_t id[2])
++ {
++   int i;
++   flash_alg_info_t const *alg;
++   for(i=0;(alg=flash_alg_infos_def[i])!=NULL;i++)
++     if((alg->manid==id[0])&&(alg->devid==id[0]))
++       return alg;
++   return NULL;
++ }
++ 
++ flash_alg_info_t const *
++ bdmflash_alg_probe(caddr_t flash_adr)
++ {
++   int i;
++   flash_alg_info_t const *alg,*alg1;
++   u_int16_t testid[2];
++   for(i=0;(alg=flash_alg_infos_def[i])!=NULL;i++){
++     if(bdmflash_check_id(alg,flash_adr,testid)>=0)
++       return alg;
++     alg1=bdmflash_alg_from_id(testid);
++     if(alg1!=NULL)
++       if(bdmflash_check_id(alg1,flash_adr,testid)>=0)
++         return alg1;
++   }
++   return NULL;
++ }
++ 
++ int
++ bdmflash_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size, u_char * bl_ptr)
++ {
++   int offs=0,res;
++   u_int16_t val;
++   flash_alg_info_t const *alg=(flash_alg_info_t*)filt->info;
++ 
++   if(alg->width!=FLASH_ALG_BITS_x8) {
++     /* 16 bit wide flash write path */
++     if((u_long)in_adr&1) {
++       in_adr-=1;
++       val=(FLASH_RD16(in_adr)&0xff00)|bl_ptr[offs];
++       if((res=bdmflash_prog(alg, in_adr, val))<0) {
++ 	fprintf(stderr, "flash byte write error %d at 0x%lx\n",
++                 	res,(u_long)in_adr);
++ 	return offs;
++       }
++       in_adr+=2;
++       size-=1;
++       offs+=1;
++     }
++     while(size>=2) {
++       val=(bl_ptr[offs]<<8)|bl_ptr[offs+1];
++       if((res=bdmflash_prog(alg, in_adr, val))<0) {
++ 	fprintf(stderr, "flash write error %d at 0x%lx\n",
++                 	res,(u_long)in_adr);
++ 	return offs;
++       }
++       in_adr+=2;
++       size-=2;
++       offs+=2;
++     }
++     if(size) {
++       val=(FLASH_RD16(in_adr)&0x00ff)|(bl_ptr[offs]<<8);
++       if((res=bdmflash_prog(alg, in_adr, val))<0) {
++ 	fprintf(stderr, "flash byte write error %d at 0x%lx\n",
++                 	res,(u_long)in_adr);
++ 	return offs;
++       }
++       size-=1;
++       offs+=1;
++     }
++   }else{
++     /* 8 bit wide flash write path */
++     while(size>=1) {
++       val=bl_ptr[offs];
++       if((res=bdmflash_prog(alg, in_adr, val))<0) {
++ 	fprintf(stderr, "flash write error %d at 0x%lx\n",
++                 	res,(u_long)in_adr);
++ 	return offs;
++       }
++       in_adr+=1;
++       size-=1;
++       offs+=1;
++     }
++   }
++   return offs;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return 0;
++ }
++ 
++ int
++ bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size)
++ {
++   int res=0;
++   flash_alg_info_t const *alg=(flash_alg_info_t*)filt->info;
++   if(!in_adr) in_adr=filt->begin_adr;
++ 
++   res=bdmflash_erase(alg, in_adr,size);
++   if(res<0)
++     fprintf(stderr, "flash erase error %d\n",res);
++   return res;
++ }
++ 
++ #if 0
++ 
++ /* slow version of blank check */
++ int
++ bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size)
++ {
++   int errors=0;
++   if(!in_adr||!size){
++     in_adr=filt->begin_adr;
++     size=filt->end_adr-in_adr+1;
++   }
++   if(((long)in_adr&1)&&size){
++     if(FLASH_RD8(in_adr)!=0xff){
++       fprintf(stderr,"blank check error at 0x%06lX",(long)in_adr);
++       errors++;
++     }
++     in_adr++; size--;
++   }
++   while(size>=2){
++     if(FLASH_RD16(in_adr)!=0xffff){
++       if(errors<5){
++         if(errors) fprintf(stderr,",0x%06lX",(long)in_adr);
++           else fprintf(stderr,"blank check error at 0x%06lX",(long)in_adr);
++       }else if(errors==5) fprintf(stderr, " and more");
++       errors++;
++     }
++     if(!((long)in_adr&0xfff)) bdmlib_propeller(stdout);
++     in_adr+=2; size-=2;
++   }
++   if(size){
++     if(FLASH_RD8(in_adr)!=0xff){
++       if(errors) fprintf(stderr,",0x%06lX",(long)in_adr);
++         else fprintf(stderr,"blank check error at 0x%06lX",(long)in_adr);
++       errors++;
++     }
++   }
++   if(errors) fprintf(stderr,"\n");
++ 
++   return errors;
++ 
++   mem_op_error:
++     fprintf(stderr, "bdm memory access error\n");
++     return -5;
++ }
++ 
++ #else
++ 
++ /* hopefully faster version of blank check */
++ int
++ bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size)
++ {
++   int errors=0, in_buf;
++   u_char buf[1024], *p;
++   if(!in_adr||!size){
++     in_adr=filt->begin_adr;
++     size=filt->end_adr-in_adr+1;
++   }
++ 
++   while(size){
++     if(size<sizeof(buf)) in_buf=size;
++     else in_buf=sizeof(buf);
++    
++     if(bdmlib_read_block(in_adr,in_buf,buf)!=in_buf) 
++       goto mem_op_error;
++  
++     size-=in_buf;
++     for(p=buf;in_buf--;in_adr++,p++){
++       if(*p!=0xff){
++         if(errors<10){
++           if(errors) fprintf(stderr,",0x%06lX",(long)in_adr);
++             else fprintf(stderr,"blank check error at 0x%06lX",(long)in_adr);
++         }else if(errors==10) fprintf(stderr, " and more");
++         errors++;
++       }
++     }
++     bdmlib_propeller(stdout);
++   }
++ 
++   if(errors) fprintf(stderr,"\n");
++ 
++   return errors;
++ 
++   mem_op_error:
++     fprintf(stderr, "\nbdm memory access error\n");
++     return -5;
++ }
++ 
++ #endif
+diff -c -r -P gdb-5.2.1.original/gdb/bdmflash.h gdb-5.2.1/gdb/bdmflash.h
+*** gdb-5.2.1.original/gdb/bdmflash.h	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/bdmflash.h	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,61 ----
++ #ifndef BDMFLASH_H
++ #define BDMFLASH_H
++ 
++ #include <sys/types.h>
++ 
++ #define FLASH_ALG_BITS_x8    0
++ #define FLASH_ALG_BITS_x16   1
++ #define FLASH_ALG_BITS_x8x2  2
++ 
++ /* Structure describing programming operations for flash type */
++ typedef struct flash_alg_info {
++   /* Sets retid to manufacturer and type ID, returns <0 in case of error */
++   int (*check_id)(struct flash_alg_info const *alg, void *addr, u_int16_t retid[2]);
++   /* Programs one location of flash (16 bits for width=1 or 2; 8 bits for width8=0) */
++   int (*prog)(struct flash_alg_info const *alg, void *addr, u_int16_t val);
++   /* Erase all sectors overlaped by region from addr of size bytes, size=0 => erase all */
++   /* This version is capable only of full erase (size=0) and one sector (size=1) */
++   int (*erase)(struct flash_alg_info const *alg, void *addr, long size);
++   /* Numeric and string fields follows */
++   u_int32_t addr_mask;	/* Mask to take offset inside flash */
++   u_int32_t reg1_addr;	/* Flash control register 1 */
++   u_int32_t reg2_addr;	/* Flash control register 2 */
++   u_int32_t sec_size;	/* block size of bigger blocks */
++   u_int16_t width;	/* FLASH_ALG_BITS_x8 .. 8 bit data bus,
++ 			   FLASH_ALG_BITS_x16 .. 16 bit data,
++   			   FLASH_ALG_BITS_x8x2 .. two interleaved 8 bit */
++   u_int16_t cmd_unlock1;/* first byte of command sequence */
++   u_int16_t cmd_unlock2;/* second byte of command sequence */
++   u_int16_t cmd_rdid;	/* read identifier */
++   u_int16_t cmd_prog;	/* program one loc */
++   u_int16_t cmd_erase;	/* erase command */
++   u_int16_t cmd_reset;	/* leave program mode */
++   u_int16_t erase_all;	/* erase all */
++   u_int16_t erase_sec;	/* erase sector */
++   u_int16_t fault_bit;	/* programing of location failed */
++   u_int16_t manid;	/* manufacturer ID */
++   u_int16_t devid;	/* device ID */
++   char *alg_name;	/* informative flash type name */
++ } flash_alg_info_t;
++ 
++ int bdmflash_check_id(flash_alg_info_t const *alg, void *addr,
++ 		   u_int16_t retid[2]);
++ 
++ int bdmflash_prog(flash_alg_info_t const *alg, void *addr, u_int16_t val);
++ 
++ int bdmflash_erase(flash_alg_info_t const *alg, void *addr, long size);
++ 
++ flash_alg_info_t **flash_alg_infos;
++ 
++ flash_alg_info_t const *bdmflash_alg_from_id(u_int16_t id[2]);
++ 
++ flash_alg_info_t const *bdmflash_alg_probe(caddr_t flash_adr);
++ 
++ int bdmflash_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size, u_char * bl_ptr);
++ 
++ int bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, u_int size);
++ 
++ int bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, u_int size);
++ 
++ #endif /* BDMFLASH_H */
+diff -c -r -P gdb-5.2.1.original/gdb/bdmlib.c gdb-5.2.1/gdb/bdmlib.c
+*** gdb-5.2.1.original/gdb/bdmlib.c	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/bdmlib.c	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,1634 ----
++ /*
++  * $Id: gdb-5.2.1-bdm.patch-1,v 1.1 2003/06/04 01:31:31 ppisa Exp $
++  *
++  * Remote debugging interface for 683xx via Background Debug Mode
++  * needs a driver, which controls the BDM interface.
++  * written by G.Magin
++  * (C) 1996 Technische Universitaet Muenchen, Lehrstuhl fuer Prozessrechner
++  * (C) 1997 G. Magin
++  *
++  * Modified by Pavel Pisa  pisa@cmp.felk.cvut.cz 1998
++ 
++ This program is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2, or (at your option)
++ any later version.
++ 
++ This program is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ 
++ You should have received a copy of the GNU General Public License
++ along with this program; see the file COPYING.  If not, write to
++ the Free Software Foundation, 59 Temple Place - Suite 330,
++ Boston, MA 02111-1307, USA.
++ 
++  */
++ 
++ /*
++  * NOTE:
++  * This file is assumed to be runnable only on Linux/i386 because of
++  * HW-restrictions: the driver is currently only available on i386-Linux 
++  * So byte-swapping and alignment is handled directly, violating the 
++  * GNU-coding standards. However, the "dirty spots" are restricted in this 
++  * file. The accompanying application backend file (e.g. remote-bdm.c for 
++  * gdb) is not affected by this restriction.
++  *
++  * If anybody wants to port to e.g. Sparc, byte-sex has to be handled in
++  * a more general way.
++  */
++ 
++ #include <unistd.h>
++ #include <stdlib.h>
++ #include <stdarg.h>
++ #include <errno.h>
++ #include <signal.h>
++ #include <string.h>
++ #include <stdio.h>
++ #include <fcntl.h>
++ #include <ctype.h>
++ #include <sys/types.h>
++ #include <sys/ioctl.h>
++ #include <ansidecl.h>
++ 
++ /* #define	SUPPORT_RAMINIT 0 */	/* force ram_init to be loaded */
++ #define RAMINIT_FILENAME	"ram_init"
++ #define	RESETINIT_FILENAME	"cpu32init"
++ #define	END_MACRO	0
++ #define	BEGIN_MACRO	1
++ #define	NO_SUFFIX_MACRO	2
++ #define	BDMLIB_REQUIRED_DRIVER_VERSION	2
++ 	/*
++ 	 * version 1 (cannot be accessed by ioctl): release 3/95
++ 	 * version 2 (includes SENSE ioctl + ICD): release 7/96
++ 	 */
++ 
++ #ifdef BDMLIB_FORGDB
++ #include "defs.h"
++ #endif
++ 
++ /* this is missing in current ansidecl.h - remove it later   gm */
++ #if defined (__STDC__) || defined (_AIX) || (defined (__mips) && defined (_SYSTYPE_SVR4))
++ 
++ #define PROTO(type, name, arglist)  type name arglist
++ #define PARAMS(paramlist)       paramlist
++ #define ANSI_PROTOTYPES         1
++ 
++ #else		  /* Not ANSI C.  */
++ 
++ #define PROTO(type, name, arglist) type name ()
++ #define PARAMS(paramlist)       ()
++ 
++ #endif		  /* ANSI C.  */
++ 
++ #include <bfd.h>
++ #include "bdmlib.h"
++ #include "bdm.h"
++ 
++ 
++ static int bdm_fd;
++ 
++ /* default delay for interface */
++ #define	BDM_DEFAULT_DELAY	75
++ static int bdm_delay=-1;
++ 
++ #define	BDM_DODPRINTF		(1<<0)
++ #define	BDM_GOTEXCEPTION	(1<<1)
++ #define	BDM_DEBUG_NAME	"bdm-dbg.log"
++ static int bdm_flags = 0;
++ extern char hashmark;
++ extern int bdm_autoreset;
++ extern int bdm_ttcu;
++ 
++ 
++ static void dbprintf(const char *format, ...);
++ 
++ #if !defined BDMLIB_FORGDB
++ /* 
++  * this is borrowed from gdb utils.c
++  */
++ static void
++ error(const char *format, ...)
++ {
++ 	va_list args;
++ 
++ 	va_start(args, format);
++ 	vfprintf(stderr, format, args);
++ 	fprintf(stderr, "\n");
++ 	va_end(args);
++ }
++ 
++ static void
++ fprintf_filtered(FILE *fp, const char *format, ...)
++ {
++ 	va_list args;
++ 
++ 	va_start(args, format);
++ 	vfprintf(fp, format, args);
++ 	fprintf(fp, "\n");
++ 	va_end(args);
++ }
++ 
++ #define printf_filtered printf
++ #define xmalloc malloc
++ #define	gdb_stderr	stderr
++ #endif
++ 
++ void 
++ bdmlib_setdebug(int switch_on)
++ {
++ 	if (switch_on)
++ 		bdm_flags |= BDM_DODPRINTF;
++ 	else
++ 		bdm_flags &= ~BDM_DODPRINTF;
++ 	dbprintf("Setting Debug to %d\n", switch_on);
++ }
++ 
++ int 
++ bdmlib_querydebug(void)
++ {
++ 	return (bdm_flags & BDM_DODPRINTF);
++ }
++ 
++ /* startofcleanup */
++ int 
++ bdmlib_isopen(void)
++ {
++ 	return (bdm_fd != 0);
++ }
++ 
++ /* filter to put out bdm specific status messages */
++ char *
++ bdmlib_getstatus_str(bdmstatus status)
++ {
++ int st;
++ 	static char put_buffer[128];
++ 
++ 	*put_buffer = '\0';
++ 	st = (int) status;
++ 	if (st < 0) {
++ 		return bdmlib_geterror_str(status);
++ 	}
++ 	if (status & BDM_TARGETNC) {
++ 		strcat(put_buffer, "NotConnected ");
++ 		return put_buffer;
++ 	}
++ 	strcat(put_buffer, "Connected ");
++ 	if (status & BDM_TARGETPOWER) {
++ 		strcat(put_buffer, "PowerFail ");
++ 		return put_buffer;
++ 	}
++ 	strcat(put_buffer, "PowerOK ");
++ 	if (status & BDM_TARGETSTOPPED)
++ 		strcat(put_buffer, "Frozen ");
++ 	else
++ 		strcat(put_buffer, "Running ");
++ 	if (status & BDM_TARGETRESET)
++ 		strcat(put_buffer, "Reset ");
++ 	return put_buffer;
++ }
++ 
++ static struct _err_messages {
++ 	int err_num;
++ 	char *err_msg;
++ }
++ 
++ err_messages[] = {
++ 	{ BDM_FAULT_UNKNOWN, "bdm driver recognized unknown fault" } ,
++ 	{ BDM_FAULT_POWER, "target power failed" } ,
++ 	{ BDM_FAULT_CABLE, "cable disconnected" } ,
++ 	{ BDM_FAULT_RESPONSE, "no response from target via bdm" } ,
++ 	{ BDM_FAULT_RESET, "target got a reset" } ,
++ 	{ BDM_FAULT_PORT, "wrong bdm port" } ,
++ 	{ BDM_FAULT_BERR, "bus error occured on access via bdm" } ,
++ 	{ BDM_FAULT_NVC, "bdm internal error: no valid command to bdm" } ,
++ 	{ BDM_NO_ERROR, "No error" } ,
++ 	{ BDM_ERR_NOT_OPEN, "bdm device is not open" } ,
++ 	{ BDM_ERR_ILL_IOCTL, "ioctl code does not match library ioctl type" } ,
++ 	{ BDM_ERR_WRITE_FAIL, "write to processor failed" } ,
++ 	{ BDM_ERR_READ_FAIL, "read from processor failed" } ,
++ 	{ BDM_ERR_ILL_SIZE, "illegal variable size" } ,
++ 	{ BDM_ERR_OPEN, "open error" } ,
++ 	{ BDM_ERR_LOAD, "error on loading binary file" } ,
++ 	{ BDM_ERR_MACROFILE, "error on loading macro" } ,
++ 	{ BDM_ERR_SECTION, "error on loading section" } ,
++ 	{ BDM_ERR_VERSION, "driver version conflict" } ,
++ };
++ 
++ static int err_msg_len = sizeof(err_messages) / sizeof(struct _err_messages);
++ 
++ /* filter to pick out bdm specific error messages */
++ char *
++ bdmlib_geterror_str(int err)
++ {
++ 	int i;
++ 	static char put_buffer[128];
++ 
++ 	for (i = 0; i < err_msg_len; i++) {
++ 		if (err == err_messages[i].err_num)
++ 			return err_messages[i].err_msg;
++ 	}
++ 	strncpy(put_buffer, strerror(-err), 128); 
++ 	return put_buffer;
++ }
++ 
++ #define do_case(x) case x: ret = #x; break;
++ 
++ static char * 
++ bdmlib_getioctlname(int ioctl)
++ {
++ char *ret;
++ 	switch (ioctl) {
++ 		do_case(BDM_INIT);
++ 		do_case(BDM_DEINIT);
++ 		do_case(BDM_RESET_CHIP);
++ 		do_case(BDM_RESTART_CHIP);
++ 		do_case(BDM_STOP_CHIP);
++ 		do_case(BDM_STEP_CHIP);
++ 		do_case(BDM_GET_STATUS);
++ 		do_case(BDM_SPEED);
++ 		do_case(BDM_RELEASE_CHIP);
++ 		do_case(BDM_DEBUG_LEVEL);
++ 		do_case(BDM_GET_VERSION);
++ 		do_case(BDM_SENSECABLE);
++ 		default:
++ 			ret = "Unknown ioctl";
++ 	}
++ 	return ret;
++ }
++ 
++ int 
++ bdmlib_setioctl(u_int code, u_int val)
++ {
++ 	if (bdmlib_isopen()) {
++ 		switch (code) {
++ 		  case BDM_SENSECABLE:
++ 		  case BDM_DEBUG_LEVEL:
++ 		  	break;
++ 		  case BDM_SPEED:
++ 		  	bdm_delay = val; break;
++ 		  default:
++ 			return BDM_ERR_ILL_IOCTL;
++ 		}
++ 		return ioctl(bdm_fd, code, (u_long) val);
++ 	} else {
++ 		return BDM_ERR_NOT_OPEN;
++ 	}
++ }
++ 
++ int 
++ bdmlib_ioctl(u_int code)
++ {
++ int ret;
++ 	if (bdmlib_isopen()) {
++ 		switch (code) {
++ 		  case BDM_INIT:
++ 		  case BDM_RESET_CHIP:
++ 		  case BDM_STOP_CHIP:
++ 		  case BDM_RESTART_CHIP:
++ 		  case BDM_RELEASE_CHIP:
++ 		  case BDM_STEP_CHIP:
++ 
++ 			  if ((ret = ioctl(bdm_fd, code, (u_long) NULL)) == -1) {
++ 			  	dbprintf("bdmlib_ioctl %s failed; error %d %s\n",
++ 					bdmlib_getioctlname(code), errno, 
++ 					bdmlib_geterror_str(errno));
++ 			  	return -errno;
++ 			  } else {
++ 			  	return BDM_NO_ERROR;
++ 			  }
++ 			  break;
++ 		  default:
++ 			  return BDM_ERR_ILL_IOCTL;
++ 		}
++ 	} else {
++ 		return BDM_ERR_NOT_OPEN;
++ 	}
++ }
++ 
++ /*
++ * get status of interface
++ */
++ bdmstatus
++ bdmlib_getstatus(void)
++ {
++ 	if (bdmlib_isopen()) {
++ 		return ioctl(bdm_fd, BDM_GET_STATUS, NULL);
++ 	} else {
++ 		return BDM_ERR_NOT_OPEN;
++ 	}
++ }
++ 
++ int
++ bdmlib_go(void)
++ {
++ 	u_short buf;
++ 	int ret;
++ 
++ 	dbprintf("bdmlib_go\n");
++ 
++ #if MORE_DEBUGGING
++ 	bdmlib_showpc();
++ #endif /* MORE_DEBUGGING */
++ 
++ 	if (bdmlib_isopen()) {
++ 		buf = BDM_GO_CMD;
++ 		ret = write(bdm_fd, &buf, 2);
++ 		if ((ret < 0) || (ret != 2)) {
++ 			dbprintf("bdm_go: write_error %d\n", errno);
++ 			return -errno;
++ 		}
++ 	} else {
++ 		return BDM_ERR_NOT_OPEN;
++ 	}
++ 	return BDM_NO_ERROR;
++ }
++ 
++ int
++ bdmlib_reset(void)
++ {
++ #if SUPPORT_RAMINIT
++ 	u_long dummy;
++ #endif 
++ 	int ret;
++ 
++ 	dbprintf("bdmlib_reset ttcu %d\n", bdm_ttcu);
++ 	if ((ret = bdmlib_ioctl(BDM_RESTART_CHIP))) {
++ 		return ret;
++ 	}
++ 
++ #if MORE_DEBUGGING
++ 	printf("bdmlib_reset: RESTART_CHIP replies %d %s\n",
++ 		   ret, bdmlib_geterror_str(ret));
++ 	printf("status: %s\n", bdmlib_getstatus_str(bdmlib_getstatus()));
++ #endif	/* MORE_DEBUGGING  */
++ 
++ 	/*
++ 	 * it cannot break anything to set right SFC and DFC
++ 	 * adress space for memory accesses
++ 	 */
++ 
++ 	bdmlib_set_sys_reg(BDM_REG_DFC, 5);
++ 	bdmlib_set_sys_reg(BDM_REG_SFC, 5);
++ 
++ 	/*
++ 	 * in case we have a monitor in place, we might want to let him do
++ 	 * the basic setup, let it come to the prompt...
++ 	 */
++ 	if (bdm_ttcu) {
++ 		if ((ret = bdmlib_go())) 	/* let the monitor come up.... */
++ 			return ret;		
++ 		usleep(bdm_ttcu);
++ 		ret = bdmlib_ioctl(BDM_STOP_CHIP);
++ 	}
++ 
++ #if SUPPORT_RAMINIT
++ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, &dummy)) < 0) {
++ 		fprintf_filtered(gdb_stderr, "Warning: %s for file `%s'\n",
++ 			bdmlib_geterror_str(ret),
++ 			RAMINIT_FILENAME);
++ 	}
++ #endif /* SUPPORT_RAMINIT */
++ 
++ 	bdmlib_do_load_macro(RESETINIT_FILENAME, NO_SUFFIX_MACRO);
++ 	fprintf(stdout, "\r"); fflush(stdout);
++ 	return ret;
++ }
++ 
++ #define swaps(x) \
++ ((u_short)((((u_short)(x) & 0x00ff) << 8) | \
++ 	(((u_short)(x) & 0xff00) >> 8)))
++ 
++ #define	swapl(x) \
++ ((u_int)((((u_int)(x) & 0x000000ffU) << 24) | \
++ 	(((u_int)(x) & 0x0000ff00U) << 8) | \
++ 	(((u_int)(x) & 0x00ff0000U) >> 8) | \
++ 	(((u_int)(x) & 0xff000000U) >> 24)))
++ 
++ static u_short *
++ bdmlib_conv_short_to_buf(u_short * buf, u_short val, int endianness)
++ {
++ 	if (endianness) {
++ 		*buf++ = swaps(val);
++ 	} else {
++ 		*buf++ = val;
++ 	}
++ 	return buf;
++ }
++ 
++ /* conv long in host format (little endian) to buf (target format = big e) */
++ static u_short *
++ bdmlib_conv_long_to_buf(u_short * buf, u_long val, int endianness)
++ {
++ 	if (endianness) {
++ 		*buf++ = swaps(val & 0xffff);
++ 		*buf++ = swaps(val >> 16);
++ 	} else {
++ 		*buf++ = val >> 16;
++ 		*buf++ = val & 0xffff;
++ 	}
++ 	return buf;
++ }
++ 
++ /* buf representation to a single short */
++ static u_short *
++ bdmlib_conv_buf_to_short(u_short * buf, u_short * val, int endianness)
++ {
++ 	if (endianness) {
++ 		*val = *buf++;
++ 	} else {
++ 		*val = swaps(*buf);
++ 		buf++;
++ 	}
++ 	return buf;
++ }
++ 
++ /* buf representation to a single long */
++ static u_short *
++ bdmlib_conv_buf_to_long(u_short * buf, u_long * val, int endianness)
++ {
++ 	if (endianness) {
++ 		*val = (buf[0] << 16) | buf[1];
++ 	} else {
++ 		*val = (swaps(buf[1]) << 16) | swaps(buf[0]);
++ 	}
++ 	buf += 2;
++ 	return buf;
++ }
++ 
++ /*
++ * put a char stream of 4 bytes into a long;
++ * endianness=0: interprete char as little end
++ * else interprete char as big endian
++ */
++ static u_char *
++ bdmlib_conv_char_to_long(u_char * buf, u_long * val, int endianness)
++ {
++ 	int i;
++ 	union {
++ 		u_long l;
++ 		u_char c[4];
++ 	} u;
++ 
++ 	if (endianness) {
++ 		for (i = 3; i >= 0; i--)
++ 			u.c[i] = *buf++;
++ 	} else {
++ 		for (i = 0; i < 4; i++)
++ 			u.c[i] = *buf++;
++ 	}
++ 	*val = u.l;
++ 	return buf;
++ }
++ 
++ /* put a char stream of 2 bytes into a short */
++ static u_char *
++ bdmlib_conv_char_to_short(u_char * buf, u_short * val, int endianness)
++ {
++ 	int i;
++ 	union {
++ 		u_short s;
++ 		u_char c[2];
++ 	} u;
++ 
++ 	if (endianness) {
++ 		for (i = 1; i >= 0; i--)
++ 			u.c[i] = *buf++;
++ 	} else {
++ 		for (i = 0; i < 2; i++)
++ 			u.c[i] = *buf++;
++ 	}
++ 	*val = u.s;
++ 	return buf;
++ }
++ 
++ /* put a long to a char stream */
++ static u_char *
++ bdmlib_conv_long_to_char(u_char * buf, u_long val, int endianness)
++ {
++ 	int i;
++ 	union {
++ 		u_long l;
++ 		u_char c[4];
++ 	} u;
++ 
++ 	u.l = val;
++ 	if (endianness) {
++ 		for (i = 3; i >= 0; i--)
++ 			*buf++ = u.c[i];
++ 	} else {
++ 		for (i = 0; i < 4; i++)
++ 			*buf++ = u.c[i];
++ 	}
++ 	return buf;
++ }
++ 
++ /* put a short to a char stream */
++ static u_char *
++ bdmlib_conv_short_to_char(u_char * buf, u_short val, int endianness)
++ {
++ 	int i;
++ 	union {
++ 		u_short s;
++ 		u_char c[2];
++ 	} u;
++ 
++ 	u.s = val;
++ 	if (endianness) {
++ 		for (i = 1; i >= 0; i--)
++ 			*buf++ = u.c[i];
++ 	} else {
++ 		for (i = 0; i < 2; i++)
++ 			*buf++ = u.c[i];
++ 	}
++ 	return buf;
++ }
++ 
++ int
++ bdmlib_get_sys_reg(u_int reg, u_int * ret_val)
++ {
++ 	u_short send;
++ 	u_short recv[2];
++ 	int ret;
++ 
++ 	send = BDM_RSREG_CMD | (reg & 0xf);
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	ret = write(bdm_fd, &send, 2);
++ 	if (ret == 2) {
++ 		ret = read(bdm_fd, recv, 4);
++ 	} else {
++ 		dbprintf("bdmlib_get_sys_reg error on send: errno %d\n", errno);
++ 		return -errno;
++ 	}
++ 	bdmlib_conv_buf_to_long(recv, (u_long *) ret_val, 0);
++ 	return (ret == 4) ? BDM_NO_ERROR : -errno;
++ }
++ 
++ int
++ bdmlib_set_sys_reg(u_int reg, u_int cont)
++ {
++ 	u_short send[3];
++ 	int ret;
++ 
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	send[0] = BDM_WSREG_CMD | (reg & 0xf);
++ 	bdmlib_conv_long_to_buf(&send[1], cont, 0);
++ 	if ((ret = write(bdm_fd, send, 6)) != 6) {
++ 		dbprintf("bdmlib_set_sys_reg error: reg %#x cont %#x error %d\n",
++ 				reg, cont, errno);
++ 		return -errno;
++ 	}
++ 	return BDM_NO_ERROR;
++ }
++ 
++ int
++ bdmlib_get_reg(u_int reg, u_int * ret_val)
++ {
++ 	u_short send;
++ 	u_short recv[2];
++ 	int ret;
++ 
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	send = BDM_RREG_CMD | (reg & 0xf);
++ 	ret = write(bdm_fd, &send, 2);
++ 	if (ret == 2) {
++ 		ret = read(bdm_fd, recv, 4);
++ 	} else {
++ 		dbprintf("bdmlib_get_reg: error on send ret %d\n", errno);
++ 		return -errno;
++ 	}
++ 	/* get target format, as conversion will be done in higher levels */
++ 	bdmlib_conv_buf_to_long(recv, (u_long *) ret_val, 0);
++ 	return (ret == 4) ? BDM_NO_ERROR : -errno;
++ }
++ 
++ int
++ bdmlib_set_reg(u_int reg, u_int cont)
++ {
++ 	u_short send[3];
++ 	int ret;
++ 
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	send[0] = BDM_WREG_CMD | (reg & 0xf);
++ 	bdmlib_conv_long_to_buf(&send[1], cont, 0);
++ 	if ((ret = write(bdm_fd, send, 6)) != 6) {
++ 		dbprintf("bdmlib_set_reg error: reg %#x to cont %#x error %#d\n",
++ 				reg, cont, errno);
++ 		return -errno;
++ 	}
++ 	return BDM_NO_ERROR;
++ }
++ 
++ int
++ bdmlib_write_var(caddr_t adr, u_short size, u_int val)
++ {
++ 	u_short buf[6], *b_ptr = buf;
++ 	int w_buf_len, r_buf_len;
++ 	int written;
++ 
++ 	dbprintf("bdmlib_write_var: addr %#x cont %#x\n", adr, val);
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	size &= 0x00c0;
++ 	*b_ptr++ = (BDM_WRITE_CMD | size);
++ 	/* no need for byte swapping, as adr is already a valid long; so use 0 */
++ 	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (u_long) adr, 0);
++ 	switch (size) {
++ 	  case BDM_SIZE_LONG:
++ 		  b_ptr = bdmlib_conv_long_to_buf(b_ptr, val, 0);
++ 		  w_buf_len = 5;
++ 		  break;
++ 	  case BDM_SIZE_WORD:
++ 		  b_ptr = bdmlib_conv_short_to_buf(b_ptr, val, 0);
++ 		  w_buf_len = 4;
++ 		  break;
++ 	  case BDM_SIZE_BYTE:
++ 		  *b_ptr++ = (u_short) (val & 0xff);
++ 		  w_buf_len = 4;
++ 		  break;
++ 	  default:
++ 		  w_buf_len = 0;
++ 		  dbprintf("error! bdmlib_write_var: unknown size %#x\n", size);
++ 		  return BDM_ERR_ILL_SIZE;
++ 	}
++ 	if ((written = write(bdm_fd, buf, w_buf_len * 2)) != w_buf_len * 2) {
++ 		dbprintf("error! bdmlib_write_var: write returns %d errno %d\n",
++ 			written, errno);
++ 		written = errno;
++ 	}
++ 	if ((r_buf_len = read(bdm_fd, buf, 2)) != 2) {
++ 		dbprintf(
++ "bdmlib_write_var: verify read return val expected 2 is %d errno %d\n",
++ 				r_buf_len, errno);
++ 		return -errno;
++ 	}
++ 	if (written == (w_buf_len*2)) {
++ 		return BDM_NO_ERROR;
++ 	} else {
++ 		return -written;
++ 	}
++ }
++ 
++ 
++ 
++ #if 1
++ 
++ /* slower but reliable method for writting, main solved problem is
++    waiting for ready after memory access achieved by read 
++    in bdm_write_var */ 
++ 
++ int
++ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
++ {
++ 	u_short buf[8];
++ 	int fills, got_size = 0;
++ 	u_long ul;
++ 	u_short us;
++ 	u_char uc;
++ 	int first_acc;
++ 
++ 	dbprintf("bdmlib_write_block size %#x to adr %#x ", size, in_adr);
++ 	first_acc = 4 - ((u_long) in_adr & 0x3);
++ 	if (size < first_acc) {
++ 		switch (size) {
++ 			case 0: return 0;
++ 			case 1: first_acc = 1; break;
++ 			case 2:
++ 			case 3: first_acc = first_acc&1? 1: 2; break;
++ 		}
++ 	}
++ 	switch (first_acc) {
++ 	  case 4:
++ 		  bl_ptr = bdmlib_conv_char_to_long(bl_ptr, &ul, 1);
++ 		  if (bdmlib_write_var(in_adr, BDM_SIZE_LONG,  ul) < 0) {
++ 			  return got_size;
++ 		  }
++ 		  got_size += 4;
++ 		  break;
++ 	  case 3:
++ 		  uc = *bl_ptr++;
++ 		  if (bdmlib_write_var(in_adr, BDM_SIZE_BYTE,  uc) < 0) {
++ 			  return got_size;
++ 		  }
++ 		  in_adr += 1;
++ 		  got_size += 1;
++ 		  /* fall through to 'word' */
++ 	  case 2:
++ 		  bl_ptr = bdmlib_conv_char_to_short(bl_ptr, &us, 1);
++ 		  if (bdmlib_write_var(in_adr, BDM_SIZE_WORD,  us) < 0) {
++ 			  return got_size;
++ 		  }
++ 		  got_size += 2;
++ 		  break;
++ 	  case 1:
++ 		  uc = *bl_ptr++;
++ 		  if (bdmlib_write_var(in_adr, BDM_SIZE_BYTE, uc) < 0) {
++ 			  return got_size;
++ 		  }
++ 		  got_size += 1;
++ 		  break;
++ 	  default: ;
++ 		  /* cannot happen */
++ 	}
++ 
++ 
++ 	buf[0] = BDM_FILL_CMD | BDM_SIZE_LONG;
++ 	fills = (size - got_size) / 4;
++ 	while (fills--) {
++ 		bl_ptr = bdmlib_conv_char_to_long(bl_ptr, &ul, 1);
++ 		bdmlib_conv_long_to_buf(&buf[1], ul, 0);
++ 		if (write(bdm_fd, &buf[0], 6) !=6) {
++ 			return got_size;
++ 		}
++ 		if (read(bdm_fd, &buf[1], 2) != 2) {
++ 			return got_size;
++ 		}
++ 		got_size += 4;
++ 	}
++ 
++ 	if (size - got_size >= 2) {
++ 		buf[0] = (BDM_FILL_CMD | BDM_SIZE_WORD);
++ 		bl_ptr = bdmlib_conv_char_to_short(bl_ptr, &us, 1);
++ 		bdmlib_conv_short_to_buf(&buf[1], us, 0);		  
++ 		if(write(bdm_fd, &buf[0], 4)!=4) return got_size;
++ 		if (read(bdm_fd, &buf[0], 2) != 2) return got_size;
++ 		got_size += 2;
++ 	}
++ 	if (size - got_size) {
++ 		buf[0] = (BDM_FILL_CMD | BDM_SIZE_BYTE);
++ 		buf[1] = *bl_ptr++;
++ 		if(write(bdm_fd, &buf[0], 4)!=4) return got_size;
++ 		if (read(bdm_fd, &buf[0], 2) != 2) return got_size;
++ 		got_size += 1;
++ 	}
++ 	if (size - got_size) {	  /* cannot happen */
++ 		error("internal error: bdmlib_write_block - cannot happen");		  
++ 	}
++ 	
++ 	return got_size;
++ }
++ 
++ #else
++ 
++ int
++ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * block)
++ {
++ 	u_short *buf, *buf_ptr;
++ 	int buf_len = 0;			/* valid len of buf to writecmd in shorts */
++ 	u_char *bl_ptr;
++ 	u_int adr;
++ 	int fills, put_size;
++ 	u_long ul;
++ 	u_short us;
++ 	u_int first_acc;
++ 
++ 	dbprintf("bdmlib_write_block size %#x to adr %#x\n", size, in_adr);
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	first_acc = 4 - ((u_long) in_adr & 0x3);
++ 	if (size < first_acc) {
++ 		switch (size) {
++ 			case 0: return 0;
++ 			case 1: first_acc = 1; break;
++ 			case 2:
++ 			case 3: first_acc = first_acc&1? 1: 2; break;
++ 		}
++ 	}
++ 
++ 	put_size = size;
++ 	adr = (u_int) in_adr;
++ 	bl_ptr = block;
++ 	buf_ptr = buf = xmalloc((size / 4 + 5) * 6);
++ 
++ 	/*
++ 	 * per 4 bytes 3 shorts for fill-long-cmd
++ 	 * + 3 short for initial write-long-cmd + addr
++ 	 *  = 1 * 3 shorts
++ 	 * + worst case both a write-byte and write-short on begin & end
++ 	 *  = 4 * 3 shorts
++ 	 */
++ 
++ 	switch (first_acc) {
++ 	  case 4:
++ 		  *buf_ptr++ = (BDM_WRITE_CMD | BDM_SIZE_LONG);
++ 		  *buf_ptr++ = (adr & 0xffff0000) >> 16;	/* h-Address */
++ 		  *buf_ptr++ = (adr & 0x0000ffff);	/* l-Address */
++ 		  bl_ptr = bdmlib_conv_char_to_long(bl_ptr, &ul, 1);
++ 		  buf_ptr = bdmlib_conv_long_to_buf(buf_ptr, ul, 0);
++ 		  adr += 4;
++ 		  size -= 4;
++ 		  buf_len = 5;
++ 		  break;
++ 	  case 3:
++ 		  *buf_ptr++ = (BDM_WRITE_CMD | BDM_SIZE_BYTE);
++ 		  *buf_ptr++ = (adr & 0xffff0000) >> 16;	/* h-Address */
++ 		  *buf_ptr++ = (adr & 0x0000ffff);	/* l-Address */
++ 		  *buf_ptr++ = *bl_ptr++;
++ 		  adr += 1;
++ 		  size -= 1;
++ 		  buf_len = 4;
++ 		  /* fall through to 'word' */
++ 	  case 2:
++ 		  *buf_ptr++ = (BDM_WRITE_CMD | BDM_SIZE_WORD);
++ 		  *buf_ptr++ = (adr & 0xffff0000) >> 16;	/* h-Address */
++ 		  *buf_ptr++ = (adr & 0x0000ffff);	/* l-Address */
++ 		  bl_ptr = bdmlib_conv_char_to_short(bl_ptr, &us, 1);
++ 		  buf_ptr = bdmlib_conv_short_to_buf(buf_ptr, us, 0);
++ 		  adr += 2;
++ 		  size -= 2;
++ 		  buf_len += 4;
++ 		  break;
++ 	  case 1:
++ 		  *buf_ptr++ = (BDM_WRITE_CMD | BDM_SIZE_BYTE);
++ 		  *buf_ptr++ = (adr & 0xffff0000) >> 16;	/* h-Address */
++ 		  *buf_ptr++ = (adr & 0x0000ffff);	/* l-Address */
++ 		  *buf_ptr++ = *bl_ptr++;
++ 		  adr += 1;
++ 		  size -= 1;
++ 		  buf_len = 4;
++ 		  break;
++ 	  default:
++ 		  /* cannot happen */
++ 	}
++ 	fills = size / 4;
++ 	size -= fills * 4;
++ 	buf_len += (fills * 3);
++ 	while (fills--) {
++ 		*buf_ptr++ = (BDM_FILL_CMD | BDM_SIZE_LONG);
++ 		bl_ptr = bdmlib_conv_char_to_long(bl_ptr, &ul, 1);
++ 		buf_ptr = bdmlib_conv_long_to_buf(buf_ptr, ul, 0);
++ 	}
++ 
++ 	if(size>=2){
++ 		*buf_ptr++ = (BDM_FILL_CMD | BDM_SIZE_WORD);
++ 		bl_ptr = bdmlib_conv_char_to_short(bl_ptr, &us, 1);
++ 		buf_ptr = bdmlib_conv_short_to_buf(buf_ptr, us, 0);
++ 		buf_len += 2;
++ 		size -= 2;
++ 	}
++ 	if(size>=1){
++ 		*buf_ptr++ = (BDM_FILL_CMD | BDM_SIZE_BYTE);
++ 		*buf_ptr++ = *bl_ptr;
++ 		buf_len += 2;
++ 		size--;
++ 	}
++ 	if(size){
++ 		error("internal error: bdmlib_write_block: size=%d!=0",size);
++ 	}
++ 
++ 	/* now we have a whole buf we can send in one chunk to 'write' */
++ 
++ 	buf_len *= 2;				/* now buflen in bytes */
++ 	if ((size = write(bdm_fd, buf, buf_len)) != buf_len) {
++ 		dbprintf("error! bdmlib_write_block: write %d returns %d errno %d %s\n",
++ 				buf_len, size, errno, bdmlib_geterror_str(-errno));
++ 		put_size = 0;
++ 	}
++ 	/*
++  * FIXME: needs more persistence on trying to write; analyze reason
++  * for not writing, and if possible, try again with rest of the buf
++  * give up on detected bus-err
++  */
++ 
++ 	free(buf);
++ 	return put_size;
++ }
++ 
++ 
++ #endif
++ 
++ /* return format in *val is target byte ordering */
++ int
++ bdmlib_read_var(caddr_t adr, u_short size, void *val)
++ {
++ 	u_short buf[6], *b_ptr = buf;
++ 	int count;
++ 
++ 	/* u_char *cptr; u_short *sptr; u_long *lptr;	*/
++ 
++ 	dbprintf("bdmlib_read_var size %#x from adr %#x ", size, adr);
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	size &= 0x00c0;
++ 	*b_ptr++ = (BDM_READ_CMD | size);
++ 	/* no need for byte swapping, as adr is already a valid long; so use 0 */
++ 	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (u_long) adr, 0);
++ 	if ((count = write(bdm_fd, buf, 6)) != 6) {
++ 		dbprintf("bdmlib_read_var error: write returns %d\n", count);
++ 		return BDM_ERR_WRITE_FAIL;
++ 	}
++ 	switch (size) {
++ 	  case BDM_SIZE_LONG:
++ 		  if ((count = read(bdm_fd, buf, 4)) == 4) {
++ 			  *(u_long *) val = (buf[0] << 16) | buf[1];
++ 		  }
++ 		  break;
++ 	  case BDM_SIZE_WORD:
++ 		  if ((count = read(bdm_fd, buf, 2)) == 2) {
++ 			  *(u_short *) val = (u_short) buf[0];
++ 			  /* sptr = (u_short*) val; *sptr = (u_short) buf[0];	*/
++ 		  }
++ 		  break;
++ 	  case BDM_SIZE_BYTE:
++ 		  if ((count = read(bdm_fd, buf, 2)) == 2) {
++ 			  count = 1;
++ 			  *(u_char *) val = (u_char) (buf[0] & 0xff);
++ 			  /* cptr = (u_char*)val; *cptr = (u_char) (buf[0] & 0xff); */
++ 		  }
++ 		  break;
++ 	  default:
++ 		  dbprintf("\n\terror! bdmlib_read_var: unknown size %#x\n", size);
++ 	}
++ 	if (count < 0) {
++ 		dbprintf("\nerror %d (%s)\n", errno, bdmlib_geterror_str(errno));
++ 		return -errno;
++ 	}
++ 	/* val = (u_int*) ((u_long)val & ~3); 	*/
++ 	dbprintf(" cont %#x\n", *(u_long *) ((long) val & ~3));
++ 	return count;				/* _must_ return count */
++ }
++ 
++ int
++ bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
++ {
++ 	u_short buf[8];
++ 	u_short dump_cmd;
++ 	int dumps, got_size = 0;
++ 	u_long ul;
++ 	u_short us;
++ 	u_char uc;
++ 	u_int first_acc;
++ 
++ 	dbprintf("bdmlib_read_block size %#x from adr %#x ", size, in_adr);
++ 	first_acc = 4 - ((u_long) in_adr & 0x3);
++ 	if (size < first_acc) {
++ 		switch (size) {
++ 			case 0: return 0;
++ 			case 1: first_acc = 1; break;
++ 			case 2:
++ 			case 3: first_acc = first_acc&1? 1: 2; break;
++ 		}
++ 	}
++ 	switch (first_acc) {
++ 	  case 4:
++ 		  if (bdmlib_read_var(in_adr, BDM_SIZE_LONG, (u_int *) & ul) != 4) {
++ 			  return got_size;
++ 		  }
++ 		  bl_ptr = bdmlib_conv_long_to_char(bl_ptr, ul, 1);
++ 		  got_size += 4;
++ 		  break;
++ 	  case 3:
++ 		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, (u_int *) & uc) != 1) {
++ 			  return got_size;
++ 		  }
++ 		  *bl_ptr++ = uc;
++ 		  got_size += 1;
++ 		  in_adr += 1;
++ 		  /* fall through to 'word' */
++ 	  case 2:
++ 		  if (bdmlib_read_var(in_adr, BDM_SIZE_WORD, (u_int *) & us) != 2) {
++ 			  return got_size;
++ 		  }
++ 		  bl_ptr = bdmlib_conv_short_to_char(bl_ptr, us, 1);
++ 		  got_size += 2;
++ 		  break;
++ 	  case 1:
++ 		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, (u_int *) & uc) != 1) {
++ 			  return got_size;
++ 		  }
++ 		  *bl_ptr++ = uc;
++ 		  got_size += 1;
++ 		  break;
++ 	  default: ;
++ 		  /* cannot happen */
++ 	}
++ 
++ 
++ 	dump_cmd = BDM_DUMP_CMD | BDM_SIZE_LONG;
++ 	dumps = (size - got_size) / 4;
++ 	while (dumps--) {
++ 		write(bdm_fd, &dump_cmd, 2);
++ 		if (read(bdm_fd, &buf, 4) != 4) {
++ 			return got_size;
++ 		}
++ 		bdmlib_conv_buf_to_long(buf, &ul, 1);
++ 		bl_ptr = bdmlib_conv_long_to_char(bl_ptr, ul, 1);
++ 		got_size += 4;
++ 	}
++ 
++ 	if (size - got_size >= 2) {
++ 		dump_cmd = BDM_DUMP_CMD | BDM_SIZE_WORD;
++ 		write(bdm_fd, &dump_cmd, 2);
++ 		if (read(bdm_fd, &buf, 2) != 2) {
++ 			return got_size;
++ 		}
++ 		bdmlib_conv_buf_to_short(buf, &us, 1);
++ 		bl_ptr = bdmlib_conv_short_to_char(bl_ptr, us, 1);
++ 		got_size += 2;
++ 	}
++ 	if (size - got_size) {
++ 		dump_cmd = BDM_DUMP_CMD | BDM_SIZE_BYTE;
++ 		write(bdm_fd, &dump_cmd, 2);
++ 		if (read(bdm_fd, &buf, 2) != 2) {
++ 			return got_size;
++ 		}
++ 		*bl_ptr++ = *buf & 0xff;
++ 		got_size += 1;
++ 	}
++ 	if (size - got_size) {	  /* cannot happen */
++ 		error("internal error: bdmlib_read_block - cannot happen");		  
++ 	}
++ 	
++ 	return got_size;
++ }
++ 
++ void
++ bdmlib_propeller(FILE * fp)
++ {
++ static char *str = "\\|/-";
++ static int index;
++ 	
++ 	if (!hashmark) return;
++ 	fprintf(fp, "%c\b", str[index++]);
++ 	fflush(fp);
++ 	index %= 4;
++ }
++ 
++ /*
++ * Open a connection the target via bdm
++ * name is the devicename of bdm and the filename to be used
++ * used for communication.
++ */
++ int
++ bdmlib_open(char *name)
++ {
++ int ret;
++ int version;
++ 
++ 	if (bdmlib_isopen()) {
++ 		dbprintf("bdmlib_open: tried to open twice\n");
++ 		return BDM_ERR_OPEN;
++ 	}
++ 	if ((bdm_fd = open(name, O_RDWR)) < 0) {
++ 		dbprintf(
++ "bdmlib_open: Warning trouble on opening %s: reply %d errno %d\n", 
++ 			name, bdm_fd, errno);
++ 		fprintf(stderr, "Warning: trouble on opening %s: %s\n", name,
++ 			bdmlib_geterror_str(-errno));
++ 		bdm_fd = 0;				/* mark unused */
++ 		return bdm_fd;
++ 	}
++ 	bdmlib_ioctl(BDM_INIT);
++ 	if (bdm_delay>=0) {
++ 		/* delay has been set before */
++ 		bdmlib_setioctl(BDM_SPEED, bdm_delay);
++ 	} else {
++ 		bdmlib_setioctl(BDM_SPEED, BDM_DEFAULT_DELAY);
++ 	}
++ 
++ 	if (((ret = ioctl(bdm_fd, BDM_GET_VERSION, (u_long) &version)) < 0) ||
++ 		(version < BDMLIB_REQUIRED_DRIVER_VERSION)) {
++ 			if (ret < 0) version = 1;
++ 			fprintf(stderr, "Error:\tBDM device driver version conflict.\n");
++ 			fprintf(stderr, 
++ "\tyou need at least version %d, currently installed is version %d.\n", 
++ 				BDMLIB_REQUIRED_DRIVER_VERSION, version);
++ 			fprintf(stderr, "\tAborting operation\n");
++ 			close(bdm_fd);
++ 			return BDM_ERR_VERSION;
++ 	}
++ 	return BDM_NO_ERROR;
++ }
++ 
++ int
++ bdmlib_close(quitting)
++ int quitting;
++ {
++ 	dbprintf("bdmlib_close: quitting %d\n", quitting);
++ 
++ 	if (quitting) {
++ 		bdmlib_reset();
++ 		bdmlib_ioctl(BDM_RELEASE_CHIP);
++ 	}
++ 	close(bdm_fd);
++ 	bdm_fd = 0;
++ 	return BDM_NO_ERROR;
++ }
++ 
++ #define swap_l(x) (x>>24) | ((x>>8)&0xff00) | ((x<<8)&0xff0000) | ((x&0xff)<<24)
++ 
++ void
++ bdmlib_showpc(void)
++ {
++ 	u_int sr, usp, ssp, vbr;
++ 	u_int pcc, rpc, a7;
++ 
++ 	bdmlib_get_sys_reg(BDM_REG_SR, &sr);
++ 	bdmlib_get_sys_reg(BDM_REG_USP, &usp);
++ 	bdmlib_get_reg(BDM_REG_A7, &a7);
++ 	bdmlib_get_sys_reg(BDM_REG_SSP, &ssp);
++ 	printf(" SR: %9x USP: %9x  A7: %9x SSP: %9x\n",
++ 		   swap_l(sr), swap_l(usp), swap_l(a7), swap_l(ssp));
++ 
++ 	bdmlib_get_sys_reg(BDM_REG_PCC, &pcc);
++ 	bdmlib_get_sys_reg(BDM_REG_RPC, &rpc);
++ 	bdmlib_get_sys_reg(BDM_REG_VBR, &vbr);
++ 	printf("PCC: %9x RPC: %9x VBR: %9x\n",
++ 			swap_l(pcc), swap_l(rpc), swap_l(vbr));
++ }
++ 
++ #define	LINE_LEN	256
++ static char *
++ get_line(FILE * f, int *line_nr)
++ {
++ 	static char line_buf[LINE_LEN];
++ 
++ 	while (!feof(f)) {
++ 		fgets(line_buf, LINE_LEN, f);
++ 		(*line_nr)++;
++ 		if (line_buf[0] == '#')
++ 			continue;
++ 		if (line_buf[0] == '\n')
++ 			continue;
++ 		if (line_buf[0] == '\0')
++ 			continue;
++ 		return line_buf;
++ 	}
++ 	return NULL;
++ }
++ 
++ /* 
++  * retval is just if we found the macro file, no errors!
++  */
++ int 
++ bdmlib_do_load_macro(char *file_name, int which_suffix)
++ {
++ 	char m_name[256];
++ 	FILE *m_file;
++ 	char *lptr;
++ 	char cmd;
++ 	int line_nr, ret;
++ 	bfd_vma addr1, addr2;
++ 	u_int size;
++ 	int size_tag;
++ 	u_char *buf;
++ 	int errorcount = 0;
++ 	char * begin_suffix = ".bdmmb", *end_suffix = ".bdmme", *no_suffix = "";
++ 	char * suffix;
++ 
++ 
++ 	dbprintf("bdmlib_do_load_macro %s suffix %d\n", file_name, which_suffix);
++ 	strcpy(m_name, file_name);
++ 	if ((lptr = rindex(m_name, '.')) != 0) {
++ 		*lptr = '\0';
++ 	}
++ 	switch (which_suffix) {
++ 		case BEGIN_MACRO: suffix = begin_suffix; break;
++ 		case END_MACRO: suffix = end_suffix; break;
++ 		case NO_SUFFIX_MACRO: suffix = no_suffix; break;
++ 		default: suffix = no_suffix;
++ 	}
++ 	strcat(m_name, suffix);
++ 	if ((m_file = fopen(m_name, "r")) == NULL) {
++ 		dbprintf("\tno macro file found\n");
++ 		return BDM_ERR_MACROFILE;	/* no macro file available, quit silently */
++ 	}
++ 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED)) {
++ 		dbprintf("\twarning: chip needs stopping\n");
++ 		bdmlib_ioctl(BDM_STOP_CHIP);
++ 	}
++ 	line_nr = 0;
++ 	while ((lptr = get_line(m_file, &line_nr))) {
++ 		bdmlib_propeller(stdout);
++ 
++ 		sscanf(lptr, "%c %i %i %i",
++ 			 &cmd, (unsigned int *) &addr1, (unsigned int *) &addr2, &size);
++ 		switch (toupper(cmd)) {
++ 		  case 'W':
++ 			  dbprintf("\twrite to addr %#x cont %#x size %d\n",
++ 					  addr1, addr2, size);
++ 			  switch (size) {
++ 				case 1:
++ 					size_tag = BDM_SIZE_BYTE;
++ 					size = 8;
++ 					break;
++ 				case 2:
++ 					size_tag = BDM_SIZE_WORD;
++ 					size = 8;
++ 					break;
++ 				case 4:
++ 					size_tag = BDM_SIZE_LONG;
++ 					size = 10;
++ 					break;
++ 				default:
++ 					error("\
++ Error in processing macro %s line %d 'W' command:\n\t\
++ size must be either 1,2,4 bytes, '%d' is not allowed",
++ 						  m_name, line_nr, size);
++ 					continue;
++ 			  }
++ 			  if ((ret = bdmlib_write_var((caddr_t) addr1, size_tag, (u_int) addr2)) < 0) {
++ 				  errorcount++;
++ 				  dbprintf("\
++ Error in processing macro %s line %d 'W' command:\n\t\
++ bdm_write size mismatch: send %d returned %d errno %d",
++ 						  m_name, line_nr, size, ret, errno);
++ 			  }
++ 			  break;
++ 		  case 'C':
++ 			  dbprintf("\tcopy from %#x to %#x size %d\n",
++ 					  addr1, addr2, size);
++ 			  buf = xmalloc(size);
++ 			  if ((ret = bdmlib_read_block((caddr_t) addr1, size, buf)) != size) {
++ 				  errorcount++;
++ 				  error("\
++ Error in processing macro %s line %d 'C' command:\n\t\
++ bdm_copy size mismatch on read from %#x: wanted %d got %d",
++ 						m_name, line_nr, addr1, size, ret);
++ 			  } else {
++ 				  {
++ 					  int i;
++ 
++ 					  for (i = 0; i < size; i++) {
++ 						  if (!(i % 16))
++ 							  printf("\n0x%08X: ", (unsigned int) addr1 + i);
++ 						  printf("0x%02X ", buf[i]);
++ 					  }
++ 					  printf("\n");
++ 				  }
++ 				  if ((ret = bdmlib_write_block((caddr_t) addr2, size, buf)) != size) {
++ 					  errorcount++;
++ 					  error("\
++ Error in processing macro %s line %d 'C' command:\n\t\
++ bdm_copy size mismatch on write to %#x: wanted %d got %d",
++ 							m_name, line_nr, addr2, size, ret);
++ 				  }
++ 			  }
++ 			  free(buf);
++ 			  break;
++ 		  case 'Z':
++ 			  dbprintf("\tzero from %#x with %#x size %#x\n",
++ 					  addr1, addr2 & 0xff, size);
++ 			  buf = xmalloc(size);
++ 			  memset(buf, addr2, size);
++ 			  if ((ret = bdmlib_write_block((caddr_t) addr1, size, buf)) != size) {
++ 				  errorcount++;
++ 				  error("\
++ Error in processing macro %s line %d 'Z' command:\n\t\
++ bdm_set size mismatch on write to %#x: wanted %d got %d",
++ 						m_name, line_nr, addr1, size, ret);
++ 
++ 			  }
++ 			  free(buf);
++ 			  break;
++ #if DEBUGGING_MACROS
++ 		  case 'T':
++ 			  {
++ 				  int i;
++ 
++ 				  buf = xmalloc(size);
++ 				  for (i = 0; i < size; i++)
++ 					  buf[i] = i;
++ 				  bdmlib_write_block(addr1, size, buf);
++ 				  free(buf);
++ 			  }
++ 			  break;
++ #endif		  /* DEBUGGING_MACROS */
++ 		  default:
++ 			  dbprintf("\tcmd %c unknown\n", cmd);
++ 		}
++ 	}
++ 	if (hashmark) {
++ 		printf("    \b\b");
++ 		fflush(stdout);
++ 	}
++ 	if(m_file) fclose(m_file);
++ 	dbprintf("\tfinished macro. errorcount %d\n", errorcount);
++ 	return 0;	
++ 		/*
++ 		 * dont give back errorcount, errors will show up on binary
++ 		 * download also.
++ 		 */
++ }
++ 
++ bdmlib_bfilt_t * bdmlib_bfilt=NULL;
++ 
++ int
++ bdmlib_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
++ 		u_int size, u_char * bl_ptr)
++ {
++ 	int ret, part_ret;
++ 	u_int part_size;	
++ 	if (!size) return 0;
++ 
++ 	while (filt) {
++ 		if((in_adr<=filt->end_adr)&&
++ 		   (in_adr+size-1>=filt->begin_adr)) {
++ 			ret = 0;
++ 			if(in_adr<filt->begin_adr) {
++ 				part_size=filt->begin_adr-in_adr;
++ 				part_ret=bdmlib_wrb_filt(filt->next,in_adr,part_size,bl_ptr);
++ 				ret+=part_ret;
++ 				if(part_ret!=part_size) return ret;
++ 				in_adr+=part_size;
++ 				bl_ptr+=part_size;
++ 				size-=part_size;
++ 			}
++ 			part_size=filt->end_adr-in_adr+1;
++ 			if (part_size>=size) {
++ 				part_size=size; 
++ 				size=0;
++ 			} else size-=part_size;
++ 			part_ret=filt->wrb_filt(filt,in_adr,part_size,bl_ptr);
++ 			ret+=part_ret;
++ 			if(part_ret!=part_size) {
++ 				dbprintf("write error on filt write, address 0x%lx size %d acknowledged %d errno %d\n",
++ 						(long)in_adr, part_size, part_ret, errno);
++ 				return ret;
++ 			}
++ 			in_adr+=part_size;
++ 			bl_ptr+=part_size;
++ 			if(!size) return ret;
++ 			ret+=bdmlib_wrb_filt(filt->next,in_adr,size,bl_ptr);
++ 			return ret;
++ 		}
++ 		filt=filt->next;
++ 	}
++ 	/* regular memory block write */
++ 	if ((ret = bdmlib_write_block(in_adr, size, bl_ptr)) != size) {
++ 		dbprintf("write error on block write, written %d acknowledged %d errno %d\n",
++ 				size, ret, errno);
++ 		return ret;
++ 	}
++ 	return ret;
++ }
++ 
++ int bdmlib_load_use_lma=0;
++ static int load_section_error;
++ 
++ static void
++ bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
++ {
++ 	u_long addr;
++ 	u_long dfc;
++ 	u_long load_bytes;
++ 	file_ptr offset;
++ 	int ret, cnt;
++ 	char cbuf[512];
++ 
++ 	dbprintf("bdmlib_load_section:\n\tsection %s index %d\n",
++ 			sec->name, sec->index);
++ 	dbprintf("\tflags %#x raw_size %d cooked_size %d\n",
++ 			sec->flags, sec->_raw_size, sec->_cooked_size);
++ 	dbprintf("\tvma %#x lma %#x output_offset %#x\n",
++ 			sec->vma, sec->lma, sec->output_offset);
++ 	if ((load_section_error < 0) ||
++ 		((bfd_get_section_flags(abfd, sec) & SEC_LOAD) == 0)) {
++ 		return;
++ 	}
++ 	if (bfd_get_section_flags(abfd, sec) & SEC_CODE)
++ 		dfc = 0x6;				/* Supervisor program space */
++ 	else
++ 		dfc = 0x5;				/* Supervisor data space */
++ 	if ((ret = bdmlib_set_sys_reg(BDM_REG_DFC, dfc)) < 0) {
++ 		load_section_error = ret;
++ 		return;
++ 	}
++ 	if(!bdmlib_load_use_lma)
++ 		addr = bfd_section_vma(abfd, sec);
++ 	else
++ 		addr = bfd_section_lma(abfd, sec);
++ 
++ 	if ((load_bytes = bfd_get_section_size_before_reloc(sec)) == 0)
++ 		return;
++ 	offset = 0;
++ 	while (load_bytes) {
++ 		if (load_bytes > sizeof(cbuf)) {
++ 			cnt = sizeof(cbuf);
++ 		} else {
++ 			cnt = load_bytes;
++ 		}
++ 		if (!bfd_get_section_contents(abfd, sec, cbuf, offset, cnt)) {
++ 			dbprintf("read error section %s\n", sec->name);
++ 			load_section_error = BDM_ERR_LOAD;
++ 			return;
++ 		}
++ 		if ((ret = bdmlib_wrb_filt(bdmlib_bfilt,(caddr_t) addr, cnt, cbuf)) != cnt) {
++ 			dbprintf("write error on block write, written %d acknowledged %d errno %d\n",
++ 					cnt, ret, errno);
++ 			load_section_error = BDM_ERR_LOAD;
++ 			return;
++ 		}
++ 
++ 		load_bytes -= cnt;
++ 		addr += cnt;
++ 		offset += cnt;
++ 		bdmlib_propeller(stdout);
++ 	}
++ }
++ 
++ static int bfd_initialized;
++ static bfd * prepare_binary(char *file_name)
++ {
++ 	bfd *abfd;
++ 
++ 	if (!bfd_initialized) {
++ 		bfd_init();
++ 		bfd_initialized = 1;
++ 	}
++ 	abfd = bfd_openr(file_name, 0);
++ 	if (!abfd) {
++ 		dbprintf("Unable to open file %s\n", file_name);
++ 		return NULL;
++ 	}
++ 	if (bfd_check_format(abfd, bfd_object) == 0) {
++ 		dbprintf("File %s is not an object file\n", file_name);
++ 		bfd_close(abfd);
++ 		return NULL;
++ 	}
++ 	return abfd;
++ }
++ 
++ /*
++  * load a binary file, returns error codes
++  */
++ int
++ bdmlib_do_load_binary(char *file_name, u_long *entry_pt)
++ {
++ 	bfd *abfd;
++ 	int ret;
++ 
++ 	if ((abfd = prepare_binary(file_name)) == NULL) 
++ 		return BDM_ERR_OPEN;
++ 	*entry_pt = bfd_get_start_address(abfd);
++ 	load_section_error = BDM_NO_ERROR;
++ 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED) && 
++ 		 ((ret = bdmlib_ioctl(BDM_STOP_CHIP)))) {
++ 		dbprintf("bdmlib_do_load_binary: %d %s\n", 
++ 			errno, bdmlib_geterror_str(-errno));
++ 		return -errno;
++ 	}
++ 	bfd_map_over_sections(abfd, bdmlib_load_section, NULL);
++ 	if (hashmark) {
++ 		printf(" .   \b\b");
++ 		fflush(stdout);
++ 	}
++ 	bfd_close(abfd);
++ 	return load_section_error;
++ }
++ 
++ int
++ bdmlib_do_load_binary_section(char *file_name, char *section_name)
++ {
++ 	bfd *abfd;
++ 	asection *sec;
++ 	int ret;
++ 
++ 	if ((abfd = prepare_binary(file_name)) == NULL) 
++ 		return BDM_ERR_OPEN;
++ 
++ 	if ((sec = bfd_get_section_by_name(abfd, section_name)) == NULL)
++ 		return BDM_ERR_SECTION;
++ 
++ 	load_section_error = BDM_NO_ERROR;
++ 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED) && 
++ 		 ((ret = bdmlib_ioctl(BDM_STOP_CHIP)))) {
++ 		dbprintf("bdmlib_do_load_binary: %d %s\n", 
++ 			errno, bdmlib_geterror_str(-errno));
++ 		return -errno;
++ 	}
++ 
++ 	if (hashmark) {
++ 		printf("  "); fflush(stdout);
++ 	}
++ 	bdmlib_load_section(abfd, sec, NULL);
++ 	if (hashmark) {
++ 		printf("\r         \r");
++ 		fflush(stdout);
++ 	}
++ 	bfd_close(abfd);
++ 	return load_section_error;
++ }
++ 
++ /*
++  * Load a file.
++  * This is supposed to be coff here, but bfd should handle other formats...
++  *
++  * use a macro for target specific manipulations, eg. setting
++  * chipselect, switching memory banks, etc.
++  */
++ 
++ int
++ bdmlib_load(char *file, u_long * entry_pt)
++ {
++ 	int ret = 0;
++ 	u_int sfc, dfc;
++ 	int we_have_macro_files = 0;
++ #if SUPPORT_RAMINIT
++ 	u_long dummy;
++ #endif 
++ 
++ 	if (!bdmlib_isopen())
++ 		return BDM_ERR_NOT_OPEN;
++ 	dbprintf("bdmlib_load: program name %s\n", file);
++ 
++ 	if (bdm_autoreset) bdmlib_reset();
++ 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED))
++ 		if ((ret = bdmlib_ioctl(BDM_STOP_CHIP))) {
++ 			fprintf_filtered(gdb_stderr, "%s", bdmlib_geterror_str(ret));
++ 			error("Download failed\n");
++ 			return ret;	/* this is for non-gdb applications */
++ 		}
++ 
++ 	bdmlib_set_sys_reg(BDM_REG_DFC, 5);
++ 	if ((ret = bdmlib_set_sys_reg(BDM_REG_SFC, 5)) < 0) {
++ 		return ret;
++ 	}
++ 	bdmlib_get_sys_reg(BDM_REG_DFC, &dfc);
++ 	bdmlib_get_sys_reg(BDM_REG_SFC, &sfc);
++ 	dbprintf("\tDFC %x SFC %x\n", dfc, sfc);
++ 
++ 	we_have_macro_files = !bdmlib_do_load_macro(file, BEGIN_MACRO);
++ 
++ #if SUPPORT_RAMINIT
++ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, &dummy)) < 0) {
++ 		error("ram_init load error.\n");
++ 	}
++ #endif /* SUPPORT_RAMINIT */
++ 
++ 	if ((ret = bdmlib_do_load_binary(file, entry_pt)) < 0) {
++ 		error("Download failed.");
++ 		return ret;
++ 	}
++ 	if (we_have_macro_files)
++ 		bdmlib_do_load_macro(file, END_MACRO);
++ 	return BDM_NO_ERROR;
++ 
++ }
++ 
++ static FILE *debug_fp;
++ 
++ static int
++ open_debug(void)
++ {
++ 	if ((debug_fp = fopen(BDM_DEBUG_NAME, "w")) == NULL) {
++ 		perror("bdm-dbprintf");
++ 		fprintf_filtered(gdb_stderr, "bdm: opening debug %s\n",
++ 			BDM_DEBUG_NAME);
++ 		return -1;
++ 	}
++ 	return 0;
++ }
++ 
++ /* debug printf for Log-file */
++ void 
++ dbprintf(const char *format, ...)
++ {
++ 	va_list  ap;
++ 
++ 	if (bdm_flags & BDM_DODPRINTF) {
++ 		if ((!debug_fp) && open_debug()) return;
++ 		va_start(ap, format);
++ 		vfprintf(debug_fp, format, ap); fflush(debug_fp);
++ 		va_end(ap);
++ 	} else if (debug_fp) {
++ 		fclose(debug_fp);
++ 		debug_fp = NULL;
++ 	}
++ }
++ 
++ void
++ bdmlib_log(const char *format, ...)
++ {
++ 
++ 	va_list ap;
++ 
++ /* 
++  * this would normally call dbprintf(); however it seems not possible
++  * to do nested varargs calls....
++  */
++ 
++ 	if (bdm_flags & BDM_DODPRINTF) {
++ 		if ((!debug_fp) && open_debug()) return;
++ 		va_start(ap, format);
++ 		fprintf(debug_fp, "%s: ", 
++ #if defined BDMLIB_FORGDB
++ 	"GDB"
++ #elif defined BDMLIB_FORFLT
++ 	"FLT"
++ #else
++ 	"???"
++ #endif
++ 		);
++ 		vfprintf(debug_fp, format, ap); fflush(debug_fp);
++ 		va_end(ap);
++ 	} else if (debug_fp) {
++ 		fclose(debug_fp);
++ 		debug_fp = NULL;
++ 	}
++ }
+diff -c -r -P gdb-5.2.1.original/gdb/bdmlib.h gdb-5.2.1/gdb/bdmlib.h
+*** gdb-5.2.1.original/gdb/bdmlib.h	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/bdmlib.h	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,81 ----
++ /*
++  * $Id: gdb-5.2.1-bdm.patch-1,v 1.1 2003/06/04 01:31:31 ppisa Exp $
++  */
++ 
++ #ifndef BDMLIB_H
++ #define BDMLIB_H
++ 
++ #include	<sys/types.h>
++ #include 	<stdarg.h>
++ #include 	<stdio.h>
++ 
++ typedef u_short bdmstatus;
++ 
++ extern int bdmlib_open(char *device);
++ extern int bdmlib_close(int);
++ extern int bdmlib_isopen(void);
++ extern int bdmlib_ioctl(u_int code);
++ extern int bdmlib_setioctl(u_int code, u_int val);
++ extern bdmstatus bdmlib_getstatus(void);
++ extern int bdmlib_write_var(caddr_t adr, u_short size, u_int val);
++ extern int bdmlib_read_var(caddr_t adr, u_short size, void *val);
++ extern int bdmlib_write_block(caddr_t adr, u_int size, u_char *block);
++ extern int bdmlib_read_block(caddr_t adr, u_int size, u_char *block);
++ extern int bdmlib_load(char *file, u_long *entry_pt);
++ extern int bdmlib_do_load_binary(char *file_name, u_long *entry_pt);
++ extern int bdmlib_do_load_macro(char *file_name, int is_begin_macro);
++ extern int bdmlib_get_sys_reg(u_int, u_int *);
++ extern int bdmlib_set_sys_reg(u_int, u_int);
++ extern int bdmlib_get_reg(u_int, u_int *);
++ extern int bdmlib_set_reg(u_int, u_int);
++ extern int bdmlib_go(void);
++ extern char *bdmlib_geterror_str(int);
++ extern char *bdmlib_getstatus_str(bdmstatus);
++ extern int bdmlib_reset(void);
++ extern void bdmlib_setdebug(int switch_on);
++ extern int bdmlib_querydebug(void);
++ extern void bdmlib_showpc(void);
++ extern void bdmlib_log(const char *format, ...);
++ extern void bdmlib_propeller(FILE * fp);
++ extern int bdmlib_do_load_binary_section(char *file_name, char *sect_name);
++ 
++ /* some additional error codes beyond those of the driver */
++ 
++ #define BDM_ERR_NOT_OPEN	-650
++ #define BDM_ERR_ILL_IOCTL	-651
++ #define BDM_ERR_WRITE_FAIL	-652
++ #define BDM_ERR_READ_FAIL	-653
++ #define BDM_ERR_ILL_SIZE	-654
++ #define BDM_ERR_OPEN		-655
++ #define BDM_ERR_LOAD		-656
++ #define BDM_ERR_MACROFILE	-657
++ #define BDM_ERR_SECTION 	-658
++ #define BDM_ERR_VERSION 	-659
++ #define BDM_NO_ERROR		0
++ 
++ /* support of filtered write for flash programming */
++ 
++ typedef struct bdmlib_bfilt{
++ 	struct bdmlib_bfilt *next;	
++ 	caddr_t begin_adr;
++ 	caddr_t end_adr;
++ 	int filt_id;
++ 	u_int flags;
++ 	int (*wrb_filt)(struct bdmlib_bfilt *, caddr_t , u_int, u_char * );
++ 	void *info;
++ 	void *state;
++ }bdmlib_bfilt_t;
++ 
++ #define BDMLIB_FILT_ERROR  0x08
++ #define BDMLIB_FILT_ERASED 0x10
++ #define BDMLIB_FILT_AUTO   0x20
++ #define BDMLIB_FILT_FLASH  0x40
++ 
++ int bdmlib_load_use_lma;	/* use LMA instead of VMA for load */
++ bdmlib_bfilt_t * bdmlib_bfilt;
++ 
++ int
++ bdmlib_wrb_filt(bdmlib_bfilt_t * bdmlib_bfilt, caddr_t in_adr,
++ 		u_int size, u_char * bl_ptr);
++ 
++ #endif /* BDMLIB_H */
+diff -c -r -P gdb-5.2.1.original/gdb/blockframe.c gdb-5.2.1/gdb/blockframe.c
+*** gdb-5.2.1.original/gdb/blockframe.c	Wed Feb 27 21:04:29 2002
+--- gdb-5.2.1/gdb/blockframe.c	Sat Nov  2 17:19:49 2002
+***************
+*** 239,245 ****
+  struct frame_info *
+  get_next_frame (struct frame_info *frame)
+  {
+!   return frame->next;
+  }
+  
+  /* Flush the entire frame cache.  */
+--- 239,249 ----
+  struct frame_info *
+  get_next_frame (struct frame_info *frame)
+  {
+!   if(frame) return frame->next;
+!   else{
+!     warning ("Internal error: get_next_frame(NULL) called");
+!     return NULL;
+!   }
+  }
+  
+  /* Flush the entire frame cache.  */
+diff -c -r -P gdb-5.2.1.original/gdb/config/m68k/bdm.mt gdb-5.2.1/gdb/config/m68k/bdm.mt
+*** gdb-5.2.1.original/gdb/config/m68k/bdm.mt	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/config/m68k/bdm.mt	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,7 ----
++ # Target: m68k bdm interface for CPU32(+)
++ XM_CLIBS=-lm 
++ TDEPFILES= m68k-tdep.o remote-bdm.o bdmlib.o bdmflash.o  \
++ 	monitor.o cpu32bug-rom.o dsrec.o
++ #TDEPFILES= m68k-tdep.o remote-bdm.o bdmlib.o 
++ TM_FILE= tm-bdm.h
++ DEFS += -DBDMLIB_FORGDB -Wall
+diff -c -r -P gdb-5.2.1.original/gdb/config/m68k/tm-bdm.h gdb-5.2.1/gdb/config/m68k/tm-bdm.h
+*** gdb-5.2.1.original/gdb/config/m68k/tm-bdm.h	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/config/m68k/tm-bdm.h	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,135 ----
++ /* Target machine description for BDM (Moto 683xx), for GDB, the GNU debugger.
++    Copyright 1994 Free Software Foundation, Inc.
++    Contributed by Gunter.Magin@lpr.e-technik.tu-muenchen.de
++ 
++ This file is part of GDB.
++ 
++ This program is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2 of the License, or
++ (at your option) any later version.
++ 
++ This program is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ 
++ You should have received a copy of the GNU General Public License
++ along with this program; if not, write to the Free Software
++ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
++ 
++ /* The definitions for M683xx BDM target */
++    
++ /* GCC is probably the only compiler used on this configuration.  So
++    get this right even if the code which detects gcc2_compiled. is
++    still broken.  */
++ 
++ #define BELIEVE_PCC_PROMOTION 1
++ 
++ /* bdm in CPU32 does it for us if we use PCC to get the PC */
++ #define	DECR_PC_AFTER_BREAK	0
++ 
++ /* use BGND cmd */
++ #define BREAKPOINT  {0x4a, 0xfa}
++ 
++ #define GDBINIT_FILENAME    ".gdbinit68"
++ 
++ /* the rest is generic */
++ #include "m68k/tm-m68k.h"
++ 
++ /* Need to do this for ELF targets, where we can't figure out the boundaries of
++    the entry file.  This method stops the backtrace when we reach main.  */
++ 
++ #define FRAME_CHAIN_VALID(fp,fi) func_frame_chain_valid (fp, fi)
++ 
++ /* the rest is from Eric Norum <eric@skatter.USask.Ca> */
++ /* modified for 68332 by gm */
++ /*
++  * Override some of the generic definitions
++  */
++ 
++ #if defined THIS_IS_FOR_68360
++ /*
++  * we need 27 registers:
++  *   8 data registers
++  *   8 address registers
++  *   2 other registers (PC, PS)
++  *   9 special registers
++  *   0 floating point registers
++  */
++ #undef NUM_REGS
++ #undef REGISTER_BYTES
++ #undef NUM_FREGS
++ #define NUM_REGS    27
++ #define REGISTER_BYTES (16*4 + 8 + 9*4 + 8*12 + 3*4)
++ 
++ /*
++  * Add the special registers in the CPU32(+)
++  */
++ #undef REGISTER_NAMES
++ #define REGISTER_NAMES  \
++  {"d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", \
++   "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp", \
++   "ps", "pc",  \
++   "pcc", "usp", "ssp", "sfc", "dfc", "atemp", "far", "vbr", "mbar", \
++   "fp0", "fp1", "fp2", "fp3", "fp4", "fp5", "fp6", "fp7", \
++   "fpcontrol", "fpstatus", "fpiaddr", "fpcode", "fpflags" }
++ 
++ /*
++  * Update register offsets to reflect the added registers
++  */
++ #undef FP0_REGNUM
++ #undef FPC_REGNUM
++ #undef FPS_REGNUM
++ #undef FPI_REGNUM
++ #define FP0_REGNUM 27		/* Floating point register 0 */
++ #define FPC_REGNUM 35		/* 68881 control register */
++ #define FPS_REGNUM 36		/* 68881 status register */
++ #define FPI_REGNUM 37		/* 68881 iaddr register */
++ 
++ #else
++ /*
++  * we need 26 registers:
++  *   8 data registers
++  *   8 address registers
++  *   2 other registers (PC, PS)
++  *   8 special registers
++  *   0 floating point registers
++  */
++ #undef NUM_REGS
++ #undef REGISTER_BYTES
++ #undef NUM_FREGS
++ #define NUM_REGS    26
++ #define REGISTER_BYTES (16*4 + 2*4 + 9*4 + 8*12 + 3*4)
++ /* reserve space for FP registers, just in case someone stumbles over it */
++ 
++ /*
++  * Add the special registers in the CPU32(+)
++  */
++ #undef REGISTER_NAMES
++ #define REGISTER_NAMES  \
++  {"d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", \
++   "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp", \
++   "ps", "pc",  \
++   "pcc", "usp", "ssp", "sfc", "dfc", "atemp", "far", "vbr" /*, "mbar", \
++   "fp0", "fp1", "fp2", "fp3", "fp4", "fp5", "fp6", "fp7", \
++   "fpcontrol", "fpstatus", "fpiaddr", "fpcode", "fpflags" */ }
++ 
++ /*
++  * Update register offsets to reflect the added registers
++  */
++ #undef FP0_REGNUM
++ #undef FPC_REGNUM
++ #undef FPS_REGNUM
++ #undef FPI_REGNUM
++ #define FP0_REGNUM 26		/* Floating point register 0 */
++ #define FPC_REGNUM 34		/* 68881 control register */
++ #define FPS_REGNUM 35		/* 68881 status register */
++ #define FPI_REGNUM 36		/* 68881 iaddr register */
++ 
++ #endif
++ /*
++  * The other definitions and macros don't need to be changed:
++  *    a) The CPU32(+) has no floating point registers
++  *    b) The REGISTER_BYTES_OK macro isn't used
++  */
+diff -c -r -P gdb-5.2.1.original/gdb/configure.tgt gdb-5.2.1/gdb/configure.tgt
+*** gdb-5.2.1.original/gdb/configure.tgt	Wed May 29 04:36:55 2002
+--- gdb-5.2.1/gdb/configure.tgt	Sat Nov  2 17:19:49 2002
+***************
+*** 159,164 ****
+--- 159,165 ----
+  m68*-motorola-*)	gdb_target=delta68 ;;
+  m68*-netx-*)		gdb_target=vxworks68 ;;
+  m68*-tandem-*)		gdb_target=st2000 ;;
++ m68*-bdm-*)		gdb_target=bdm ;;
+  m68*-*-aout*)		gdb_target=monitor ;;
+  m68*-*-coff*)		gdb_target=monitor ;;
+  m68*-*-elf*)		gdb_target=monitor ;;
+diff -c -r -P gdb-5.2.1.original/gdb/m68k-tdep.c gdb-5.2.1/gdb/m68k-tdep.c
+*** gdb-5.2.1.original/gdb/m68k-tdep.c	Sun Dec  2 00:06:46 2001
+--- gdb-5.2.1/gdb/m68k-tdep.c	Sat Nov  2 17:19:49 2002
+***************
+*** 183,189 ****
+       this target or not.  */
+    for (regnum = FP0_REGNUM + 7; regnum >= FP0_REGNUM; regnum--)
+      {
+!       read_register_bytes (REGISTER_BYTE (regnum), raw_buffer, 12);
+        sp = push_bytes (sp, raw_buffer, 12);
+      }
+  
+--- 183,192 ----
+       this target or not.  */
+    for (regnum = FP0_REGNUM + 7; regnum >= FP0_REGNUM; regnum--)
+      {
+!       if(regnum < NUM_REGS)
+!         read_register_bytes (REGISTER_BYTE (regnum), raw_buffer, 12);
+!       else
+!         memset(raw_buffer,0,12);
+        sp = push_bytes (sp, raw_buffer, 12);
+      }
+  
+***************
+*** 211,216 ****
+--- 214,220 ----
+    get_frame_saved_regs (frame, &fsr);
+    for (regnum = FP0_REGNUM + 7; regnum >= FP0_REGNUM; regnum--)
+      {
++       if(regnum >= NUM_REGS) continue;
+        if (fsr.regs[regnum])
+  	{
+  	  read_memory (fsr.regs[regnum], raw_buffer, 12);
+***************
+*** 377,383 ****
+  	  /* Regmask's low bit is for register fp7, the first pushed */
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+! 	      saved_regs->regs[regnum] = (next_addr -= 12);
+  	  pc += 4;
+  	}
+        /* fmovemx to (fp + displacement) */
+--- 381,391 ----
+  	  /* Regmask's low bit is for register fp7, the first pushed */
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+! 	      {
+! 	        next_addr -= 12;
+! 		if(regnum < NUM_REGS)
+! 	          saved_regs->regs[regnum] = next_addr;
+! 	      }
+  	  pc += 4;
+  	}
+        /* fmovemx to (fp + displacement) */
+***************
+*** 390,396 ****
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+  	      {
+! 		saved_regs->regs[regnum] = addr;
+  		addr += 12;
+  	      }
+  	  pc += 6;
+--- 398,405 ----
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+  	      {
+! 		if(regnum < NUM_REGS)
+! 		  saved_regs->regs[regnum] = addr;
+  		addr += 12;
+  	      }
+  	  pc += 6;
+***************
+*** 445,451 ****
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+  	      {
+! 		saved_regs->regs[regnum] = next_addr;
+  		next_addr += 12;
+  	      }
+  	  pc += 10;
+--- 454,461 ----
+  	  for (regnum = FP0_REGNUM + 8; --regnum >= FP0_REGNUM; regmask >>= 1)
+  	    if (regmask & 1)
+  	      {
+! 		if(regnum < NUM_REGS)
+! 		  saved_regs->regs[regnum] = next_addr;
+  		next_addr += 12;
+  	      }
+  	  pc += 10;
+diff -c -r -P gdb-5.2.1.original/gdb/monitor.c gdb-5.2.1/gdb/monitor.c
+*** gdb-5.2.1.original/gdb/monitor.c	Sun Feb 10 05:08:41 2002
+--- gdb-5.2.1/gdb/monitor.c	Sat Nov  2 17:19:49 2002
+***************
+*** 107,113 ****
+  
+  static struct monitor_ops *current_monitor;
+  
+! static int hashmark;		/* flag set by "set hash" */
+  
+  static int timeout = 30;
+  
+--- 107,117 ----
+  
+  static struct monitor_ops *current_monitor;
+  
+! extern char hashmark;		
+! 	/*
+! 	 * hack to enable multiple targets using 
+! 	 * `hashmark'; flag set by "set hash" 
+! 	 */
+  
+  static int timeout = 30;
+  
+diff -c -r -P gdb-5.2.1.original/gdb/remote-bdm.c gdb-5.2.1/gdb/remote-bdm.c
+*** gdb-5.2.1.original/gdb/remote-bdm.c	Sat Nov  2 17:19:49 2002
+--- gdb-5.2.1/gdb/remote-bdm.c	Sat Nov  2 17:19:49 2002
+***************
+*** 0 ****
+--- 1,1676 ----
++ /*
++  * $Id: gdb-5.2.1-bdm.patch-1,v 1.1 2003/06/04 01:31:31 ppisa Exp $
++  *
++  * Remote debugging interface for 683xx via Background Debug Mode
++  * needs a device driver, which controls the BDM interface.
++  * written by G.Magin
++  * (C) 1995 Technische Universitaet Muenchen, Lehrstuhl fuer Prozessrechner
++  * (C) 1996 Technische Universitaet Muenchen, Lehrstuhl fuer Prozessrechner
++ 
++ This program is free software; you can redistribute it and/or modify
++ it under the terms of the GNU General Public License as published by
++ the Free Software Foundation; either version 2, or (at your option)
++ any later version.
++ 
++ This program is distributed in the hope that it will be useful,
++ but WITHOUT ANY WARRANTY; without even the implied warranty of
++ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ GNU General Public License for more details.
++ 
++ You should have received a copy of the GNU General Public License
++ along with this program; see the file COPYING.  If not, write to
++ the Free Software Foundation, 59 Temple Place - Suite 330,
++ Boston, MA 02111-1307, USA.
++ 
++  */
++ 
++ #include "defs.h"
++ #include "gdbcore.h"
++ #include "target.h"
++ #include "gdb_wait.h"
++ #include <bfd.h>
++ #include <unistd.h>
++ #include <stdlib.h>
++ #include <errno.h>
++ #include <signal.h>
++ #include <string.h>
++ #include <stdio.h>
++ #include <fcntl.h>
++ #include <ctype.h>
++ #include <sys/types.h>
++ #include <sys/ioctl.h>
++ #include "command.h"
++ #include "inferior.h"
++ #include "value.h"
++ #include "breakpoint.h"
++ #include "bdmlib.h"
++ #include "bdm.h"
++ 
++ #define BDM_MAGIC_NULL_PID 4200
++ 
++ #define ENABLE_BDM_FLASH
++ #ifdef ENABLE_BDM_FLASH
++ #include "bdmflash.h"
++ #endif /*ENABLE_BDM_FLASH*/
++ 
++ extern int (*ui_loop_hook) (int);
++ 
++ extern struct target_ops bdm_ops;	 /* Forward declaration */
++ 
++ struct cmd_list_element *showlist;
++ extern struct cmd_list_element *setlist;
++ 
++ static int bdm_delay;
++ static u_long entry_pt;
++ static void bdm_clear_breakpoints(void);
++ static void bdm_close(int);
++ static void bdm_fetch_register(int);
++ static void bdm_store_register(int);
++ static char *bdm_prog_loaded;
++ 
++ #define	BDM_DEBUG_NAME	"bdm-dbg.log"
++ extern char hashmark;		
++ 	/*
++ 	 * hack to enable multiple target modules using 
++      * `hashmark'; flag set by "set hash" 
++ 	 */
++ static int bdm_gotexception;		/* flag to signal fatal exit */
++ 
++ #define	TIME_TO_COME_UP	60000
++ int bdm_ttcu = TIME_TO_COME_UP;	
++ 		/* time-to-come-up for a target-monitor */
++ int bdm_autoreset;
++ 		/* issue an automatic reset before download */
++ static int bdm_sensecable;
++ 		/* check if cable connected and power applied */
++ static int bdm_xfer_use_fast=1;
++ 		/* set to 1 to enable faster transfer of variables <= 4 bytes */
++ 
++ /* default delay for interface */
++ #define	BDM_DEFAULT_DELAY	75
++ 
++ #define	BDM_DODPRINTF		(1<<0)
++ #define	BDM_GOTEXCEPTION	(1<<1)
++ 
++ static struct _bdm_bp {
++ 	CORE_ADDR	addr;
++ 	int			valid;
++ } bdm_bp[BREAKPOINT_MAX];
++ 
++ 
++ static void
++ nap (int microseconds)
++ {
++         struct timeval tv;
++ 
++         tv.tv_sec = microseconds / 1000000;
++         tv.tv_usec = microseconds % 1000000;
++         select (0, NULL, NULL, NULL, &tv);
++ }
++ 
++ /* 
++  * this is for bdm_reset and other bdm special commands.
++  * generic GDB commands are checked by registering bdm_ops struct
++  */
++ static void bdm_check_fd()
++ {
++ 	if (!(bdmlib_isopen())) {
++ 		error("\
++ Bdm is not yet opened. Use the 'target bdm <bdm-device>' command to open \n\
++ the bdm interface\n\
++ Use 'help bdm' for more online info");
++ 	}
++ 
++ }
++ 
++ static void bdm_check_status()
++ {
++ bdmstatus b = bdmlib_getstatus();
++ 	if (b & BDM_TARGETNC) {
++ 		error("Target cable not connected.");
++ 	} else if (b & BDM_TARGETPOWER) {
++ 		error("Target has no Power");
++ 	}
++ }
++ 
++ /* 
++  * control logging in the driver module
++  */
++ static void
++ bdm_set_debug_driver_interactive(char *arg, int from_tty)
++ {
++ int ret;
++ 
++ 	bdmlib_log("bdm_set_debug_driver_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (arg == NULL) {
++ 		fprintf_filtered(gdb_stderr, "no level specified\n");
++ 		return;
++ 	} 
++ 	if ((ret = bdmlib_setioctl(BDM_DEBUG_LEVEL, (u_long) atoi(arg)))) {
++ 		fprintf_filtered(gdb_stderr, "failed, error %s\n",
++ 			bdmlib_geterror_str(ret));
++ 	}
++ }
++ 
++ /*
++  * enable logging in this module and the bdmlib-module
++  */
++ static void
++ bdm_set_debug_interactive(char *arg, int from_tty)
++ {
++ 	bdmlib_log("bdm_set_debug_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (arg == NULL) {
++ 		if (from_tty) 
++ 			printf_filtered("bdm_log is %s\n", 
++ 				bdmlib_querydebug() ? "on" : "off");
++ 	} else if (!(strcmp(arg, "on"))) {
++ 		if (from_tty) printf_filtered("on\n");
++ 		bdmlib_setdebug(1);
++ 	} else if (!(strcmp(arg, "off"))) {
++ 		if (from_tty) printf_filtered("off\n");
++ 		bdmlib_setdebug(0);
++ 	} else {
++ 		printf_filtered("illegal option %s\n", arg);
++ 	}
++ }
++ 
++ static void 
++ bdm_setdelay_interactive(char *arg, int from_tty)
++ {
++ char *dummy;
++ int ret;
++ 
++ 	bdmlib_log("bdm_setdelay_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (!arg) {
++ 		if (bdm_delay) printf_filtered("bdm_delay is %d\n", bdm_delay);
++ 		else 
++ 			printf_filtered("using default delay %d\n", BDM_DEFAULT_DELAY);
++ 	} else {
++ 		bdm_delay = strtol(arg, &dummy, 0);
++ 		if ((ret = bdmlib_setioctl(BDM_SPEED, strtol(arg, &dummy, 0)))) {
++ 			fprintf_filtered(gdb_stderr, "failed, error %s\n",
++ 				bdmlib_geterror_str(ret));
++ 		}
++ 	}
++ }
++ 
++ static void 
++ bdm_sensecable_interactive(char *arg, int from_tty)
++ {
++ int ret;
++ 
++ 	bdmlib_log("bdm_sensecable_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (arg == NULL) {
++ 		if (from_tty) 
++ 			printf_filtered("sensing is %s\n", 
++ 				(bdm_sensecable) ? "on" : "off");
++ 	} else {
++ 		if (!(strcmp(arg, "on"))) {
++ 			if (from_tty) printf_filtered("on\n");
++ 			bdm_sensecable = 1;
++ 		} else if (!(strcmp(arg, "off"))) {
++ 			if (from_tty) printf_filtered("off\n");
++ 			bdm_sensecable = 0;
++ 		} else {
++ 			error("illegal option %s\n", arg);
++ 		}
++ 		if ((ret = bdmlib_setioctl(BDM_SENSECABLE,bdm_sensecable))) {
++ 			fprintf_filtered(gdb_stderr, "ioctl failed, error %s\n",
++ 				bdmlib_geterror_str(ret));
++ 		}
++ 	}
++ }
++ 
++ static void 
++ bdm_setautoreset_interactive(char *arg, int from_tty)
++ {
++ 
++ 	bdmlib_log("bdm_setautoreset_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (arg == NULL) {
++ 		if (from_tty) 
++ 			printf_filtered("automatic reset is %s\n", 
++ 				(bdm_autoreset) ? "on" : "off");
++ 	} else if (!(strcmp(arg, "on"))) {
++ 		if (from_tty) printf_filtered("on\n");
++ 		bdm_autoreset = 1;
++ 	} else if (!(strcmp(arg, "off"))) {
++ 		if (from_tty) printf_filtered("off\n");
++ 		bdm_autoreset = 0;
++ 	} else {
++ 		printf_filtered("illegal option %s\n", arg);
++ 	}
++ }
++ 
++ static void 
++ bdm_setttcu_interactive(char *arg, int from_tty)
++ {
++ char *dummy;
++ 
++ 	bdmlib_log("bdm_setttcu_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (!arg) {
++ 		printf_filtered("time-to-come-up is %d\n", bdm_ttcu);
++ 	} else {
++ 		bdm_ttcu = strtol(arg, &dummy, 0);
++ 	}
++ }
++ 
++ static void 
++ bdm_setentry_interactive(char *arg, int from_tty)
++ {
++ char *dummy;
++ 
++ 	bdmlib_log("bdm_setentry_interactive: arg <%s> from_tty %d\n", 
++ 			arg, from_tty);
++ 	bdm_check_fd();
++ 	if (!arg) {
++ 		printf_filtered("current entry point is %#lx\n", entry_pt);
++ 	} else {
++ 		entry_pt = strtol(arg, &dummy, 0);
++ 	}
++ }
++ 
++ /*
++  * initialize bdm interface port
++  */
++ static void
++ bdm_init(int tty, char *arg)
++ {
++ int ret;
++ 	bdm_check_fd();
++ 	if ((ret = bdmlib_ioctl(BDM_INIT))) {
++ 		fprintf_filtered(gdb_stderr, "failed, error %s\n",
++ 			bdmlib_geterror_str(ret));
++ 	}
++   	bdmlib_log("bdm_init: res %d\n", ret);
++ }
++ 
++ static void
++ bdm_get_status_interactive(char *arg, int from_tty)
++ {
++ bdmstatus stat;
++ char *str;
++ 
++ 	bdm_check_fd();
++ 	stat = bdmlib_getstatus();
++ 	str = bdmlib_getstatus_str(stat);
++ 	printf_filtered("%s\n", str);
++ 	bdmlib_log("bdm_get_status_int arg <%s> from_tty <%d> stat %d %s\n", 
++ 			arg, from_tty, stat, str);
++ }
++ 
++ static void
++ bdm_release_chip(void)
++ {
++ int ret;
++ 
++ 	/*
++ 	 * dont perform a bdm_check_fd() as we need to be able to quit gdb
++ 	 * if we accidentially entered bdm mode, and no cable or target
++ 	 * is connected
++ 	 */
++ 	if (!(bdmlib_isopen())) return;
++ 	if ((ret = bdmlib_ioctl(BDM_RELEASE_CHIP))) {
++ 		fprintf_filtered(gdb_stderr, "failed, error %s\n",
++ 			bdmlib_geterror_str(ret));
++ 	}
++   	bdmlib_log("bdm_release_chip: %d (%#x)\n", ret, ret);
++ }
++ 
++ static void 
++ bdm_reset(void)
++ {
++ 	bdm_check_fd(); bdm_check_status();
++ 	bdmlib_log("bdm_reset\n");
++ 	bdm_gotexception = 0;
++ 	bdmlib_reset();
++ 	registers_changed();
++ }
++ 
++ /*
++  * step chip: execute a single instruction
++  */
++ static void
++ bdm_step_chip()
++ {
++ int ret;
++ u_int help;
++ 	bdm_check_fd(); bdm_check_status();
++ 	if ((ret = bdmlib_get_sys_reg(BDM_REG_RPC, &help)) < 0) {
++ 		error("%s", bdmlib_geterror_str(ret));
++ 	}
++ 	bdmlib_log("bdm_step_chip at pc=%#x\n", extract_unsigned_integer(&help, 4));
++ 	if ((ret = bdmlib_ioctl(BDM_STEP_CHIP)) < 0) {
++ 		error("%s", bdmlib_geterror_str(ret));
++ 	}
++ 	bdmlib_log("bdm_step_chip\n");
++ }
++ 
++ #ifdef BDM_STEP_DEBUGGING
++ void
++ bdm_step(char *arg, int from_tty)
++ {
++ int i, usecs, count, ret;
++ long adr;
++ char *dummy;
++ 	bdmlib_log("bdm_step: arg <%s> from_tty %d\n", arg, from_tty);
++ 	adr = strtol(arg, &dummy, 0);
++ 	usecs = strtol(dummy, &dummy, 0);
++ 	count = strtol(dummy, &dummy, 0);
++ 	bdmlib_log("\tadr = %#x usecs %d count %d\n", adr, usecs, count);
++ 	if ((ret = bdmlib_set_sys_reg(BDM_REG_RPC, adr))) {
++ 		fprintf_filtered(gdb_stderr, 
++ 			"bdm_step: setting pc failed ret %d\n", ret);
++ 		usleep(400000);
++ 		return;
++ 	}
++ 	for (i=0; i<count; i++) {
++ 		if ((ret = bdmlib_ioctl(BDM_STEP_CHIP)) < 0) {
++ 			fprintf_filtered(gdb_stderr, 
++ 				"bdm_step: stepping failed %s\n", bdmlib_geterror_str(ret));
++ 		}
++ 		usleep(usecs);
++ 	}
++ }
++ #endif /* BDM_STEP_DEBUGGING */
++ 
++ /*
++  * true if runnable
++  */
++ static int
++ bdm_can_run(void)
++ {
++ 	bdmlib_log("bdm_can_run\n");
++ 	if (bdm_gotexception) return 0;
++ 	return 1;
++ }
++ 
++ static char *dev_name;
++ /*
++  * Open a connection the target via bdm
++  * name is the devicename of bdm and the filename to be used
++  * used for communication.
++  */
++ static void
++ bdm_open(char *name, int from_tty)
++ {
++ char *p;
++ int res;
++ 
++ 	if (bdmlib_isopen()) {
++ 		error("\
++ Bdm is already open, so please close it first");
++ 	}
++ 	if (name == NULL) {
++ 		error("\
++ Use 'target bdm <DEVICE-NAME>' to use the bdm target");
++ 	}
++ 	/*
++ 	 * Find the first whitespace character after device and chop it off
++ 	 */
++ 
++ 	for (p = name; (*p != '\0') && (!isspace (*p)); p++)
++ 		;
++ 	if ((*p == '\0') && (p == name))
++     error ("\
++ Please include the name of the device for the bdm port. ");
++ 
++ 	dev_name = savestring(name, p - name);
++ 
++ 	target_preopen(from_tty);
++ 	unpush_target(&bdm_ops);
++ 
++ 	if ((res = bdmlib_open(dev_name)) < 0) {
++ 		p = bdmlib_geterror_str(res);
++ 		bdmlib_log("bdm_open: error on open %s res %d errno %d <%s>\n",
++ 			dev_name, res, errno, p);
++ 		perror_with_name(dev_name); 	/* auto return to prompt */
++ 		return;
++ 	}
++ 
++ 	bdm_sensecable_interactive("on", 0);
++ 
++ 	push_target (&bdm_ops);
++ 
++ 	bdm_clear_breakpoints();
++ 
++ 	if (from_tty)
++ 		printf_filtered("Remote %s connected to %s\n", 
++ 			target_shortname, dev_name);
++ 
++     #if 0
++ 	/* We need some PTID to make rest of GDB happy */
++ 	if(ptid_equal(inferior_ptid, null_ptid)) {
++ 		inferior_ptid = pid_to_ptid(BDM_MAGIC_NULL_PID);
++ 	}
++     #endif
++ }
++ 
++ static void
++ bdm_close (quitting)
++      int quitting;
++ {
++ 	inferior_ptid = null_ptid;
++ 	if (!bdmlib_isopen()) return;	/* ignore, if not open */
++ 	bdmlib_close(quitting);
++ }
++ 
++ /*
++  * kill means: terminate current application and return to system prompt.
++  * On a target, this might mean go to the monitor.
++  * However, this might be reached with bdm_reset as well.
++  * On a target without monitor, kill makes no sense.
++  * So we ignore the kill command completely.
++  */
++ 
++ static void
++ bdm_kill(void)
++ {
++     #if 1	
++ 	inferior_ptid = null_ptid;
++     #endif
++ 	return;
++ }
++ 
++ static void
++ bdm_attach(char *args, int from_tty)
++ {
++ 	bdmlib_log("bdm_attach dummy: arg1 <%s> from_tty %d\n", args, from_tty);
++ 	if(ptid_equal(inferior_ptid, null_ptid)) {
++ 		inferior_ptid = pid_to_ptid(BDM_MAGIC_NULL_PID);
++ 	}
++ }
++ 
++ /*
++  * _detach -- Terminate the open connection to the remote debugger.
++  * takes a program previously attached to and detaches it.
++  * We better not have left any breakpoints
++  * in the program or it'll die when it hits one.
++  * Close the open connection to the remote debugger.
++  * Use this when you want to detach and do something else
++  * with your gdb. 
++  */
++ static void
++ bdm_detach (char *args, int from_tty)
++ {
++ bdmlib_log("bdm_detach from_tty %d args %s\n", from_tty, args);
++ bdmlib_log("?? does it call bdm_close to do hard work?\n");
++ 	pop_target();		/* calls bdm_close to do the real work */
++     #if 1	
++ 	inferior_ptid = null_ptid;
++     #endif
++ }
++ 
++ /*
++  * _resume -- Tell the remote machine to resume.
++  */
++ static void
++ bdm_resume(ptid_t pid, int step, enum target_signal sig)
++ {
++ static u_int psw;
++ u_int newpsw;
++ static int int_flag;
++ u_int help;
++ 
++ bdmlib_log("bdm_resume: pid %d step=%d, sig=%d\n", pid, step, sig);
++ 	if (step) {
++ 		/* 
++ 		 * This is to avoid to get jumped into an ISR if there is
++ 		 * an Int pending when resuming operation.
++ 		 * This is pesky, if we want to resume from a breakpoint.
++ 		 * After a `continue', we stop after the first instruction, which
++ 		 * is inside the ISR, after a second continue, we come back to the 
++ 		 * original place, where the BP has been restored. No progress so
++ 		 * far.
++ 		 * So we shut off interrupts, and step over the instruction,
++ 		 * and then restore the clobbered int mask when continuing.
++ 		 *
++ 		 * As GDB implements `next' or `continue' with some single-steps 
++ 		 * first, the main purpose of this int mask fiddling is to make 
++ 		 * interrupts more transparent to the user. Still the user can set 
++ 		 * breakpoints to ISRs.
++ 		 *
++ 		 * However: This is a cludge. If we step over an operation 
++ 		 * manipulating the int priority mask in the status register, 
++ 		 * we loose! The code below is best effort on a compromise with 
++ 		 * speed on single stepping, however, it can be easily fooled.
++ 		 *
++ 		 * Please tell me other suggestions! (gm 20.07.96)
++ 		 * 
++ 		 */
++ 		if (!int_flag) {
++ 			bdmlib_get_sys_reg(BDM_REG_SR, &help);
++ 			psw = extract_unsigned_integer(&help, 4);
++ 			bdmlib_set_sys_reg(BDM_REG_SR, psw | 0x0700);
++ 			int_flag++;
++ 			bdmlib_log("\tgetting psw %x setting to %x\n", psw, psw | 0x0700);
++ 		}
++ 		bdm_step_chip();
++ 		/* 
++ 		 * nothing must be transfered to/from target after the 
++ 		 * HW-BKPT based single step because analyze_exception() needs
++ 		 * untouched ATEMP
++ 		 */
++ 	} else {
++ 		if (int_flag) {
++ 			bdmlib_get_sys_reg(BDM_REG_SR, &help);
++ 			newpsw = extract_unsigned_integer(&help, 4);
++ 			if ((newpsw & 0x0f00) == 0x0700) {
++ 				bdmlib_set_sys_reg(BDM_REG_SR, 
++ 					(newpsw & 0xf0ff) | (psw & 0x0f00));
++ 				bdmlib_log("\tbefore go setting psw from %x back to %x\n", 
++ 					newpsw, (newpsw & 0xf0ff) | (psw & 0x0f00));
++ 			} else {
++ 				bdmlib_log("\tAlarm: Intmask changed when stepping: %x to %x\n",
++ 					psw, newpsw & 0xf0ff);
++ 			}
++ 			int_flag = 0;
++ 		}
++ 		bdmlib_go();
++ 	}
++ }
++ 
++ static int ctrlc_int;
++ static void bdm_signal_handler(int s)
++ {
++ 	ctrlc_int++;
++ }
++ 
++ static int 
++ is_a_breakpoint(CORE_ADDR pc)
++ {
++ int i;
++ struct _bdm_bp *p;
++ 	for (i=0, p = bdm_bp; i < BREAKPOINT_MAX; i++, p++) {
++ 		if ((p->valid) && (p->addr == pc)) {
++ 			return 1;
++ 		}
++ 	}
++ 	return 0;
++ }
++ 
++ /* size of exception frame in _words_ */
++ static struct exec {
++ 	char size;
++ 	char used;
++ } except_frame_size[] = {
++ 	{4,	1},	/* format $0 */
++ 	{4, 1},	/* format $1: throw away stack */
++ 	{6,	1},	/* format $2 */
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{4, 0},
++ 	{12, 1},	/* format $c */
++ 	{4, 1},
++ 	{4, 1},
++ 	{4, 1}
++ };
++ 	
++ 
++ /*
++  * We have fallen into an exception supported by the runtime system.
++  * by executing the "bgnd" instruction in the trap handler
++  */
++ static int analyze_exception(u_short val_h, struct target_waitstatus *status)
++ {
++ u_int pcc, rpc, sp;
++ u_int help;
++ u_int sr, vec;
++ 
++ bdmlib_log("bdm_analyze_exception: val_h = %#x (should be 0x0)\n", val_h);
++ 
++ 	/*
++ 	 * get pc to check for breakpoints
++ 	 */
++ 	bdmlib_get_sys_reg(BDM_REG_PCC, &help);
++ 	pcc = extract_unsigned_integer(&help, 4);
++ 	bdmlib_get_sys_reg(BDM_REG_RPC, &help);
++ 	rpc = extract_unsigned_integer(&help, 4);
++ 	/*
++ 	 * check if encountered a BGND-Breakpoint
++ 	 */
++ 	if (is_a_breakpoint(pcc)) {
++ 		bdmlib_log("\tbkpt found at (pcc) = %#x\n", pcc);
++ 		status->kind = TARGET_WAITKIND_STOPPED;
++ 		status->value.sig = TARGET_SIGNAL_TRAP; 
++ 		bdmlib_set_sys_reg(BDM_REG_PCC, pcc);
++ 		bdmlib_set_sys_reg(BDM_REG_RPC, pcc);
++ 		return 0;
++ 	} 
++ 
++ 	/*
++ 	 * now analyze stack for a trap
++ 	 */
++ 	bdmlib_get_sys_reg(BDM_REG_SSP, &help); 
++ 	sp = extract_unsigned_integer(&help, 4);
++ 	/* get pc from stack and stuff it into pcc */
++ 	bdmlib_read_var((caddr_t) sp, BDM_SIZE_WORD, &sr); sr &= 0xffff;
++ 	bdmlib_read_var((caddr_t) (sp+6), BDM_SIZE_WORD, &vec); vec &= 0xffff;
++ 	bdmlib_read_var((caddr_t) (sp+2), BDM_SIZE_LONG, &pcc);
++ 	pcc -= 2;	/* pc has advanced before code insertion */
++ 	bdmlib_log("\tsp = %#x\n", sp);
++ 	bdmlib_log("\tsr=%#x pc=%#x rpc=%#x vec=%#x (%x + %x)\n", 
++ 		sr, pcc, rpc, vec, vec >> 12, vec & 0xfff);
++ 
++ 	sp += (except_frame_size[vec>>12].size << 1);
++ 	bdmlib_log("\tsp fixed to %#x\n", sp);
++ 	bdmlib_set_reg(BDM_REG_A7, sp);
++ 	bdmlib_log("\tstackframe code %s\n", 
++ 		except_frame_size[vec>>12].used ? "known and valid" : "unknown");
++ 
++ 	bdmlib_log("\t fixing pc to %#x\n", pcc);
++ 	bdmlib_set_sys_reg(BDM_REG_RPC, pcc);
++ 	bdmlib_set_sys_reg(BDM_REG_RPC, pcc);
++ 
++ #if defined INSPECT_STACK_FRAME
++ 	{ int i;
++ 		for (i=0; i < 36; i += 4) {
++ 			bdmlib_read_var(sp - (except_frame_size[vec>>12].size<<1) + i, 
++ 					BDM_SIZE_LONG, &help);
++ 			bdmlib_log("\t\t\t\t\t*%#x = %#x\n", sp + i, help);
++ 		}
++ 	}
++ #endif /* INSPECT_STACK_FRAME */
++ 
++ 	status->kind = TARGET_WAITKIND_STOPPED;
++ 	switch ((vec & 0xfff) >> 2) {
++     	case 2 : /* bus error           */
++ 			status->value.sig = TARGET_SIGNAL_BUS; break; 
++     	case 3 : /* address error       */
++ 			status->value.sig = TARGET_SIGNAL_BUS; break; 
++     	case 4 : /* illegal instruction */
++ 			status->value.sig = TARGET_SIGNAL_ILL;  break; 
++     	case 5 : /* zero divide         */
++ 			status->value.sig = TARGET_SIGNAL_FPE;  break; 
++     	case 6 : /* chk instruction     */
++ 			status->value.sig = TARGET_SIGNAL_FPE; break; 
++     	case 7 : /* trapv instruction   */
++ 			status->value.sig = TARGET_SIGNAL_FPE; break; 
++     	case 8 : /* privilege violation */
++ 			status->value.sig = TARGET_SIGNAL_SEGV; break; 
++     	case 9 : /* trace trap          */
++ 			status->value.sig = TARGET_SIGNAL_TRAP;  break; 
++     	case 10: /* line 1010 emulator  */
++ 			status->value.sig = TARGET_SIGNAL_ILL;  break; 
++     	case 11: /* line 1111 emulator  */
++ 			status->value.sig = TARGET_SIGNAL_ILL;  break; 
++ 	    case 13: 
++ 			/*
++ 			 * Coprocessor protocol violation.  Using a standard MMU or FPU
++ 	 		 * this cannot be triggered by software.  Call it a SIGBUS. 
++ 			 */
++ 			status->value.sig = TARGET_SIGNAL_BUS;  break;
++ 	    case 31: /* interrupt           */
++ 			status->value.sig = TARGET_SIGNAL_INT;  break; 
++ 		case 46: /* trap#14 == program end */
++ 			bdm_ops.to_has_execution = 0;
++ 			status->kind  = TARGET_WAITKIND_EXITED;
++ 			bdmlib_read_var((caddr_t) (sp+8), BDM_SIZE_LONG, &help);
++ 			status->value.integer = help;
++ 			break;
++    		case 47: /* breakpoint          */
++ 			status->value.sig = TARGET_SIGNAL_TRAP;  break; 
++     	default: /* "software generated"*/
++       		status->value.sig = TARGET_SIGNAL_EMT;         
++ 	}
++ 	bdm_gotexception = 1;
++ 	return 0;
++ }
++ 
++ 
++ /*
++  * _wait -- Wait until the remote machine stops, then return,
++  *          storing status in status just as `wait' would.
++  */
++ static ptid_t
++ bdm_wait (ptid_t pid, struct target_waitstatus *status)
++ {
++ int bdm_stat, ret;
++ int detach=0;
++ u_int val;
++ u_long val_conv;
++ u_short	val_h, val_l;
++ struct sigaction old, new; int rv;
++ bdmlib_log("bdm_wait: pid %d \n", pid);
++ 
++ 	status->kind = TARGET_WAITKIND_EXITED;
++ 	status->value.integer = 0;
++ 
++ 	/* make gdb sensitive to ctrl-c */
++ 	ctrlc_int = 0;
++ 	new.sa_handler = bdm_signal_handler;
++ 	sigemptyset(&new.sa_mask);
++ 	new.sa_flags = 0;
++ 	if ((rv = sigaction(SIGINT, &new, &old)) == -1) {
++ 		error("Cannot install handler for ctrl-c");
++ 	}
++ 	/* wait here periodically polling for any actions required by target */
++ 	while ((bdm_stat = bdmlib_getstatus()) == 0){
++ 		if(ui_loop_hook)
++ 			detach=ui_loop_hook(0);
++ 		if(detach||ctrlc_int) {
++ 		  	if ((ret = bdmlib_ioctl(BDM_STOP_CHIP))) {
++ 				fprintf_filtered(gdb_stderr, 
++ 					"bdm_wait: failed to stop chip %s\n",
++ 					bdmlib_geterror_str(ret));
++ 			}
++ 		}
++ 			
++ 		nap(100000);
++ 		
++ 	}
++ 	if ((rv = sigaction(SIGINT, &old, &new)) == -1) {
++ 		error("Cannot restore handler for ctrl-c");
++ 	}
++ 
++ 	switch (bdm_stat) {
++ 		case BDM_TARGETNC:
++ 			status->kind = TARGET_WAITKIND_EXITED;
++ 			status->value.integer = 9999;
++ 			break;
++ 		case BDM_TARGETPOWER:
++ 			status->kind = TARGET_WAITKIND_STOPPED;
++ 			status->value.sig = TARGET_SIGNAL_PWR;
++ 			break;
++ 		case BDM_TARGETRESET:
++ 			status->kind = TARGET_WAITKIND_STOPPED;
++ 			status->value.sig = TARGET_SIGNAL_ABRT;
++ 			break;
++ 		case BDM_TARGETSTOPPED:
++ 			if (ctrlc_int) {
++ 				status->kind = TARGET_WAITKIND_STOPPED;
++ 				status->value.sig = TARGET_SIGNAL_TSTP;
++ 			} else {
++ 				bdmlib_get_sys_reg(BDM_REG_ATEMP, &val); 
++ 				val_conv = extract_unsigned_integer(&val, 4);
++ 				val_h = (val_conv >> 16); val_l = (val_conv & 0xffff);
++ 				bdmlib_log("bdm_target_stopped ATEMP val %#x = (hi %#x lo %#x)\n",
++ 					val_conv, val_h, val_l);
++ 				switch (val_l) {
++ 					case 0xffff:	/* double bus fault */
++ 						status->kind = TARGET_WAITKIND_STOPPED;
++ 						status->value.sig = TARGET_SIGNAL_BUS;
++ 						break;
++ 					case 0x0:	/* HW bkpt */
++ 						if (val_h == 0) {
++ 							bdmlib_log("HW Breakpoint entered\n");
++ 							status->kind = TARGET_WAITKIND_STOPPED;
++ 							status->value.sig = TARGET_SIGNAL_TRAP;
++ 						} else {
++ 							bdmlib_log("Error: HW Bpt, but highbyte != 0;  %#x\n", 
++ 								val_h);
++ 						}
++ 						break;
++ 					case 0x1:	/* background mode */
++ 						bdmlib_log("we have re-entered bdm-mode\n");
++ 						analyze_exception(val_h, status);
++ 						break;
++ 					default:
++ 						bdmlib_log("exception default case: val_l %#x\n", val_l);
++ 						printf_filtered("\
++ error: bdm-exception default case: val_l %#x\n", val_l);
++ 						status->kind = TARGET_WAITKIND_STOPPED;
++ 						status->value.sig = TARGET_SIGNAL_GRANT;
++ 
++ 				}
++ 			}
++ 			break;
++ 		default:
++ 			bdmlib_log("bdm_wait: illegal bdm_stat %#x\n", bdm_stat);
++ 			fprintf_filtered(gdb_stderr, "\
++ error in bdm_wait: bdm_wait default case: bdm_stat %#x\n", bdm_stat);
++ 	}
++ 	return inferior_ptid;
++ }
++ 
++ static void
++ bdm_stop(void)
++ {
++     #if 1
++     	int ret;
++   	if ((ret = bdmlib_ioctl(BDM_STOP_CHIP))) {
++ 		fprintf_filtered(gdb_stderr, 
++ 			"bdm_stop: failed to stop chip %s\n",
++ 			bdmlib_geterror_str(ret));
++ 	}
++     #else
++ 	ctrlc_int++;
++     #endif
++ }
++ 
++ /* This is called not only when we first attach, but also when the
++    user types "run" after having attached.  */
++ void
++ bdm_create_inferior (char *execfile, char *args, char **env)
++ {
++ char *prg_file = NULL;
++ char *helper;
++ char *query_old = NULL;
++ char *query_str = NULL;
++ int ret;
++ 
++ 	bdmlib_log("bdm_create_inferior: execfile %s args=%s, env=%s\n",
++ 		execfile, args, *env);
++ 
++ 	bdm_check_fd(); bdm_check_status();
++ 	bdm_kill();
++ 	bdm_clear_breakpoints();
++ 	clear_proceed_status();
++ 	init_wait_for_inferior();
++ 	if (*args) {
++ 		prg_file = args;
++ 	} else if (execfile) {
++ 		prg_file = execfile;
++ 	} else {
++ 		prg_file = bdm_prog_loaded;
++ 	}
++ 	if (!(prg_file) && !(bdm_prog_loaded)) 
++ 		error("No program specified to run");
++ 
++ 	if (bdm_prog_loaded) {
++ 		xasprintf(&query_old,
++ 			"Note - following file already loaded : '%s'\n",
++ 			bdm_prog_loaded);
++ 	}
++ 	xasprintf(&query_str, "%sDo you want to download '%s'\n",
++ 			query_old?query_old:"",prg_file);
++ 	xfree(query_old);
++ 	if (query(query_str)) {
++ 		xfree(query_str);
++ 		query_str=NULL;
++ 		if (( ret = bdmlib_load(prg_file, &entry_pt))) {
++ 			fprintf_filtered(gdb_stderr, "Error %s\n", 
++ 				bdmlib_geterror_str(ret));
++ 			error("Download failed");
++ 		}
++ 		helper = savestring(prg_file, strlen(prg_file));
++ 		if (bdm_prog_loaded) free(bdm_prog_loaded);
++ 		bdm_prog_loaded = helper;
++ 	}
++ 	xfree(query_str);
++ 	query_str=NULL;
++ 
++ 	if (!entry_pt)
++ 		error("No entry point defined, cannot start program.");
++ 
++ 	bdmlib_log("bdm_create_inferior:\n");
++ 	bdmlib_log("\tset pc to %#x and start prg\n", entry_pt);
++ 		bdm_ops.to_has_execution++;
++ 
++ 	if(ptid_equal(inferior_ptid, null_ptid)) {
++ 		inferior_ptid = pid_to_ptid(BDM_MAGIC_NULL_PID);
++ 	}
++ 	proceed(entry_pt, TARGET_SIGNAL_DEFAULT, 0);
++ }
++ 
++ static void
++ bdm_mourn_inferior ()
++ {
++ bdmlib_log("bdm_mourn_inferior\n");
++ 	bdm_clear_breakpoints();
++ 	generic_mourn_inferior ();
++ }
++ 
++ /* Get ready to modify the registers array.  On machines which store
++    individual registers, this doesn't need to do anything.  On machines
++    which store all the registers in one fell swoop, this makes sure
++    that registers contains all the registers from the program being
++    debugged.  */
++ 
++ void
++ bdm_prepare_to_store(void)
++ {
++   /* Do nothing, since we can store individual regs */
++ }
++ 
++ 
++ /* Read the remote registers.  */
++ static void
++ bdm_fetch_registers (void)
++ {
++ int regno;
++ 
++ bdmlib_log("bdm_fetch_registers\n");
++ 	for (regno = 0; regno <= PC_REGNUM; regno++)
++ 		bdm_fetch_register(regno);
++ }
++ 
++ /*
++  * Fetch register REGNO, or all registers if REGNO is -1.
++  */
++ static void
++ bdm_fetch_register(int regno)
++ {
++ u_int val;
++ int ret;
++ int special_regno;
++  	bdm_check_fd(); bdm_check_status();
++  	if (regno < 0)
++ 		bdm_fetch_registers();
++ 	else {
++ 		bdmlib_log("bdm_fetch_register %d\n", regno);
++ 		if (regno < 16) {
++ 			ret = bdmlib_get_reg(regno, &val);
++ 		} else {
++ 			switch (regno) {
++ 				case 16:    special_regno = BDM_REG_SR;   break;
++ 				case 17:    special_regno = BDM_REG_RPC;  break;
++ 				case 18:    special_regno = BDM_REG_PCC;  break;
++ 				case 19:    special_regno = BDM_REG_USP;  break;
++ 				case 20:    special_regno = BDM_REG_SSP;  break;
++ 				case 21:    special_regno = BDM_REG_SFC;  break;
++ 				case 22:    special_regno = BDM_REG_DFC;  break;
++ 				case 23:    special_regno = BDM_REG_ATEMP;    break;
++ 				case 24:    special_regno = BDM_REG_FAR;  break;
++ 				case 25:    special_regno = BDM_REG_VBR;  break;
++ 				default:
++ 					error("illegal regno in bdm_fetch_register() %d", regno);
++ 			}
++ 			ret = bdmlib_get_sys_reg(special_regno, &val);
++ 		}
++ 		if (ret < 0) {
++ 			fprintf_filtered(gdb_stderr, 
++ 				"get register failed: %s\n", bdmlib_geterror_str(ret));
++ 		} else {
++ 			supply_register (regno, (char *) &val);
++ 		}
++ 	}
++ }
++ 
++ /* Store the remote registers from the contents of the block REGS.  */
++ static void
++ bdm_store_registers(void)
++ {
++ int regno;
++ bdmlib_log("bdm_store_registers\n");
++ 	for (regno = 0; regno <= PC_REGNUM; regno++)
++   		bdm_store_register(regno);
++ }
++ 
++ /* Store register REGNO, or all if REGNO == -1.  Return errno value.  */
++ void
++ bdm_store_register(int regno)
++ {
++ u_int val, special_regno;
++ int ret;
++ 
++  	bdm_check_fd(); bdm_check_status();
++ 	if (regno == -1) {
++    		bdm_store_registers();
++ 	} else {
++ 		val = read_register(regno);
++ 		bdmlib_log("bdm_store_register %d with value %#x\n", 
++ 			regno, val);
++ 		if (regno < 16) {
++ 			ret = bdmlib_set_reg(regno, val);
++ 		} else {
++ 			switch (regno) {
++ 				case 16:    special_regno = BDM_REG_SR;   break;
++ 				case 17:    special_regno = BDM_REG_RPC;  break;
++ 				case 18:    special_regno = BDM_REG_PCC;  break;
++ 				case 19:    special_regno = BDM_REG_USP;  break;
++ 				case 20:    special_regno = BDM_REG_SSP;  break;
++ 				case 21:    special_regno = BDM_REG_SFC;  break;
++ 				case 22:    special_regno = BDM_REG_DFC;  break;
++ 				case 23:    special_regno = BDM_REG_ATEMP;    break;
++ 				case 24:    special_regno = BDM_REG_FAR;  break;
++ 				case 25:    special_regno = BDM_REG_VBR;  break;
++ 				default:
++ 					error("illegal regno in bdm_store_register() %d", regno);
++ 			}
++ 			ret = bdmlib_set_sys_reg(special_regno, val);
++ 		}
++ 		if (ret < 0) {
++ 			fprintf_filtered(gdb_stderr, 
++ 				"set register failed: %s\n", bdmlib_geterror_str(ret));
++ 		}
++ 	}
++ }
++ 
++ static int
++ bdm_xfer_inferior_memory(CORE_ADDR memaddr, char *myaddr, int len, 
++ 			int write, 
++ 			struct mem_attrib *attrib ATTRIBUTE_UNUSED,
++ 			struct target_ops *t ATTRIBUTE_UNUSED)
++ {
++ caddr_t cptr;
++ int count;
++  	bdm_check_fd(); bdm_check_status();
++ 	bdmlib_log("bdm_xfer_inferior_memory memaddr %#x len %d write %d\n",
++ 		memaddr, len, write);
++ 
++ 	count = 0; cptr = (caddr_t) memaddr;
++ 	if (write) {
++ 		if (len <= (bdm_xfer_use_fast? 1 : 4) ) {
++ 			while (len--) {
++ 				if (bdmlib_write_var(cptr, 
++ 						BDM_SIZE_BYTE, *myaddr++) < 0)
++ 					break;
++ 				count++;
++ 				cptr++;
++ 			}
++ 		} else {
++ 			count = bdmlib_write_block((caddr_t)memaddr, len, myaddr);
++ 		}
++ 	} else {
++ 		if (len <= (bdm_xfer_use_fast? 1 : 4) ) {
++ 			while (len--) {
++ 				if (bdmlib_read_var(cptr, 
++ 						BDM_SIZE_BYTE, (u_int *) (myaddr++)) < 0)
++ 					break;
++ 				cptr++;
++ 				count++;
++ 			}
++ 		} else {
++ 			count = bdmlib_read_block((caddr_t) memaddr, len, myaddr);
++ 		}
++ 	}
++ 	return count;
++ }
++ 
++ static void
++ bdm_files_info(struct target_ops *t)
++ {
++   printf_filtered("target %s is attached to %s\n",
++ 	t->to_shortname, dev_name);
++   if (bdm_prog_loaded) {
++ 	  printf_filtered("and running program %s\n", bdm_prog_loaded);
++   } else {
++   	printf_filtered("no program loaded\n");
++   }
++ }
++ 
++ static int
++ bdm_insert_breakpoints(CORE_ADDR addr, char *save)
++ {
++ int i;
++ struct _bdm_bp *p;
++ 
++  	bdm_check_fd(); bdm_check_status();
++ 	for (i=0, p = bdm_bp; i < BREAKPOINT_MAX; i++, p++) {
++ 		if (p->valid == 0) {
++ 			p->valid++;
++ 			p->addr = addr;
++ 			break;
++ 		}
++ 	}
++ 	if (i == BREAKPOINT_MAX) error("Insert of breakpoints failed");
++ 	bdmlib_log("bdm_insert_breakpoints at %#x \n", addr);
++ 	return memory_insert_breakpoint(addr, save);
++ }
++ 
++ static int
++ bdm_remove_breakpoints(CORE_ADDR addr, char *save)
++ {
++ int i;
++ struct _bdm_bp *p;
++ 
++  	bdm_check_fd(); bdm_check_status();
++ 	bdmlib_log("bdm_remove_breakpoint at %#x \n", addr);
++ 	for (i=0, p = bdm_bp; i < BREAKPOINT_MAX; i++, p++) {
++ 		if (p->addr == addr) {
++ 			p->valid = 0;
++ 			break;
++ 		}
++ 	}
++ 	if (i == BREAKPOINT_MAX) error("Remove of breakpoints failed");
++ 	return memory_remove_breakpoint(addr, save);
++ }
++ 
++ /* Clear bdm's notion of what the break points are */
++ static void
++ bdm_clear_breakpoints(void) 
++ {
++ int i;
++ struct _bdm_bp *p;
++ 	bdmlib_log("bdm_clear_breakpoints\n");
++ 	for (i=0, p = bdm_bp; i < BREAKPOINT_MAX; i++, p++) {
++ 		p->valid = 0;
++ 	}
++ }
++ 
++ static void
++ bdm_load (char *args, int from_tty)
++ {
++ char *p;
++ int ret;
++ 	
++     #if 1	
++ 	inferior_ptid = null_ptid ;	/* No process now */
++ 
++ 	/* This is necessary because many things were based on the PC at the time that
++ 	   we attached to the monitor, which is no longer valid now that we have loaded
++ 	   new code (and just changed the PC).  Another way to do this might be to call
++ 	   normal_stop, except that the stack may not be valid, and things would get
++ 	   horribly confused... */
++     #endif
++ 
++ 	bdmlib_log("bdm_load: arg <%s> from_tty %d autoreset %d\n", 
++ 		args, from_tty, bdm_autoreset);
++ 
++ 	if (!strncmp(args, "section", 7)) {
++ 		while (*args && !isspace(*args)) args++;
++ 		while (*args && isspace(*args)) args++;
++ 		bdmlib_log("bdm_load section %s requested\n", args);
++ 		if (!bdm_prog_loaded) {
++ 			error("\
++ 'load section' is only possible, if there has been already \n\
++ loaded an executable. Use 'run [<file>]' for this.");
++ 		}
++ 		if ((ret = 
++ 			bdmlib_do_load_binary_section(bdm_prog_loaded, args))) {
++ 				fprintf_filtered(gdb_stderr, 
++ 					"load section %s for %s failed\n%s\n",
++ 					args, bdm_prog_loaded,
++ 					bdmlib_geterror_str(ret));
++ 		}
++ 	} else {
++ 		if (bdm_prog_loaded) {
++ 			free(bdm_prog_loaded);
++ 			bdm_prog_loaded = NULL;
++ 		}
++ 		if (!args) {
++ 			error("\
++ 'load' must be called together with the filename to load.\n\
++ You may want to use 'run', which uses the parameter supplied when gdb
++ was invoked via commandline, e.g. 'gdb68 x.coff'.");
++ 		}
++ 
++ 		/* strip off additional (unwanted) arguments after file name */
++ 		for (p = args; (*p != '\0') && (!isspace (*p)); p++)
++ 			;
++ 		*p = '\0';
++ 
++ 		if ((ret = bdmlib_load(args, &entry_pt))) {
++ 			fprintf_filtered(gdb_stderr, "load failed, error %s\n",
++ 				bdmlib_geterror_str(ret));
++ 			return;
++ 		}
++ 
++ 		bdm_prog_loaded = savestring(args, strlen(args));
++ 	}
++ }
++ 
++ 
++ #ifdef ENABLE_BDM_FLASH
++ 
++ #define AUTO_ADR_CSBOOT ((caddr_t)-100)
++ #define AUTO_ADR_CSX    ((caddr_t)-100+1)
++ 
++ static int bdm_next_filt_id=0;
++ 
++ static void
++ bdm_filt_print(bdmlib_bfilt_t *filt, int flags)
++ {
++   flash_alg_info_t const *alg;
++   printf_filtered("region %2d",filt->filt_id);
++   if((filt->begin_adr!=filt->end_adr)||
++      (filt->begin_adr<AUTO_ADR_CSBOOT)||
++      (filt->begin_adr>=AUTO_ADR_CSBOOT+12)){
++     printf_filtered(" addr 0x%06lx-0x%06lx",
++ 	(unsigned long)filt->begin_adr,(unsigned long)filt->end_adr);
++   }else{
++     if(filt->begin_adr==AUTO_ADR_CSBOOT)  
++       printf_filtered(" addr from csboot");
++     else
++       printf_filtered(" addr from cs%d",filt->begin_adr-AUTO_ADR_CSX);
++   }
++   if(filt->flags&BDMLIB_FILT_FLASH){
++     printf_filtered(" flash");
++     if(filt->flags&BDMLIB_FILT_AUTO) printf_filtered(" auto");
++     alg = (flash_alg_info_t *) filt->info;
++     if(alg!=NULL){
++       printf_filtered(" %s",alg->alg_name);
++     }
++   }
++   if(!(flags&1))printf_filtered("\n");
++ 
++ }
++ 
++ void bdm_filt_free(bdmlib_bfilt_t *filt)
++ {
++   if(filt->state) free(filt->state);
++   filt->state=NULL;
++   free(filt);
++ }
++ 
++ static void
++ bdm_flash_setup_interactive(char *buf, int from_tty)
++ {
++   char *p,*r;
++   int i;
++   caddr_t begin_adr=(caddr_t)(0);
++   caddr_t end_adr=(caddr_t)(0);
++   char alg_name[32];
++   flash_alg_info_t const *alg=NULL;
++   bdmlib_bfilt_t *filt;
++ 
++   bdmlib_log("bdm_flash_setup_interactive: arg <%s> from_tty %d\n", 
++ 		buf, from_tty);
++   bdm_check_fd();
++   
++   if(!buf){
++     printf_filtered("Defined memory ranges :\n");
++     for(filt=bdmlib_bfilt;filt!=NULL;filt=filt->next){
++       bdm_filt_print(filt,0);
++     }
++     return;
++   }
++ 
++   while(*buf&&isblank(*buf)) buf++;
++   if((p=strchr(buf,'@'))!=NULL){/* '@' character in specification */
++     i=p-buf;
++     if(i>=sizeof(alg_name)-1)
++       i=sizeof(alg_name)-1;
++     strncpy(alg_name,buf,i);
++     alg_name[i]=0;
++     p++;
++     if(!strncmp(p,"csboot",6)){	/* take address from CSBOOT */
++       p+=6;
++       end_adr=begin_adr=AUTO_ADR_CSBOOT;
++     }else if(!strncmp(p,"cs",2)){
++       p+=2;
++       end_adr=begin_adr=AUTO_ADR_CSX+strtoul(p,&r,0);
++       if((p==r)||(begin_adr>AUTO_ADR_CSX+11)){
++         error("%s : bad chipselect format\n",buf);
++         return;
++       }
++       p=r;
++     }else{			/* take begin address after '@' */
++       end_adr=begin_adr=(caddr_t)strtoul(p,&r,0);
++       if(p==r){
++         error("%s : bad begin address format\n",buf);
++         return;
++       }
++       p=r;
++       if(*p=='+'){		/* take end address from size */
++         end_adr=begin_adr+strtoul(++p,&r,0)-1;
++         if(p==r){
++           error("%s : bad size format\n",buf);
++           return;
++         }
++         p=r;
++       } else if(*p=='-') {	/* take absolute end address */
++         end_adr=(caddr_t)strtoul(++p,&r,0);
++         if(p==r){
++           error("%s : bad end address format\n",buf);
++           return;
++         }
++         p=r;
++       }
++     }
++     while(*buf&&isblank(*buf)) buf++;
++     if(*p){
++       error("%s : extra characters in specification %s\n",buf,p);
++       return;
++     }
++   }
++   else {
++     end_adr=begin_adr=AUTO_ADR_CSBOOT;
++     strncpy(alg_name,buf,sizeof(alg_name)-1);
++   }
++ 
++   if(strcmp(alg_name,"auto")){
++     int alg_indx=0;
++     do{
++       alg=flash_alg_infos[alg_indx++];
++       if(alg==NULL){
++         error("%s : unknown flash type or algorithm\n",alg_name);
++         return;
++       }
++     }while(strcmp(alg_name,alg->alg_name));
++   }
++ 
++   filt=(bdmlib_bfilt_t*)malloc(sizeof(bdmlib_bfilt_t));
++   if(filt==NULL){
++     error("No memory for flash_setup\n");
++     return;
++   }
++   memset(filt,0,sizeof(*filt));
++ 
++   filt->flags=BDMLIB_FILT_FLASH;
++   if(alg==NULL){
++     filt->flags|=BDMLIB_FILT_AUTO;
++     filt->info=flash_alg_infos[0];
++   } else filt->info=(void *)alg;
++   filt->begin_adr=begin_adr;
++   filt->end_adr=end_adr;
++   if(begin_adr==end_adr){
++     filt->flags|=BDMLIB_FILT_AUTO;
++   };
++   filt->filt_id=bdm_next_filt_id++;
++   filt->wrb_filt=&bdmflash_wrb_filt;
++   
++   filt->next=bdmlib_bfilt;
++   bdmlib_bfilt=filt;
++   return;
++ }
++ 
++ static void
++ bdm_flash_remove_interactive(char *arg, int from_tty)
++ {
++   bdmlib_bfilt_t *filt,**ppfilt;
++   int filt_id;
++   if(!arg){
++     printf_filtered("bdm_flash_remove needs one argument - id of region or \"all\"\n");
++     return;
++   }
++   if(!strcmp(arg,"all")){
++     while(bdmlib_bfilt){
++       filt=bdmlib_bfilt;
++       bdmlib_bfilt=filt->next;
++       bdm_filt_free(filt);
++     }
++     return;
++   }
++   filt_id=atoi(arg);
++   for(ppfilt=&bdmlib_bfilt;(filt=*ppfilt)!=NULL;ppfilt=&(filt->next)){
++     if(filt->filt_id==filt_id){
++       *ppfilt=filt->next;
++       bdm_filt_free(filt);
++       return;
++     }
++   }
++   error("no region with id %d found\n",filt_id);
++ }
++ 
++ static int
++ bdm_flash_check_one (bdmlib_bfilt_t *filt, int autoset)
++ {
++   flash_alg_info_t const *alg;
++   caddr_t adr;
++   u_int16_t readid[2];
++   int ret;
++ 
++   alg = (flash_alg_info_t *) filt->info;
++   adr = filt->begin_adr;
++ 
++   if(filt->flags&BDMLIB_FILT_AUTO)
++   {
++     autoset|=2;
++     if(adr==filt->end_adr)
++       autoset|=4;
++   }
++ 
++   if ((autoset & 4)&&(adr>=AUTO_ADR_CSBOOT)&&(adr<=AUTO_ADR_CSBOOT+12))
++     {
++       u_int32_t csx_opt, csx_base, csx_size;
++       caddr_t cpu32csopt_adr;
++       cpu32csopt_adr=(caddr_t)0xfffa48+(adr-AUTO_ADR_CSBOOT)*4;
++       if (bdmlib_read_var (cpu32csopt_adr, BDM_SIZE_LONG, &csx_opt) >= 0)
++ 	{
++ 	  static u_int32_t csx_sizes[]={1<<11,1<<13,1<<14,1<<16,
++ 					  1<<17,1<<18,1<<19,1<<20};
++ 	  csx_base = (csx_opt >> 8) & 0xfff800;
++ 	  filt->begin_adr = (caddr_t) csx_base;
++ 	  csx_size = csx_sizes[(csx_opt >> 16) & 0x7];
++ 	  filt->end_adr = (caddr_t) (csx_base + csx_size - 1);
++ 	  if(adr==AUTO_ADR_CSBOOT)
++ 	    printf_filtered("Flash addresses taken from CSBOOT\n");
++ 	  else
++ 	    printf_filtered("Flash addresses taken from CS%d\n",
++ 	    			(int)(adr-AUTO_ADR_CSX));
++ 	  printf_filtered("Start %06lX End %06lX\n",
++ 		  (long) filt->begin_adr, (long) filt->end_adr);
++ 	}
++     }
++ 
++   adr = filt->begin_adr;
++ 
++   ret = bdmflash_check_id (alg, adr, readid);
++   if((ret >= 0)&&(autoset&4)&&(filt->begin_adr==filt->end_adr))
++     filt->end_adr=filt->begin_adr+alg->addr_mask;
++   if (ret >= 0)
++     {
++       bdm_filt_print(filt,1);
++       printf_filtered(" OK\n");
++       return 1;
++     }
++   if (!autoset & 2)
++     {
++       bdm_filt_print(filt,0);
++       error("Flash parameters are incorrect !!!\n");
++       return -1;
++     }
++   alg = bdmflash_alg_probe (adr);
++   if (alg == NULL)
++     {
++       bdm_filt_print(filt,0);
++       error("Flash parameters cannot be probed\n");
++       return -1;
++     }
++   ret = bdmflash_check_id (alg, adr, readid);
++   if (ret < 0)
++     {
++       bdm_filt_print(filt,0);
++       error("Probed parameters are incorrect\n");
++       return -1;
++     }
++   filt->info = (void *) alg;
++   if(filt->begin_adr==filt->end_adr)
++     filt->end_adr=filt->begin_adr+alg->addr_mask;
++   bdm_filt_print(filt,1);
++   printf_filtered(" probed OK\n");
++ 
++   return 1;
++ }
++ 
++ static void
++ bdm_flash_check_interactive(char *arg, int from_tty)
++ {
++   int ret;
++   int autoset=0;
++   bdmlib_bfilt_t *filt = bdmlib_bfilt;
++   if(arg&&!strcmp(arg,"autoset")){
++     autoset=255;
++   }
++   printf_filtered("\n");
++   while(filt)
++   {
++     if(filt->flags&BDMLIB_FILT_FLASH)
++     {
++       ret=bdm_flash_check_one(filt,autoset);
++       printf_filtered("\n");
++       if(ret<0)
++ 	return;
++     }
++     filt=filt->next;
++   }
++   return;
++ }
++ 
++ static void
++ bdm_flash_erase_interactive(char *arg, int from_tty)
++ {
++   int ret;
++   bdmlib_bfilt_t *filt = bdmlib_bfilt;
++   while(filt)
++   {
++     if(filt->flags&BDMLIB_FILT_FLASH)
++     {
++       ret=bdmflash_erase_filt (filt, (caddr_t) 0, 0);
++       if(ret<0){
++         printf_filtered("Flash erase failed for\n");
++         bdm_filt_print(filt,0);
++ 	return;
++       }
++     }
++     filt=filt->next;
++   }
++   return;
++ }
++ 
++ static void
++ bdm_load_use_lma_interactive(char *arg, int from_tty)
++ {
++   if(!arg){
++     printf_filtered("bdm_load_use_lma %d\n",bdmlib_load_use_lma);
++   }else{
++     bdmlib_load_use_lma=atoi(arg);
++   }
++ }
++ 
++ #endif /*ENABLE_BDM_FLASH*/
++ 
++ struct target_ops bdm_ops ;
++ 
++ static void 
++ init_bdm_ops(void)
++ {
++   bdm_ops.to_shortname = "bdm";
++   bdm_ops.to_longname = "CPU32(+) Background Debug Mode Interface for download and remote debugging";
++   bdm_ops.to_doc = "Debug with the Background Debug Mode\n\
++ using a BDM-Interface connected to the BDM-port of a CPU32(+) \n\
++ based microcontroller and to a parallel port of the PC.\n\
++ Makes use of a loadable driver under Linux. \n\
++ Usage: target bdm <device>\n\
++ Specify the device name the BDM interface is connected to (e.g.  /dev/pdbdm0).";
++   bdm_ops.to_open = bdm_open;
++   bdm_ops.to_close = bdm_close;
++   bdm_ops.to_attach = bdm_attach;
++   bdm_ops.to_post_attach = NULL;
++   bdm_ops.to_require_attach = NULL;
++   bdm_ops.to_detach = bdm_detach;
++   bdm_ops.to_require_detach = NULL;
++   bdm_ops.to_resume = bdm_resume;
++   bdm_ops.to_wait = bdm_wait;
++   bdm_ops.to_post_wait = NULL;
++   bdm_ops.to_fetch_registers = bdm_fetch_register;
++   bdm_ops.to_store_registers = bdm_store_register;
++   bdm_ops.to_prepare_to_store = bdm_prepare_to_store;
++   bdm_ops.to_xfer_memory = bdm_xfer_inferior_memory;
++   bdm_ops.to_files_info = bdm_files_info;
++   bdm_ops.to_insert_breakpoint = bdm_insert_breakpoints; 
++   bdm_ops.to_remove_breakpoint = bdm_remove_breakpoints;
++   bdm_ops.to_terminal_init = 0;
++   bdm_ops.to_terminal_inferior = 0;
++   bdm_ops.to_terminal_ours_for_output = 0;
++   bdm_ops.to_terminal_ours = 0;
++   bdm_ops.to_terminal_info = 0;
++   bdm_ops.to_kill = bdm_kill;
++   bdm_ops.to_load = bdm_load;
++   bdm_ops.to_lookup_symbol = 0;
++   bdm_ops.to_create_inferior = bdm_create_inferior;
++   bdm_ops.to_post_startup_inferior = NULL;
++   bdm_ops.to_acknowledge_created_inferior = NULL;
++   bdm_ops.to_clone_and_follow_inferior = NULL;
++   bdm_ops.to_post_follow_inferior_by_clone = NULL;
++   bdm_ops.to_insert_fork_catchpoint = NULL;
++   bdm_ops.to_remove_fork_catchpoint = NULL;
++   bdm_ops.to_insert_vfork_catchpoint = NULL;
++   bdm_ops.to_remove_vfork_catchpoint = NULL;
++   bdm_ops.to_has_forked = NULL;
++   bdm_ops.to_has_vforked = NULL;
++   bdm_ops.to_can_follow_vfork_prior_to_exec = NULL;
++   bdm_ops.to_post_follow_vfork = NULL;
++   bdm_ops.to_insert_exec_catchpoint = NULL;
++   bdm_ops.to_remove_exec_catchpoint = NULL;
++   bdm_ops.to_has_execd = NULL;
++   bdm_ops.to_reported_exec_events_per_exec_call = NULL;
++   bdm_ops.to_has_syscall_event = NULL;
++   bdm_ops.to_has_exited = NULL;
++   bdm_ops.to_mourn_inferior = bdm_mourn_inferior;
++   bdm_ops.to_can_run = bdm_can_run;
++   bdm_ops.to_notice_signals = NULL;
++   bdm_ops.to_thread_alive = NULL;
++   bdm_ops.to_stop = bdm_stop;
++   bdm_ops.to_query = NULL;
++   bdm_ops.to_enable_exception_callback = NULL;
++   bdm_ops.to_get_current_exception_event = NULL;
++   bdm_ops.to_pid_to_exec_file = NULL;
++   /* bdm_ops.to_core_file_to_sym_file = NULL; */
++   bdm_ops.to_stratum = process_stratum;
++   bdm_ops.DONT_USE =   0;		/* formely to_next = 0 */
++   bdm_ops.to_has_all_memory =  1;
++   bdm_ops.to_has_memory = 1;
++   bdm_ops.to_has_stack = 1;
++   bdm_ops.to_has_registers = 1;
++   bdm_ops.to_has_execution = 1;		/* all mem, mem, stack, regs, exec */
++   bdm_ops.to_has_thread_control = 0;
++   bdm_ops.to_sections =     NULL;
++   bdm_ops.to_sections_end = NULL ;
++   bdm_ops.to_magic = OPS_MAGIC;		/* Always the last thing */
++ };
++ 
++ void
++ _initialize_remote_bdm ()
++ {
++   init_bdm_ops();
++   add_show_from_set (
++ 	add_set_cmd ("hash", no_class, var_boolean, &hashmark,
++ 		"Set display of activity while downloading a file.\n\
++ When enabled, a period '.' is displayed.",
++ 			&setlist),
++ 		&showlist);
++   add_com ("bdm_reset", class_obscure, 
++   		(void (*)(char *, int)) bdm_reset, 
++ 		"Reset target and stay in BDM-mode.");
++   add_com ("bdm_release", class_obscure, 
++   		(void (*)(char *, int)) bdm_release_chip, 
++ 		"Reset target without BDM-mode and jump to monitor.");
++   add_com ("bdm_status", class_obscure, 
++   		(void (*)(char *, int)) bdm_get_status_interactive, 
++   		"show status of bdm interface; usage: bdm_status\n");
++   add_com ("bdm_debug_driver", class_obscure, 
++   		bdm_set_debug_driver_interactive,
++   		"switch driver logging between level 0 (no dbg) to 2 (dbg everything)\n\
++ usage: bdm_debug_driver <level>");
++   add_com ("bdm_log", class_obscure, 
++   		bdm_set_debug_interactive, 
++   		"switch log on or off; usage: bdm_log on|off\n");
++   add_com ("bdm_setdelay", class_obscure, 
++   		bdm_setdelay_interactive, 
++ 		"set delay for download: 10 for 486DX33");
++   add_com ("bdm_autoreset", class_obscure, 
++   		bdm_setautoreset_interactive,
++ 		"issue an automatic reset before download");
++   add_com ("bdm_checkcable", class_obscure, 
++   		bdm_sensecable_interactive,
++ 		"check cable connected and power applied");
++   add_com ("bdm_timetocomeup", class_obscure, 
++   		bdm_setttcu_interactive,
++ 		"set time to wait (in usecs) for a target monitor to come up");
++   add_com ("bdm_entry", class_obscure, 
++   		bdm_setentry_interactive, 
++ 		"set entry point of target code for next step, run, etc");
++  #ifdef ENABLE_BDM_FLASH
++   add_com ("bdm_flash_setup", class_obscure, 
++ 		bdm_flash_setup_interactive, 
++ 		"set flash parameters; usage: bdm_flash_setup <type>@<base addr/range>\n"
++ 		"type : {auto|amd29f040|amd29f400|amd29f800|...}\n"
++ 		"range: {<addr>|<start addr>+<size>|<start addr>-<end addr>}");
++   add_com ("bdm_flash_remove", class_obscure, 
++ 		bdm_flash_remove_interactive, 
++ 		"remove flash region; usage: bdm_flash_remove {<id>|all}");
++   add_com ("bdm_flash_check", class_obscure, 
++ 		bdm_flash_check_interactive, 
++ 		"check defined flash ranges; usage: bdm_flash_check [autoset]");
++   add_com ("bdm_flash_erase", class_obscure, 
++ 		bdm_flash_erase_interactive, 
++ 		"erases defined flash ranges; usage: bdm_flash_erase");
++   add_com ("bdm_load_use_lma", class_obscure, 
++ 		bdm_load_use_lma_interactive, 
++ 		"use LMA instead of VMA; usage: bdm_load_use_lma {0|1}");
++  #endif /*ENABLE_BDM_FLASH*/
++   add_com ("bdm_init", class_obscure, 
++   		(void (*)(char *, int)) bdm_init, 
++ 		"Initialize bdm interface");
++   add_target (&bdm_ops);
++ }
+diff -c -r -P gdb-5.2.1.original/gdb/target.c gdb-5.2.1/gdb/target.c
+*** gdb-5.2.1.original/gdb/target.c	Fri Feb  1 02:01:21 2002
+--- gdb-5.2.1/gdb/target.c	Sat Nov  2 17:19:49 2002
+***************
+*** 248,253 ****
+--- 248,255 ----
+    return 0;			/* No bytes handled */
+  }
+  
++ char hashmark;
++ 
+  static void
+  tcomplain (void)
+  {

@@ -1,0 +1,55 @@
+PARTNO    u1_x;
+NAME      icd;
+DATE      30.07.97;
+REV       1.0;
+DESIGNER  magin;
+COMPANY   private;
+ASSEMBLY  icd32;
+LOCATION  u1;
+DEVICE    g16v8;
+FORMAT    j;
+
+PIN 1        = CLK;
+PIN 2        = dsi_pp;
+PIN 3        = dsclk_pp;
+PIN 4        = break_pp;
+PIN 5        = reset_pp;
+PIN 6        = oe_pp;
+PIN 7        = freeze;
+PIN 8        = dso;
+PIN 9        = j;
+PIN 11       = ber_pp;
+
+
+PIN 12       = magic;
+PIN 13       = nc;
+PIN 14       = freeze_pp;
+PIN 15       = reset;
+PIN 16       = dso_pp;
+PIN 17       = dsi;
+PIN 18       = dsclk;
+PIN 19       = berr;
+
+berr.oe  = ber_pp;
+berr = !ber_pp;
+
+dsclk =  break_pp & !freeze & !nc & reset #
+         dsclk_pp &  freeze &  nc & reset;
+
+dsi.oe   = oe_pp & freeze;
+dsi   =  dsi_pp & oe_pp;
+
+dso_pp  =  dso;
+ 
+reset =  reset_pp;
+reset.oe = !reset_pp;
+
+freeze_pp   =  freeze;
+
+nc    =  freeze  &  nc #
+        !dsclk_pp      & freeze;
+
+magic    = !j;
+
+
+

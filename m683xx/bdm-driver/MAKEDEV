@@ -1,0 +1,7 @@
+cd /dev
+mknod -m666 pd_bdm0 c 53 0 
+mknod -m666 pd_bdm1 c 53 1 
+mknod -m666 pd_bdm2 c 53 2 
+mknod -m666 icd_bdm0 c 53 4
+mknod -m666 icd_bdm1 c 53 5
+mknod -m666 icd_bdm2 c 53 6

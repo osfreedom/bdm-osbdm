@@ -1,0 +1,182 @@
+		BDM-LOAD rewrite 2003-05-19
+
+This is attempt to rewrite bdm-load utility for 683xx based
+embedded systems.
+
+This code is in experimental and rewrite phase, it works for me,
+but there is no warranty that it is useful or safe for others.
+
+Except "bdm-load" program, two test utilities are build.
+It is "bdm_test" program. It was my first experiment with
+interfacing BDM library with stand-alone program.
+The second project is to write free TPU debugger, but this
+code does not do anything useful yet.
+
+INSTALL
+
+To compile and install "bdm-load" you need:
+  - mc683xx target system with BDM interface
+  - GCC compiler for your Linux system.
+  - BDM driver - latest version is attached into "bdm-load" archive
+  - BFD object file handling library
+  - some time and experience with Linux system and make utility
+
+To be able load other formats than S-record and IntelHEX, you
+need to link with BFD library with m68kcoff and/or m68kelf
+targets. I have system wide BFD with all targets I use.
+I build my Linux binutils configured by next line in created
+source tree subdirectory i586-linux
+
+---System wide multi binutils configuration-----------------------
+../configure \
+	--with-ld --exec-prefix=/usr --prefix=/usr \
+	--enable-shared --enable-commonbfdlib --verbose --with-mmap \
+	--enable-targets=i586-pc-linux-gnulibc1,i386-a.out-linux,i386-coff,\
+	m68k-linux-elf,m68k-coff,m68k-a.out-linux,h8300-hitachi-coff,\
+	sparc-linux-elf,i586-win-pe,tic30-ti-coff,tic30-ti-aout
+------------------------------------------------------------------
+
+You need not to rebuild your system wide BFD. You can statically link 
+with "libbfd.a", "libiberty.a" and "bfd.h" taken, for example, 
+from GDB build tree configured for m68k-coff. Configuration of GDB
+is bellow
+
+---GDB for m683xx with BDM configuration--------------------------
+../configure --target=m68k-bdm-coff --enable-gdbtk --with-x --verbose \
+          --enable-targets=m68k-linux-elf,m68k-coff,m68k-a.out-linux
+------------------------------------------------------------------
+
+To compile statically copy three needed files to gdblibs subdirectory
+and change next lines in "Makefile" to form
+
+CFLAGS	+= -I ./gdblibs
+#LDFLAGS += -lbfd -liberty
+LOCLIBS += ./gdblibs/libbfd.a ./gdblibs/libiberty.a
+
+Prebuild version of "bdm-load" is attached to archive under name
+"bdm-load-i586-linux-static".
+
+PROGRAMMERS NOTES
+
+Sources of "bdm-load" are in next files
+
+  bdmlib.c,bdmlib.h	library for communication with CPU32
+			through BDM
+
+  bdmflash.c,bdmflash.h	flash write and erase algorithms and
+			flash areas write filter routines
+
+  bdm-load.c		loader command line and interactive
+			interface
+
+It is necessary to add new entries into array flash_alg_infos_def
+in "bdmflash.c" file for every new flash programming algorithm.
+Flash types should be sorted from smallest to biggest.
+
+RUNNING BDM-LOAD
+
+Command line interface
+
+Usage bdm-load [OPTIONS] file1 ...
+	-h --help            - this help information!
+	-i --init-file=FILE  - object file to initialize processor
+	-r --reset           - reset target CPU before other operations
+	-c --check           - check flash setup (needed for auto)
+	-e --erase           - erase flash
+	-b --blankck         - blank check of flash
+	-l --load            - download listed filenames
+	-g --go              - run target CPU from entry address
+	-s --script          - do actions and return
+	-d --bdm-delay=d     - sets BDM driver speed/delay
+	-f --flash=TYPE@ADR  - select flash
+For flash TYPE@ADR can be
+  {<TYPE>|auto}[@{csboot|cs<x>|<start>{+<size>|-<end>}}]
+Examples
+  auto@csboot  amd29f400@0x800000-0x87ffff  auto@0+0x80000
+If auto type or cs address is used, check must be
+specified to take effect.
+Known flash types/algorithms :
+  amd29f010x2  amd29f040  amd29f400  amd29f800  at49f040x2  amd29f080x4
+
+Possible commands in interactive mode :
+  - run
+	starts CPU32 execution at address taken from last downloaded
+	object file. If no file is loaded, it starts at address
+	fetched during last reset command.
+	
+  - reset
+	resets CPU32 and if no entry address is defined, PC address is
+	remembered
+
+  - erase
+	sets erase request and starts erase procedure
+
+  -load [<object-file>]
+	sets load request and starts download of files from 
+	object file list.
+	if <object-file> is specified, object file list is cleared
+	and specified file is added on-to list
+
+  - exit/quit
+	exit interactive mode and return to shell
+
+  - dump <address> <bytes>
+	dumps memory contents from specified address.
+	bytes specifies number of bytes to print.
+
+  - stat
+	shows CPU32 state, does not require CPU32 to stop
+
+  - check
+	checks flash memories at specified ranges,
+	if auto type or "cs" address is specified for some
+	flash, CS address is fetched and flash autodetection
+	is run
+
+  - autoset
+	same as check, but all flash types are revalidated
+
+  - stop
+	stops CPU32 and clears all reset, erase, load and run
+	requests
+
+  - make
+	make in current directory is called
+
+
+The simplest way to initialize CPU32 chipselect subsystem
+and other SIM parameters is to provide "cpu32init" file
+in same directory as "bdm-load" is started from.
+The "cpu32init" file is processed  at every reset of target.
+The syntax of the macro file is:
+
+<cmd-letter> <num1> <num2> <num3>
+
+The nums are either in hex (form 0x), in decimal (form 123) or in octal
+(form 0234)
+
+The meaning of the nums depends on the command letter:
+
+w or W means: (write)
+
+  write to address (num1) contents (num2) length is (num3) bytes. Only
+  1, 2, 4 bytes are permitted.
+
+z or Z means: (zap, zero)
+
+  fill memory area beginning at (num1) with byte value (num2) length
+  (num3) bytes.
+
+c or C means: (copy)
+
+  copy memory area from (num1) to (num2) with length (num3) bytes.
+
+Empty lines and lines with a leading '#' are ignored. See GDB-BDM
+patches for more information.
+
+
+For more questions contact
+
+		Pavel Pisa <pisa@cmp.felk.cvut.cz>
+
+

@@ -1,0 +1,37 @@
+begin header
+
+end header
+
+begin definition
+  device GAL16V8;
+  ues 0000000000000000;
+  inputs
+      DSI=2,DSCLK=3,BREAK=4,RESET=5,
+      OE=6,M_FREEZE=7,M_DSO=8,SW=9,BERR=11;
+  outputs (com)
+      M_BERR=19,M_DSCLK=18,DSO=16,FREEZE=14,MAGIC=12;
+  feedback (com)
+      M_DSI=17,M_RESET=15,FF_BREAK=13;
+end definition
+
+begin equations
+M_DSI      = DSI;
+M_DSI.oe   = M_FREEZE & OE;
+
+M_DSCLK    = DSCLK & FF_BREAK & M_RESET;
+
+FF_BREAK   = BREAK | ( FF_BREAK & ( M_FREEZE | M_DSI ) );
+
+M_RESET    = RESET;
+M_RESET.oe = /RESET;
+
+M_BERR     = /BERR;
+M_BERR.oe  = BERR;
+
+FREEZE     = M_FREEZE;
+
+DSO        = M_DSO;
+
+MAGIC      = 0;
+
+end equations
