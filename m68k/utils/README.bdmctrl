@@ -107,11 +107,12 @@ check-mem <address> <size>
   contents are restored.
   <address> and <size> can be a number, a register or a symbol.
 
-dump-mem <address> <size> <width>
+dump-mem <address> <size> <width> [<filename>]
   Dump memory contents to stdout. The <width> argument speciefies whether
   bytes, words or longwords are dumped.
   <address> and <size> can be a number, a register or a symbol.
   <width> can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
+  if <filename> is specified, the contents are dumped to the named file.
 
 write <destination> <value> <width>
   Write a <value> with <width> to <destination>. <value> and <destination>

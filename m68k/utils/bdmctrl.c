@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.3 2003/11/06 22:27:31 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.4 2003/11/07 23:47:10 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -667,16 +667,23 @@ static void cmd_dump_mem (size_t argc, char **argv)
     unsigned long val;
     unsigned long len;
     int rlen;
+    FILE *file=stdout;
 
     src = eval_string (argv[1]);
     len = eval_string (argv[2]);
 
+    if (argc==5 && !(file = fopen (argv[4], "w")))
+	fatal ("Can't open \"%s\":%s\n", argv[4], strerror(errno));
+
     for (i=0; i<len; i+=rlen) {
-	if (!(i%16)) printf ("\n 0x%08lx: ", src+i);
+	if (!(i%16)) fprintf (file, "\n 0x%08lx: ", src+i);
 	rlen = read_value (src+i, &val, argv[3][0]);
-	printf (" 0x%0*lx", 2*rlen, val);
-	fflush (stdout);
+	fprintf (file, " 0x%0*lx", 2*rlen, val);
+	fflush (file);
     }
+
+    fclose (file);
+
     printf ("\nOK\n");
 }
 
@@ -948,7 +955,7 @@ static struct command_s {
     { "check-register", 2, INT_MAX, cmd_check_register },
     { "dump-register",  2, INT_MAX, cmd_dump_register },
     { "check-mem",      3,       3, cmd_check_mem },
-    { "dump-mem",       4,       4, cmd_dump_mem },
+    { "dump-mem",       4,       5, cmd_dump_mem },
     { "write",          4,       4, cmd_write },
     { "load",           2, INT_MAX, cmd_load },
     { "execute",        1,       2, cmd_execute },
