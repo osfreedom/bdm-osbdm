@@ -649,7 +649,7 @@ bdmReadControlRegister (int code, unsigned long *lp)
 
   if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read control  register 0x%04x: %#8lx\n", code, ltmp);
+  PRINTF ("Read control register 0x%04x: %#8lx\n", code, ltmp);
   *lp = ltmp;
   return 0;
 }
