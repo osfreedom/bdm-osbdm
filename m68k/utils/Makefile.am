@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.6 2004/01/07 05:20:20 codewiz Exp $
+## $Id: Makefile.am,v 1.7 2004/01/08 20:35:42 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -9,11 +9,8 @@
 ## GNU General Public License for more details.
 ##
 
-INCLUDES = @INCLUDES@ -I$(srcdir)/../driver \
-		      -I$(srcdir)/../lib \
-		      -I$(srcdir)/../flashlib
-
-CFLAGS = @CFLAGS@
+AM_CPPFLAGS = -I$(srcdir)/../driver \
+	      -I$(srcdir)/../lib
 
 ##
 ## Only way I know of anding in automake.
@@ -41,7 +38,8 @@ endif
 
 bdmctrl_SOURCES = \
 	bdmctrl.c
-bdmctrl_CFLAGS = \
+bdmctrl_CPPFLAGS = \
+	-I$(srcdir)/../flashlib \
 	@BFD_INCLUDE@ @CFLAGS@
 bdmctrl_LDFLAGS = -static
 bdmctrl_LDADD = \
@@ -57,8 +55,8 @@ bdmreset_LDADD = \
 
 bdmflash_SOURCES = \
 	bdmflash.c
-bdmflash_CFLAGS = \
-	@CFLAGS@ -I$(top_srcdir)/bdmabstraction
+bdmflash_CPPFLAGS = \
+	-I$(top_srcdir)/bdmabstraction
 bdmflash_LDADD = \
 	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
 	$(top_builddir)/lib/libBDM.a
