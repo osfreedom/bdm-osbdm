@@ -274,6 +274,10 @@ Step 3 -- Installing the Server
   wish to use a driver and your access is local to your development machine
   then this step may be skipped.
 
+  Before using the server, please make sure you understand the implications
+  of such a setup. You probably want to restrict access to the bdmd port
+  to trusted machines.
+
   The BDM server allows a lab to contain your target hardware and you can
   access it from your development machine. The BDM server can support clients
   on different platforms. This means a Linux server can be accessed from MacOS
