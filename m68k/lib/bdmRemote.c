@@ -16,20 +16,18 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-/*
-  #define BDM_MESSAGE_DEBUG
-*/
+#define BDM_REMOTE_TRACE 0
 
 #include <ctype.h>
 #include <errno.h>
@@ -38,12 +36,22 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/param.h>
+#include <sys/time.h>
+
+#if defined (__WIN32__)
+#include <winsock2.h>
+#else
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/param.h>
 #include <sys/socket.h>
-#include <sys/time.h>
+
+#if !defined (__CYGWIN__)
+#include <netinet/tcp.h>
+#endif
+#endif
 
 #include "bdmRemote.h"
 
@@ -85,9 +93,36 @@ static const int ioctl_code_table[] = {
   BDM_GET_IF_TYPE
 };
 
-#if !defined (__CYGWIN__)
+/*
+ * Win32 support not provided as standard.
+ */
 
-#include <netinet/tcp.h>
+#if defined (__WIN32__)
+#define MAXHOSTNAMELEN 64
+#define ECONNREFUSED WSAECONNREFUSED
+#define sleep _sleep
+
+static int ws_started;
+int
+bdmInitWinSock ()
+{
+  if (!ws_started) {
+    WORD    wVersionRequested;
+    WSADATA wsaData;
+    int     err;
+
+    wVersionRequested = MAKEWORD (2, 2);
+
+    err = WSAStartup (wVersionRequested, &wsaData);
+
+    if (err)
+      return 0;
+
+    ws_started = 1;
+  }
+
+  return 1;
+}
 
 #endif
 
@@ -100,7 +135,7 @@ bdmRemoteStrerror (int error_no)
   switch (error_no) {
     case BDM_FAULT_TIMEOUT: return "Remote BDM server timeout";
   }
-  return strerror (error_no);  
+  return strerror (error_no);
 }
 
 /*
@@ -120,6 +155,26 @@ bdmGenerateIOId (int code)
     else
       id++;
   return -1;
+}
+
+static int
+bdmSocketSend (int fd, char *buf, int buf_len)
+{
+  int wrote;
+
+#if BDM_REMOTE_TRACE
+  printf ("bdm-remote:send: [%d] %s\n", buf_len, buf);
+#endif
+
+#if defined (__WIN32__)
+  wrote = send (fd, buf, buf_len, 0);
+#else
+  wrote = write (fd, buf, buf_len);
+#endif
+  if (wrote < 0)
+    printf ("bdm-remote:send: socket write failed: %s\n",
+            strerror (errno));
+  return wrote;
 }
 
 static int
@@ -152,16 +207,20 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
     }
     else {
       memset (buf, 0, buf_len);
-      
+
+#if defined (__WIN32__)
+      cread = recv (fd, buf, buf_len, 0);
+#else
       cread = read (fd, buf, buf_len);
+#endif
 
       if (cread > 0) {
-#ifdef BDM_MESSAGE_DEBUG        
-        printf ("bdm-remote: [%d] %s\n", cread, buf);
+#if BDM_REMOTE_TRACE
+        printf ("bdm-remote:wait: [%d] %s\n", cread, buf);
 #endif
         return cread;
       }
-      
+
       if (cread < 0)
         if (errno != EINTR)
           return -1;
@@ -177,6 +236,13 @@ bdmRemoteName (const char *name)
   char           *port;
   struct hostent *hostent;
 
+#if defined (__WIN32__)
+  if (!bdmInitWinSock ()) {
+    errno = ENOENT;
+    return -1;
+  }
+#endif
+
   /*
    * We need a ':' in the name to be remote.
    */
@@ -189,15 +255,16 @@ bdmRemoteName (const char *name)
    */
 
   strncpy (lname, name, MAXHOSTNAMELEN);
-  
+
   port = strchr (lname, ':');
 
   if (port)
-    lname[port - lname] = '\0';
+    *port = '\0';
 
   hostent = gethostbyname (lname);
 
   if (!hostent) {
+    printf ("bdm-remote:name: host look falied: %s\n", lname);
     errno = ENOENT;
     return 0;
   }
@@ -226,9 +293,15 @@ bdmRemoteOpen (const char *name)
   int                buf_len;
   char               *s;
 
+#if defined (__WIN32__)
+  if (!bdmInitWinSock ()) {
+    errno = ENOENT;
+    return -1;
+  }
+#endif
 
   strncpy (lname, name, 256);
-  
+
   port_str = strchr (lname, ':');
 
   if (port_str) {
@@ -243,7 +316,7 @@ bdmRemoteOpen (const char *name)
 
   if (port == 0)
     port = 6543;
-  
+
   /*
    * If we have another colon in the string we must assume
    * that another host name is present and we are tring to
@@ -286,6 +359,7 @@ bdmRemoteOpen (const char *name)
   hostent = gethostbyname (lname);
 
   if (!hostent) {
+    printf ("bdm-remote:open: gethostbyname (%s) failed\n", lname);
     errno = ENOENT;
     return -1;
   }
@@ -294,7 +368,7 @@ bdmRemoteOpen (const char *name)
    * Attempt to make a connection for 15 second. That is
    * 15 attempts a second apart.
    */
-  
+
   for (reties = 0; reties < BDM_REMOTE_OPEN_WAIT; reties++)
   {
     fd = socket (PF_INET, SOCK_STREAM, 0);
@@ -304,7 +378,7 @@ bdmRemoteOpen (const char *name)
     /*
      * Allow rapid reuse of this port.
      */
-    
+
     optarg = 1;
     if (setsockopt (fd, SOL_SOCKET, SO_REUSEADDR,
                     (char *) &optarg, sizeof (optarg)) < 0) {
@@ -318,7 +392,7 @@ bdmRemoteOpen (const char *name)
     /*
      * Enable TCP keep alive process.
      */
-    
+
     optarg = 1;
     if (setsockopt (fd, SOL_SOCKET, SO_KEEPALIVE,
                     (char *) &optarg, sizeof (optarg)) < 0) {
@@ -331,7 +405,7 @@ bdmRemoteOpen (const char *name)
 
     sockaddr.sin_family = PF_INET;
     sockaddr.sin_port   = htons (port);
-    
+
     memcpy (&sockaddr.sin_addr.s_addr,
             hostent->h_addr,
             sizeof (struct in_addr));
@@ -343,7 +417,7 @@ bdmRemoteOpen (const char *name)
 
     close (fd);
     fd = -1;
-    
+
     /*
      * We retry for ECONNREFUSED because that is often a temporary
      * condition, which happens when the server is being restarted.
@@ -356,31 +430,36 @@ bdmRemoteOpen (const char *name)
   }
 
   if (reties == BDM_REMOTE_OPEN_WAIT) {
+    printf ("bdm-remote:open: failed\n");
     errno = ENXIO;
     return -1;
   }
-  
+
   protoent = getprotobyname ("tcp");
   if (!protoent) {
+    printf ("bdm-remote:open: getprotobyname failed\n");
     close (fd);
     return -1;
   }
-  
+
   optarg = 1;
   if (setsockopt (fd, protoent->p_proto,
                   TCP_NODELAY, (char *) &optarg, sizeof (optarg))) {
     int save_errno = errno;
+    printf ("bdm-remote:open: setsockopt failed\n");
     close (fd);
     fd = -1;
     errno = save_errno;
     return -1;
   }
-  
+
   /*
    * If we don't do this, then GDB simply exits when the remote
    * side dies.
    */
+#if !defined (__WIN32__)
   signal (SIGPIPE, SIG_IGN);
+#endif
 
   /*
    * Say hello. This will cause the server to open the port.
@@ -391,11 +470,22 @@ bdmRemoteOpen (const char *name)
   buf_len += sprintf (buf + buf_len, "%s", device);
   buf_len++;
 
-  if (write (fd, buf, buf_len) != buf_len)
-    return -1;
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len) {
+     int save_errno = errno;
+    close (fd);
+    fd = -1;
+    errno = save_errno;
+   return -1;
+  }
 
-  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
+  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0) {
+    printf ("bdm-remote:open: wait failed\n");
+    int save_errno = errno;
+    close (fd);
+    fd = -1;
+    errno = save_errno;
     return -1;
+  }
 
   /*
    * Unpack the result.
@@ -429,9 +519,9 @@ int
 bdmRemoteClose (int fd)
 {
   char buf[BDM_REMOTE_BUF_SIZE];
-  
+
   strcpy (buf, "QUIT Later.");
-  write (fd, buf, strlen (buf) + 1);
+  bdmSocketSend (fd, buf, strlen (buf) + 1);
 
   return close (fd);
 }
@@ -461,13 +551,13 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
   /*
    * Pack the message and send.
    */
-  
+
   strcpy (buf, "IOINT ");
   buf_len = sizeof "IOINT " - 1;
   buf_len += sprintf (buf + buf_len, "0x%x,0x%x", id, *var);
   buf_len++;
-    
-  if (write (fd, buf, buf_len) != buf_len)
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -476,7 +566,7 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
   /*
    * Unpack the result.
    */
-  
+
   s = strstr (buf, "IOINT");
 
   if (!s) {
@@ -487,14 +577,14 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
   s += sizeof "IOINT";
 
   errno = strtoul (s, NULL, 0);
-  
+
   s = strchr (s, ',') + 1;
 
   *var = strtoul (s, NULL, 0);
-  
+
   if (errno)
     return -1;
-  
+
   return 0;
 }
 
@@ -523,13 +613,13 @@ bdmRemoteIoctlCommand (int fd, int code)
   /*
    * Pack the message and send.
    */
-  
+
   strcpy (buf, "IOCMD ");
   buf_len = sizeof "IOCMD " - 1;
   buf_len += sprintf (buf + buf_len, "0x%x", id);
   buf_len++;
 
-  if (write (fd, buf, buf_len) != buf_len)
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -549,10 +639,10 @@ bdmRemoteIoctlCommand (int fd, int code)
   s += sizeof "IOCMD";
 
   errno = strtoul (s, NULL, 0);
-  
+
   if (errno)
     return -1;
-  
+
   return 0;
 }
 
@@ -581,14 +671,14 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
   /*
    * Pack the message and send.
    */
-  
+
   strcpy (buf, "IOIO ");
   buf_len = sizeof "IOIO " - 1;
   buf_len += sprintf (buf + buf_len, "0x%x,0x%x,0x%x",
                       id, ioc->address, ioc->value);
   buf_len++;
 
-  if (write (fd, buf, buf_len) != buf_len)
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
@@ -608,9 +698,9 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
   s += sizeof "IOIO";
 
   errno = strtoul (s, NULL, 0);
-  
+
   s = strchr (s, ',') + 1;
-  
+
   ioc->address = strtoul (s, NULL, 0);
 
   s = strchr (s, ',') + 1;
@@ -619,7 +709,7 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
 
   if (errno)
     return -1;
-  
+
   return 0;
 }
 
@@ -642,17 +732,17 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
    * The server will return a protocol status code, the read protocol
    * label, errno, the length then the data.
    */
-  
+
   strcpy (buf, "READ ");
   buf_len  = sizeof "READ " - 1;
   buf_len += sprintf (buf + buf_len, "%ld", nbytes);
   buf_len++;
-  
-  if (write (fd, buf, buf_len) != buf_len)
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
 
   buf_len = bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE);
-  
+
   if (buf_len < 0)
     return -1;
 
@@ -661,16 +751,16 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
    */
 
   s = strstr (buf, "READ");
-  
+
   if (!s) {
     /* FIXME: need error message */
     return -1;
   }
 
   s += sizeof "READ";
-  
+
   errno = strtoul (s, NULL, 0);
-  
+
   s = strchr (s, ',') + 1;
 
   remote_nbytes = strtoul (s, NULL, 0);
@@ -681,7 +771,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
    * byte. So if a single character is left move it to the
    * start of the buffer and append the next buffer of data.
    */
-  
+
   if (remote_nbytes) {
     bytes     = 0;
     buf_index = strchr (s, ',') - buf + 1;
@@ -689,12 +779,13 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
     while (bytes < nbytes) {
       if (buf_len < 2) {
         int new_read;
-        new_read = bdmRemoteWait (fd, buf + buf_len, BDM_REMOTE_BUF_SIZE - buf_len);
+        new_read = bdmRemoteWait (fd, buf + buf_len,
+                                  BDM_REMOTE_BUF_SIZE - buf_len);
         if (new_read < 0)
           return -1;
         buf_len += new_read;
       }
-    
+
       while ((bytes < nbytes) && ((buf_len - buf_index) > 1)) {
         if (buf[buf_index] > '9') {
           buf[buf_index] = tolower (buf[buf_index]);
@@ -702,9 +793,9 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
         }
         else
           octet = buf[buf_index] - '0';
-      
+
         buf_index++;
-    
+
         octet <<= 4;
 
         if (buf[buf_index] > '9') {
@@ -713,7 +804,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
         }
         else
           octet |= buf[buf_index] - '0';
-    
+
         buf_index++;
 
         *cbuf = octet;
@@ -728,7 +819,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
       }
       else
         buf_len = 0;
-      
+
       buf_index = 0;
     }
   }
@@ -755,7 +846,7 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
 
   if (nbytes == 0)
     return 0;
-  
+
   strcpy (buf, "WRITE ");
   buf_len  = sizeof "WRITE " - 1;
   buf_len += sprintf (buf + buf_len, "%ld,", nbytes);
@@ -770,13 +861,13 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
       cbuf++;
       bytes++;
     }
-  
-    if (write (fd, buf, buf_len) != buf_len)
+
+    if (bdmSocketSend (fd, buf, buf_len) != buf_len)
       return -1;
 
     buf_len = 0;
   }
-  
+
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
     return -1;
 
@@ -794,9 +885,9 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
   s += sizeof "WRITE";
 
   errno = strtoul (s, NULL, 0);
-  
+
   s = strchr (s, ',') + 1;
-  
+
   nbytes = strtoul (s, NULL, 0);
 
   return nbytes;
