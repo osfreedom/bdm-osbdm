@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec m68k-bdm-elf-gdb -x "===PREFIX===/lib/gdbScripts/RTEMS360.gdb" "$@"
