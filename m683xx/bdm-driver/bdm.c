@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.1 2003/06/04 01:31:31 ppisa Exp $
+ * $Id: bdm.c,v 1.2 2003/12/28 16:51:22 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -73,7 +73,7 @@ Boston, MA 02111-1307, USA.
 #if (LINUX_VERSION_CODE >= VERSION(2,4,0))
   #define BDM_WITH_DEVFS    
   #include <linux/miscdevice.h>
-  devfs_handle_t bdm_devfs_handle=NULL;
+  kc_devfs_handle_t bdm_devfs_handle=NULL;
 #endif
 
 #define BDM_DEVFS_DIR_NAME "m683xx-bdm"
@@ -295,7 +295,7 @@ bdm_delay(int counter)
 		}
 		udelay(counter);
 	} else {
-		current->state = TASK_INTERRUPTIBLE;
+		set_current_state(TASK_INTERRUPTIBLE);
 		schedule_timeout(counter/(1000000/HZ));
 	}
 #if NEVER
@@ -1834,8 +1834,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.1 $", "$Date: 2003/06/04 01:31:31 $");
-		   /*"$Id: bdm.c,v 1.1 2003/06/04 01:31:31 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.2 $", "$Date: 2003/12/28 16:51:22 $");
+		   /*"$Id: bdm.c,v 1.2 2003/12/28 16:51:22 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1875,15 +1875,12 @@ init_module(void)
   #if (LINUX_VERSION_CODE >= VERSION(2,5,60)) 
 	devfs_mk_dir (BDM_DEVFS_DIR_NAME);
 	for(i=0;i<bdm_minor_index_size;i++){
-          char dev_name[32];
+          /*char dev_name[32];*/
 	  if(bdm_minor_index[i]<0) continue;
 	  if(!minor2descriptor(i)->name) continue;
-	  sprintf(dev_name, "%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
-	  devfs_register(NULL, dev_name,
-		DEVFS_FL_DEFAULT, BDM_MAJOR_NUMBER, i,
-		S_IFCHR | S_IRUGO | S_IWUGO ,
-		&bdm_fops, NULL);
-        
+	  /*sprintf(dev_name, "%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);*/
+	  devfs_mk_cdev(MKDEV(BDM_MAJOR_NUMBER, i), S_IFCHR | S_IRUGO | S_IWUGO, 
+	  	"%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
 	}
   #else /* < 2.5.60 */
 	bdm_devfs_handle = devfs_mk_dir (NULL, BDM_DEVFS_DIR_NAME, NULL);
@@ -1927,7 +1924,7 @@ cleanup_module(void)
 	  for(i=0;i<bdm_minor_index_size;i++){
 	    if(bdm_minor_index[i]<0) continue;
 	    if(!minor2descriptor(i)->name) continue;
-	    devfs_remove(BDM_DEVFS_DIR_NAME "/%s", minor2descriptor(i)->name);
+	    devfs_remove("%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
           }
 	}
 	devfs_remove(BDM_DEVFS_DIR_NAME);

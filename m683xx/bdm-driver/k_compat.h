@@ -126,6 +126,10 @@ char kernel_version[] = UTS_RELEASE;
        schedule(); \
        current->timeout = 0; \
    })
+   
+   #ifndef set_current_state
+      #define set_current_state(state_value)        do { current->state = state_value; } while (0) 
+   #endif
 #endif
 
 #if (LINUX_VERSION_CODE < VERSION(2,1,36)) /* needs correction */
@@ -174,16 +178,7 @@ char kernel_version[] = UTS_RELEASE;
    #define RWINODE    file->f_dentry->d_inode
    #define KC_FOPS_FLUSH(ptr)
    #define kc_dev2minor MINOR
-#elif (LINUX_VERSION_CODE < VERSION(2,5,7)) /* may need correction */
-   #define CLOSERET   int
-   #define RWRET      ssize_t
-   #define RWCOUNT_T  size_t
-   #define RWINODE_P
-   #define RWPPOS_P   ,loff_t *ppos
-   #define RWINODE    file->f_dentry->d_inode
-   #define KC_FOPS_FLUSH(ptr)  flush:(ptr),
-   #define kc_dev2minor MINOR
-#else /* >= 2.5.7 */ /* may need correction */
+#elif ((LINUX_VERSION_CODE >= VERSION(2,5,7)) && (LINUX_VERSION_CODE < VERSION(2,6,0)))
    #define CLOSERET   int
    #define RWRET      ssize_t
    #define RWCOUNT_T  size_t
@@ -192,6 +187,15 @@ char kernel_version[] = UTS_RELEASE;
    #define RWINODE    file->f_dentry->d_inode
    #define KC_FOPS_FLUSH(ptr)  flush:(ptr),
    #define kc_dev2minor minor
+#else /* <2.5.7 >=2.6.0 */ /* may need correction */
+   #define CLOSERET   int
+   #define RWRET      ssize_t
+   #define RWCOUNT_T  size_t
+   #define RWINODE_P
+   #define RWPPOS_P   ,loff_t *ppos
+   #define RWINODE    file->f_dentry->d_inode
+   #define KC_FOPS_FLUSH(ptr)  flush:(ptr),
+   #define kc_dev2minor MINOR
 #endif /* 2.1.36 */
 
 #if (LINUX_VERSION_CODE < VERSION(2,1,50)) /* may need correction */
@@ -244,8 +248,10 @@ char kernel_version[] = UTS_RELEASE;
 #endif /* 2.5.40 */
 
 #if (LINUX_VERSION_CODE >= VERSION(2,5,60)) /* may need correction */
+  #define kc_devfs_handle_t char *
   #define kc_devfs_mk_dir devfs_mk_dir
 #else /* 2.5.60 */
+  #define kc_devfs_handle_t devfs_handle_t
   #define kc_devfs_mk_dir(dirname...) ({ \
   	  char kc_buf[64]; int kc_n; \
 	  n = snprintf(buf, 64, dirname...); \
