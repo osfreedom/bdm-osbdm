@@ -46,7 +46,7 @@ diff -c -r -P gdb-5.3.original/gdb/bdm.h gdb-5.3-bdm-683xx/gdb/bdm.h
 + #ifndef LINUX_BDM_H
 + #define LINUX_BDM_H
 + /*
-+  * $Id: gdb-5.3-bdm-683xx-patch,v 1.1 2003/09/07 22:14:32 ppisa Exp $
++  * $Id: gdb-5.3-bdm-683xx-patch,v 1.2 2004/11/18 23:07:40 ppisa Exp $
 +  *
 +  * Linux Device Driver for Public Domain BDM Interface
 +  * based on the PD driver package by Scott Howard, Feb 93
@@ -1191,12 +1191,12 @@ diff -c -r -P gdb-5.3.original/gdb/bdmflash.h gdb-5.3-bdm-683xx/gdb/bdmflash.h
 + #endif /* BDMFLASH_H */
 diff -c -r -P gdb-5.3.original/gdb/bdmlib.c gdb-5.3-bdm-683xx/gdb/bdmlib.c
 *** gdb-5.3.original/gdb/bdmlib.c	Sat Nov  2 17:19:49 2002
---- gdb-5.3-bdm-683xx/gdb/bdmlib.c	Fri Aug 15 15:35:59 2003
+--- gdb-5.3-bdm-683xx/gdb/bdmlib.c	Thu Nov 18 23:59:30 2004
 ***************
 *** 0 ****
---- 1,1700 ----
+--- 1,1694 ----
 + /*
-+  * $Id: gdb-5.3-bdm-683xx-patch,v 1.1 2003/09/07 22:14:32 ppisa Exp $
++  * $Id: gdb-5.3-bdm-683xx-patch,v 1.2 2004/11/18 23:07:40 ppisa Exp $
 +  *
 +  * Remote debugging interface for 683xx via Background Debug Mode
 +  * needs a driver, which controls the BDM interface.
@@ -1565,9 +1565,6 @@ diff -c -r -P gdb-5.3.original/gdb/bdmlib.c gdb-5.3-bdm-683xx/gdb/bdmlib.c
 + int
 + bdmlib_reset(void)
 + {
-+ #if SUPPORT_RAMINIT
-+ 	u_long dummy;
-+ #endif 
 + 	int ret;
 + 
 + 	dbprintf("bdmlib_reset ttcu %d\n", bdm_ttcu);
@@ -1610,7 +1607,7 @@ diff -c -r -P gdb-5.3.original/gdb/bdmlib.c gdb-5.3-bdm-683xx/gdb/bdmlib.c
 + 	}
 + 
 + #if SUPPORT_RAMINIT
-+ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, &dummy)) < 0) {
++ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, 0, 0)) < 0) {
 + 		fprintf_filtered(gdb_stderr, "Warning: %s for file `%s'\n",
 + 			bdmlib_geterror_str(ret),
 + 			RAMINIT_FILENAME);
@@ -2792,9 +2789,6 @@ diff -c -r -P gdb-5.3.original/gdb/bdmlib.c gdb-5.3-bdm-683xx/gdb/bdmlib.c
 + 	int ret = 0;
 + 	u_int sfc, dfc;
 + 	int we_have_macro_files = 0;
-+ #if SUPPORT_RAMINIT
-+ 	u_long dummy;
-+ #endif 
 + 
 + 	if (!bdmlib_isopen())
 + 		return BDM_ERR_NOT_OPEN;
@@ -2819,7 +2813,7 @@ diff -c -r -P gdb-5.3.original/gdb/bdmlib.c gdb-5.3-bdm-683xx/gdb/bdmlib.c
 + 	we_have_macro_files = !bdmlib_do_load_macro(file, BEGIN_MACRO);
 + 
 + #if SUPPORT_RAMINIT
-+ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, &dummy)) < 0) {
++ 	if ((ret = bdmlib_do_load_binary(RAMINIT_FILENAME, 0, 0)) < 0) {
 + 		error("ram_init load error.\n");
 + 	}
 + #endif /* SUPPORT_RAMINIT */
@@ -2902,7 +2896,7 @@ diff -c -r -P gdb-5.3.original/gdb/bdmlib.h gdb-5.3-bdm-683xx/gdb/bdmlib.h
 *** 0 ****
 --- 1,83 ----
 + /*
-+  * $Id: gdb-5.3-bdm-683xx-patch,v 1.1 2003/09/07 22:14:32 ppisa Exp $
++  * $Id: gdb-5.3-bdm-683xx-patch,v 1.2 2004/11/18 23:07:40 ppisa Exp $
 +  */
 + 
 + #ifndef BDMLIB_H
@@ -3510,7 +3504,7 @@ diff -c -r -P gdb-5.3.original/gdb/remote-bdm.c gdb-5.3-bdm-683xx/gdb/remote-bdm
 *** 0 ****
 --- 1,1721 ----
 + /*
-+  * $Id: gdb-5.3-bdm-683xx-patch,v 1.1 2003/09/07 22:14:32 ppisa Exp $
++  * $Id: gdb-5.3-bdm-683xx-patch,v 1.2 2004/11/18 23:07:40 ppisa Exp $
 +  *
 +  * Remote debugging interface for 683xx via Background Debug Mode
 +  * needs a device driver, which controls the BDM interface.
