@@ -47,7 +47,7 @@ char kernel_version[] = UTS_RELEASE;
 #define kc_MOD_INC_USE_COUNT
 #endif /* 2.5.50 */
 
-#if (LINUX_VERSION_CODE < VERSION(2,2,0)) 
+#if ((LINUX_VERSION_CODE < VERSION(2,2,0)) || (LINUX_VERSION_CODE >= VERSION(2,6,0)))
   #ifndef EXPORT_NO_SYMBOLS
     #define EXPORT_NO_SYMBOLS
   #endif /*EXPORT_NO_SYMBOLS*/
@@ -249,13 +249,39 @@ char kernel_version[] = UTS_RELEASE;
 
 #if (LINUX_VERSION_CODE >= VERSION(2,5,60)) /* may need correction */
   #define kc_devfs_handle_t char *
+  #define kc_devfs_delete(handle) ({ devfs_remove(handle); kfree(handle); })
+
+  #define kc_devfs_new_cdev(dir_handle, dev_num, dev_mode, dev_ops, dev_info, dev_name) ({ \
+	  char *kc_t_name; \
+	  const char *kc_t_dev=(dev_name); \
+	  const char *kc_t_dir=(dir_handle); \
+	  const int kc_t_d=kc_t_dir?strlen(kc_t_dir)+1:0; \
+	  int kc_t_n=strlen(kc_t_dev)+1+kc_t_d; \
+	  if ((kc_t_name=kmalloc(kc_t_n,GFP_KERNEL))) { \
+	    if(kc_t_d) {memcpy(kc_t_name,kc_t_dir,kc_t_d-1); kc_t_name[kc_t_d-1]='/';} \
+	    strcpy(kc_t_name+kc_t_d,kc_t_dev); \
+    	    if(devfs_mk_cdev((dev_num), (dev_mode), kc_t_name)<0) { \
+	      kfree(kc_t_name); \
+	      kc_t_name = NULL ; \
+	    } \
+	  } \
+	  kc_t_name; \
+	})
+
   #define kc_devfs_mk_dir devfs_mk_dir
 #else /* 2.5.60 */
   #define kc_devfs_handle_t devfs_handle_t
+  #define kc_devfs_delete devfs_unregister
+
+  #define kc_devfs_new_cdev(dir_handle, dev_num, dev_mode, dev_ops, dev_info, dev_name) ({ \
+	  devfs_register((dir_handle), (dev_name), DEVFS_FL_DEFAULT, \
+	    MAJOR(dev_num), MINOR(dev_num), (dev_mode), (dev_ops), (dev_info)); \
+	})
+
   #define kc_devfs_mk_dir(dirname...) ({ \
   	  char kc_buf[64]; int kc_n; \
-	  n = snprintf(buf, 64, dirname...); \
-  	  (n >= 64 || !buf[0])? NULL: devfs_mk_dir(NULL, kc_buf, NULL); \
+	  kc_n = snprintf(buf, 64, dirname...); \
+  	  (kc_n >= 64 || !buf[0])? NULL: devfs_mk_dir(NULL, kc_buf, NULL); \
 	})
 
 #endif /* 2.5.60 */
