@@ -356,7 +356,7 @@ diff -urN gdb-5.2.1.orig/gdb/remote-m68k-bdm.c gdb-5.2.1/gdb/remote-m68k-bdm.c
 + */
 +
 +/*
-+ * $Revision: 1.1 $    $Date: 2003/06/14 01:09:15 $   $Author: codewiz $
++ * $Revision: 1.1 $    $Date: 2004/03/28 23:13:10 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
