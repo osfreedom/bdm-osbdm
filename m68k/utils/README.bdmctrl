@@ -11,13 +11,14 @@ gdb-patches from the m68k branch to work).
 
 Bdmctrl is invoked like this:
 
-  bdmctrl [options] <device> [<command> [arguments [...]]]
-    where options are one ore more of:
-      -h <cmd>   Get additional description for command <cmd>.
-      -d <level> (default=0) Choose driver debug level.
-      -v <level> (default=1) Choose verbosity level.
-      -D <delay> (default=0) Delay count for BDM clock generation.
-      -f                     turn warnings into fatal errors
+    Usage: %s [options] [<command> [arguments [...]]]
+     where options are one ore more of:
+       -h <cmd>   Get additional description for command <cmd>.
+       -d <level> Choose driver debug level (default=0).
+       -v <level> Choose verbosity level (default=1).
+       -D <delay> Delay count for BDM clock generation (default=0).
+       -c <cmd>   Split <cmd> into args and execute resulting command.
+       -f         Turn warnings into fatal errors.
 
 If a command is specified on the command line, bdmctrl executs the command
 and exits. If no command is specified on the command line, commands are read
@@ -25,21 +26,34 @@ and executed from stdin until EOF is encountered. The most common way of
 invocations is to give the "source" command on the command line (see below).
 So a typical invocation would be like this:
 
-  bdmctrl /dev/bdmicd0 source /foo/bar/baz myfirmware.coff
+  bdmctrl source /foo/bar/baz /dev/bdmicd0 myfirmware.coff
 
 or like this:
 
-  echo source /foo/bar/baz myfirmware.coff | bdmctrl /dev/bdmicd0
+  echo source /foo/bar/baz /dev/bdmicd0 myfirmware.coff | bdmctrl
 
-The two examples above are semantically almost identical. Please check the
-discussion about stdin in the description to the "source" command for the
+or like this:
+
+  bdmctrl -c "source /foo/bar/baz /dev/bdmicd0 myfirmware.coff" -c "echo done"
+
+or even like this (if /foo/bar/baz is executable and uses bdmctrl as its
+shebang-shell):
+
+  /foo/bar/baz /dev/bdmicd0 myfirmware.coff
+
+The first two examples above are semantically almost identical. Please check
+the discussion about stdin in the description to the "source" command for the
 exception.
 
 For example, the bundeled test script can be executed with
 
-  bdmctrl /dev/bdmicd0 source m68332.test /path/to/my/executable.coff
+  bdmctrl source m68332.test /dev/bdmicd0 /path/to/my/executable.coff
 
-This script will do some basic hardware check, load the named executable
+If you set the executable bit, you can execute it with:
+
+  m68332.test /dev/bdmicd0 /path/to/my/executable.coff
+
+This script will do some basic hardware checks, load the named executable
 into the target and execute it.
 
 The bdmctrl utility shouldn't contain any target specific code and should

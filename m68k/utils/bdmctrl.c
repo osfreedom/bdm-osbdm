@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.15 2004/03/25 22:16:31 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.16 2004/03/26 20:46:45 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -48,6 +48,8 @@ static void do_command (size_t argc, char **argv);
 
 static int verify;
 static int verbosity=1;
+static int delay=0;
+static int debug_driver=0;
 static int fatal_errors=0;
 static char *progname;
 static int cpu_type;
@@ -671,6 +673,25 @@ static void check_alignment (unsigned long adr, char size)
     }
 }
 
+/* Split a line by whitespace, do variable substitutions and execute the
+   command
+ */
+static void exec_line (const char *line, size_t glbl_argc, char **glbl_argv)
+{
+    int i, ac;
+    char **av;
+
+    ac = build_argv (line, &av, glbl_argc-1, glbl_argv+1);
+
+    if (ac) {
+	do_command (ac, av);
+
+	for (i=0; i<ac; i++)
+	    free (av[i]);
+	free (av);
+    }
+}
+
 /* Here we're done with the helper functions. Define the real command
    functions now
  */
@@ -995,7 +1016,6 @@ static void cmd_read (size_t argc, char *argv[])
 	free (av);
     }
 
-
     if (verbosity) printf ("OK\n");
 }
 
@@ -1125,253 +1145,23 @@ static void cmd_source (size_t argc, char **argv)
 	buf[1020]=0;
 	if ((p=strchr(buf, '\n'))) *p=0;
 	if ((p=strchr(buf, '#'))) *p=0;
-	ac = build_argv (buf, &av, argc-1, argv+1);
-
-	if (ac) {
-	    do_command (ac, av);
-
-	    for (i=0; i<ac; i++)
-		free (av[i]);
-	    free (av);
-	}
+	exec_line (buf, argc, argv);
     }
 
     fclose (file);
 }
 
-/* Known commands and their implementations.
+/* Open BDM device
  */
-static struct command_s {
-    char *name;
-    char *args;
-    size_t min, max; /* number of arguments (inclusive command by itself) */
-    void (*func)(size_t, char**);
-    char *helptext;
-} command[] = {
-    { "reset",           "",                    1,       1, cmd_reset,
-      "Reset the target.\n"
-    },
-    { "check-register",  "REG [REG ...]",       2, INT_MAX, cmd_check_reg,
-      "The specified registers are tested with random testpatterns.  After\n"
-      "the test, the original values of the registers are restored.\n"
-    },
-    { "dump-register",   "REG [REG ...]",       2, INT_MAX, cmd_dump_reg,
-      "The contents of the specified registers are dumped to stdout.\n"
-    },
-    { "check-mem",       "ADR SIZ",             3,       3, cmd_check_mem,
-      "The specified memory region is checked with a random testpattern.  In\n"
-      "addition, an alingnment test is done.  After the test the original\n"
-      "memory contents are restored.\n"
-      "ADR and SIZ can be a number, a register or a symbol.\n"
-    },
-    { "dump-mem",        "ADR SIZ WIDTH [FN]",  4,       5, cmd_dump_mem,
-      "Dump memory contents to stdout.  The WIDTH argument specifies whether\n"
-      "bytes, words or longwords are dumped.\n"
-      "ADR and SIZ can be a number, a register or a symbol.\n"
-      "WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.\n"
-      "if FN is specified, the contents are dumped to the named file.\n"
-    },
-    { "write",           "DST VAL WIDTH",       4,       4, cmd_write,
-      "Write a VAL with WIDTH to destination DST.  VAL and DST can be an\n"
-      "absolute memory address, a register or a symbol.\n"
-      "DST and VAL can be a number, a register or a symbol.\n"
-      "WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.\n"
-    },
-    { "load",            "[-v] FN [SEC ...]",   2, INT_MAX, cmd_load,
-      "Load object file FN into the target.  Only the specified sections are\n"
-      "loaded.  When no sections are specified, only sections with the\n"
-      "SEC_LOAD flag are loaded.  If FN has an entry address specified, %rpc\n"
-      "is set to this address.  With the -v flag, the written contents are\n"
-      "read back and verified.\n"
-      "After the load, the symbols from the loaded file are known to the\n"
-      "commands which can deal with symbols.\n"
-      "Please note that s-record and intel-hex don't have section names.  In\n"
-      "this cases BFD assigns '.sec1', '.sec2' and so forth as section\n"
-      "names.\n"
-    },
-    { "execute",         "[ADR]",               1,       2, cmd_execute,
-      "Run the target at ADR.  If ADR is omitted, the target will run\n"
-      "from %rpc.  In this case you probably want to make sure that you have\n"
-      "loaded a file with an entry address definition.\n"
-      "ADR can be a number, a register or a symbol.\n"
-    },
-    { "step",            "[ADR]",               1,       2, cmd_step,
-      "Step the target at ADR.  If ADR is omitted, the target will\n"
-      "step on %rpc.  In this case you probably want to make sure that you\n"
-      "have loaded a file with an entry address definition.\n"
-      "ADR can be a number, a register or a symbol.\n"
-    },
-    { "set",             "VAR VAL",             3,       3, cmd_set,
-      "Define variable VAR and set its value to VAL.\n"
-    },
-    { "read",            "[VAR ...]",           1, INT_MAX, cmd_read,
-      "Read a line from stdin, split it into arguments and assign the\n"
-      "arguments to specified variables.\n"
-    },
-    { "sleep",           "SEC",                 2,       2, cmd_sleep,
-      "Sleep for SEC seconds.\n"
-    },
-    { "wait",            "",                    1,       1, cmd_wait,
-      "Wait until target is halted/stopped.\n"
-    },
-    { "time",            "",                    1,       1, cmd_time,
-      "Print seconds since bdmctrl was started.\n"
-    },
-    { "echo",            "[ARG ...]",           1, INT_MAX, cmd_echo,
-      "Print a line of text."
-    },
-    { "exit",            "",                    1,       1, cmd_exit,
-      "Exit bdmctrl immediately.\n"
-    },
-    { "source",          "[FN [ARG ...]]",      1, INT_MAX, cmd_source,
-      "Execute commands from file FN.  Withhin FN, the variables $1, $2, $3\n"
-      "(and so on) are replaced by the specified arguments.  After all the\n"
-      "commands from FN are executed, control returns to the original\n"
-      "position, so recursive execution is possible. When FN is omitted,\n"
-      "commands are read from stdin.  Please note that it doesn't make much\n"
-      "sense to source stdin more than one time.\n"
-    },
-    { "patterns",        "PAT [PAT ...]",       2, INT_MAX, cmd_patterns,
-      "The provided argument numbers are taken as test patterns for the\n"
-      "'check-register' and 'check-mem' commands.  The patterns are\n"
-      "32 bits wide.  On startup, bdmctrl generates 37 random testpatterns.\n"
-      "In general, a prime number of random patterns is best to _detect_\n"
-      "errors.  Therefore 37 randoms are generated at startup, so you don't\n"
-      "need to do this yourself.\n"
-      "Once an error is detected, you might want to define your own patterns\n"
-      "in order to locate and understand why the check-XXX command fails.\n"
-    },
-    { "random-patterns", "CNT",                 2,       2, cmd_patterns_rnd,
-      "Generate CNT random test patterns.  See description of 'patterns'\n"
-      "command for more information.\n"
-    },
-    { "flash-plugin",    "ADR LEN FN [FN ...]", 3, INT_MAX, cmd_flashplug,
-      "Load and register target-assisted flash driver plugin(s) from\n"
-      "file(s) FN.\n"
-      "ADR and LEN define a memory region on the target that can be used as\n"
-      "temporary memory to download driver and flash contents.\n"
-    },
-    { "flash",           "ADR",                 2,       2, cmd_flash,
-      "Autodetect flash chip(s) on ADR.  Currently only 29Fxxx and 49Fxxx\n"
-      "types of chips are supported.\n"
-      "Note that there is no dedicated command for the actual flash\n"
-      "operation.  The usual memory write command 'load' will automatically\n"
-      "call the correct driver for registered memory areas.\n"
-    },
-    { "erase",           "BASE OFF",            2,       3, cmd_erase,
-      "Submit erase command to sector with OFF on flash chip at BASE.\n"
-      "OFF==-1 indicates erase the whole chip.  For 29Fxxx and 49Fxxx types\n"
-      "of chips multiple erase commands can be issued simultanously before\n"
-      "the erase-wait command is issued.\n"
-    },
-    { "erase-wait",      "BASE",                2,       2, cmd_erase_wait,
-      "Wait for the flash chip on BASE to finish the issued erase operation.\n"
-    },
-};
-
-/* search a command and execute it
- */
-static void do_command (size_t argc, char **argv)
+static void cmd_open (size_t argc, char **argv)
 {
-    unsigned int i;
-
-    for (i=0; i<NUMOF(command); i++) {
-	if (STREQ (argv[0], command[i].name) && command[i].func) {
-	    if (argc<command[i].min || argc>command[i].max)
-		fatal ("Wrong number of arguments to \"%s\"\n", argv[0]);
-	    if (verbosity) printf ("%s: ", argv[0]);
-	    fflush (stdout);
-	    command[i].func (argc, argv);
-	    return;
-	}
-    }
-
-    fatal ("%s: unknwn command\n", argv[0]);
-}
-
-static void usage(char *progname, char *fmt, ...)
-{
-    unsigned int i;
-
-    va_list args;
-
-    if (fmt) {
-	va_start (args, fmt);
-	vfprintf (stderr, fmt, args);
-	va_end (args);
-    }
-
-    fprintf(stderr,
-	    "Usage: %s [options] <device> [<command> [arguments [...]]]\n"
-	    " where options are one ore more of:\n"
-	    "   -h <cmd>   Get additional description for command <cmd>.\n"
-	    "   -d <level> Choose driver debug level (default=0).\n"
-	    "   -v <level> Choose verbosity level (default=1).\n"
-	    "   -D <delay> Delay count for BDM clock generation (default=0).\n"
-	    "   -f         turn warnings into fatal errors\n"
-	    "\n"
-	    " available commands are:\n",
-	    progname);
-
-    for (i=0; i<NUMOF(command); i++) {
-	fprintf (stderr, "   %s %s\n", command[i].name, command[i].args);
-    }
-
-    exit(EXIT_FAILURE);
-}
-
-static void help_command (char *progname, char *cmd)
-{
-    unsigned int i;
-
-    for (i=0; i<NUMOF(command); i++) {
-	if (STREQ (cmd, command[i].name)) {
-	    fprintf (stderr, "%s %s\n\n%s",
-		     command[i].name, command[i].args, command[i].helptext);
-	    exit (EXIT_SUCCESS);
-	}
-    }
-
-    usage (progname, "unknown command '%s'.\n", cmd);
-}
-
-int main (int argc, char *argv[])
-{
-    int opt;
-    char *dev;
-    int delay=0;
-    int debug_driver=0;
-
-    progname = argv[0];
-
-    /* parse options
-     */
-    while ((opt=getopt (argc, argv, "fd:D:v:h:")) >= 0) {
-	switch (opt) {
-	    case 'h': help_command (progname, optarg);
-	    case 'd': debug_driver = strtol (optarg, NULL, 10); break;
-	    case 'D': delay        = strtol (optarg, NULL, 10); break;
-	    case 'v': verbosity    = strtol (optarg, NULL, 10); break;
-	    case 'f': fatal_errors = 1; break;
-	    default:  usage (progname, NULL);
-	}
-    }
-    if (argc<=optind) usage (progname, "missing mandatory option\n");
-
-    /* get device name
-     */
-    dev=argv[optind++];
-
     /* open BDM port and set basic options
      */
-    if (bdmOpen(dev)<0)
-	fatal ("bdmOpen(\"%s\"): %s\n", dev, bdmErrorString());
+    if (bdmOpen(argv[1])<0)
+	fatal ("bdmOpen(\"%s\"): %s\n", argv[1], bdmErrorString());
 
     if (debug_driver)              bdmSetDriverDebugFlag(debug_driver);
     if (delay)                     bdmSetDelay(delay);
-
-    srand (base_time = time (NULL));
-    qsort (regnames, NUMOF(regnames), sizeof(regnames[0]), cmpreg);
 
     /* print information we can retrieve from driver
      */
@@ -1406,14 +1196,250 @@ int main (int argc, char *argv[])
 		fatal ("Unknown or unsupported interface type %d!\n", iface);
 	}
     }
+}
 
-    /* do the real work now
+/* Known commands and their implementations.
+ */
+static struct command_s {
+    char *name;
+    char *args;
+    int need_device;
+    size_t min, max; /* number of arguments (inclusive command by itself) */
+    void (*func)(size_t, char**);
+    char *helptext;
+} command[] = {
+    { "open",            "DEV",                 0, 2,       2, cmd_open,
+      "Open the bdm device DEV\n"
+    },
+    { "reset",           "",                    1, 1,       1, cmd_reset,
+      "Reset the target.\n"
+    },
+    { "check-register",  "REG [REG ...]",       1, 2, INT_MAX, cmd_check_reg,
+      "The specified registers are tested with random testpatterns.  After\n"
+      "the test, the original values of the registers are restored.\n"
+    },
+    { "dump-register",   "REG [REG ...]",       1, 2, INT_MAX, cmd_dump_reg,
+      "The contents of the specified registers are dumped to stdout.\n"
+    },
+    { "check-mem",       "ADR SIZ",             1, 3,       3, cmd_check_mem,
+      "The specified memory region is checked with a random testpattern.  In\n"
+      "addition, an alingnment test is done.  After the test the original\n"
+      "memory contents are restored.\n"
+      "ADR and SIZ can be a number, a register or a symbol.\n"
+    },
+    { "dump-mem",        "ADR SIZ WIDTH [FN]",  1, 4,       5, cmd_dump_mem,
+      "Dump memory contents to stdout.  The WIDTH argument specifies whether\n"
+      "bytes, words or longwords are dumped.\n"
+      "ADR and SIZ can be a number, a register or a symbol.\n"
+      "WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.\n"
+      "if FN is specified, the contents are dumped to the named file.\n"
+    },
+    { "write",           "DST VAL WIDTH",       1, 4,       4, cmd_write,
+      "Write a VAL with WIDTH to destination DST.  VAL and DST can be an\n"
+      "absolute memory address, a register or a symbol.\n"
+      "DST and VAL can be a number, a register or a symbol.\n"
+      "WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.\n"
+    },
+    { "load",            "[-v] FN [SEC ...]",   1, 2, INT_MAX, cmd_load,
+      "Load object file FN into the target.  Only the specified sections are\n"
+      "loaded.  When no sections are specified, only sections with the\n"
+      "SEC_LOAD flag are loaded.  If FN has an entry address specified, %rpc\n"
+      "is set to this address.  With the -v flag, the written contents are\n"
+      "read back and verified.\n"
+      "After the load, the symbols from the loaded file are known to the\n"
+      "commands which can deal with symbols.\n"
+      "Please note that s-record and intel-hex don't have section names.  In\n"
+      "this cases BFD assigns '.sec1', '.sec2' and so forth as section\n"
+      "names.\n"
+    },
+    { "execute",         "[ADR]",               1, 1,       2, cmd_execute,
+      "Run the target at ADR.  If ADR is omitted, the target will run\n"
+      "from %rpc.  In this case you probably want to make sure that you have\n"
+      "loaded a file with an entry address definition.\n"
+      "ADR can be a number, a register or a symbol.\n"
+    },
+    { "step",            "[ADR]",               1, 1,       2, cmd_step,
+      "Step the target at ADR.  If ADR is omitted, the target will\n"
+      "step on %rpc.  In this case you probably want to make sure that you\n"
+      "have loaded a file with an entry address definition.\n"
+      "ADR can be a number, a register or a symbol.\n"
+    },
+    { "set",             "VAR VAL",             0, 3,       3, cmd_set,
+      "Define variable VAR and set its value to VAL.\n"
+    },
+    { "read",            "[VAR ...]",           0, 1, INT_MAX, cmd_read,
+      "Read a line from stdin, split it into arguments and assign the\n"
+      "arguments to specified variables.\n"
+    },
+    { "sleep",           "SEC",                 0, 2,       2, cmd_sleep,
+      "Sleep for SEC seconds.\n"
+    },
+    { "wait",            "",                    1, 1,       1, cmd_wait,
+      "Wait until target is halted/stopped.\n"
+    },
+    { "time",            "",                    0, 1,       1, cmd_time,
+      "Print seconds since bdmctrl was started.\n"
+    },
+    { "echo",            "[ARG ...]",           0, 1, INT_MAX, cmd_echo,
+      "Print a line of text."
+    },
+    { "exit",            "",                    0, 1,       1, cmd_exit,
+      "Exit bdmctrl immediately.\n"
+    },
+    { "source",          "[FN [ARG ...]]",      0, 1, INT_MAX, cmd_source,
+      "Execute commands from file FN.  Withhin FN, the variables $1, $2, $3\n"
+      "(and so on) are replaced by the specified arguments.  After all the\n"
+      "commands from FN are executed, control returns to the original\n"
+      "position, so recursive execution is possible. When FN is omitted,\n"
+      "commands are read from stdin.  Please note that it doesn't make much\n"
+      "sense to source stdin more than one time.\n"
+    },
+    { "patterns",        "PAT [PAT ...]",       0, 2, INT_MAX, cmd_patterns,
+      "The provided argument numbers are taken as test patterns for the\n"
+      "'check-register' and 'check-mem' commands.  The patterns are\n"
+      "32 bits wide.  On startup, bdmctrl generates 37 random testpatterns.\n"
+      "In general, a prime number of random patterns is best to _detect_\n"
+      "errors.  Therefore 37 randoms are generated at startup, so you don't\n"
+      "need to do this yourself.\n"
+      "Once an error is detected, you might want to define your own patterns\n"
+      "in order to locate and understand why the check-XXX command fails.\n"
+    },
+    { "random-patterns", "CNT",                 0, 2,       2,cmd_patterns_rnd,
+      "Generate CNT random test patterns.  See description of 'patterns'\n"
+      "command for more information.\n"
+    },
+    { "flash-plugin",    "ADR LEN FN [FN ...]", 0, 3, INT_MAX, cmd_flashplug,
+      "Load and register target-assisted flash driver plugin(s) from\n"
+      "file(s) FN.\n"
+      "ADR and LEN define a memory region on the target that can be used as\n"
+      "temporary memory to download driver and flash contents.\n"
+    },
+    { "flash",           "ADR",                 1, 2,       2, cmd_flash,
+      "Autodetect flash chip(s) on ADR.  Currently only 29Fxxx and 49Fxxx\n"
+      "types of chips are supported.\n"
+      "Note that there is no dedicated command for the actual flash\n"
+      "operation.  The usual memory write command 'load' will automatically\n"
+      "call the correct driver for registered memory areas.\n"
+    },
+    { "erase",           "BASE OFF",            1, 2,       3, cmd_erase,
+      "Submit erase command to sector with OFF on flash chip at BASE.\n"
+      "OFF==-1 indicates erase the whole chip.  For 29Fxxx and 49Fxxx types\n"
+      "of chips multiple erase commands can be issued simultanously before\n"
+      "the erase-wait command is issued.\n"
+    },
+    { "erase-wait",      "BASE",                1, 2,       2, cmd_erase_wait,
+      "Wait for the flash chip on BASE to finish the issued erase operation.\n"
+    },
+};
+
+/* search a command and execute it
+ */
+static void do_command (size_t argc, char **argv)
+{
+    unsigned int i;
+
+    for (i=0; i<NUMOF(command); i++) {
+	if (STREQ (argv[0], command[i].name) && command[i].func) {
+	    if (argc<command[i].min || argc>command[i].max)
+		fatal ("Wrong number of arguments (%d) to \"%s\"\n",
+		       argc, argv[0]);
+	    if (command[i].need_device && !bdmIsOpen())
+		fatal ("Device must be specified before \"%s\" can be used\n",
+		       argv[0]);
+	    if (verbosity) printf ("%s: ", argv[0]);
+	    fflush (stdout);
+	    command[i].func (argc, argv);
+	    return;
+	}
+    }
+
+    fatal ("%s: unknown command\n", argv[0]);
+}
+
+static void usage(char *progname, char *fmt, ...)
+{
+    unsigned int i;
+
+    va_list args;
+
+    if (fmt) {
+	va_start (args, fmt);
+	vfprintf (stderr, fmt, args);
+	va_end (args);
+    }
+
+    fprintf(stderr,
+	    "Usage: %s [options] [<command> [arguments [...]]]\n"
+	    " where options are one ore more of:\n"
+	    "   -h <cmd>   Get additional description for command <cmd>.\n"
+	    "   -d <level> Choose driver debug level (default=0).\n"
+	    "   -v <level> Choose verbosity level (default=1).\n"
+	    "   -D <delay> Delay count for BDM clock generation (default=0).\n"
+	    "   -c <cmd>   Split <cmd> into args and execute resulting command.\n"
+	    "   -f         Turn warnings into fatal errors.\n"
+	    "\n"
+	    " available commands are:\n",
+	    progname);
+
+    for (i=0; i<NUMOF(command); i++) {
+	fprintf (stderr, "   %s %s\n", command[i].name, command[i].args);
+    }
+
+    exit(EXIT_FAILURE);
+}
+
+static void help_command (char *progname, char *cmd)
+{
+    unsigned int i;
+
+    for (i=0; i<NUMOF(command); i++) {
+	if (STREQ (cmd, command[i].name)) {
+	    fprintf (stderr, "%s %s\n\n%s",
+		     command[i].name, command[i].args, command[i].helptext);
+	    exit (EXIT_SUCCESS);
+	}
+    }
+
+    usage (progname, "unknown command '%s'.\n", cmd);
+}
+
+int main (int argc, char *argv[])
+{
+    int opt, need_stdin=1;
+    char *dev;
+
+    progname = argv[0];
+
+    srand (base_time = time (NULL));
+    qsort (regnames, NUMOF(regnames), sizeof(regnames[0]), cmpreg);
+
+    /* parse options
      */
+    while ((opt=getopt (argc, argv, "fd:D:v:h:c:")) >= 0) {
+	switch (opt) {
+	    case 'h': help_command (progname, optarg); break;
+	    case 'd': debug_driver = strtol (optarg, NULL, 10); break;
+	    case 'D': delay        = strtol (optarg, NULL, 10); break;
+	    case 'v': verbosity    = strtol (optarg, NULL, 10); break;
+	    case 'c': exec_line (optarg, 1, argv); need_stdin=0; break;
+	    case 'f': fatal_errors = 1; break;
+	    default:  usage (progname, NULL);
+	}
+    }
+
     if (optind<argc) {
-	do_command (argc-optind, argv+optind);
+	/* Non-option arguments are present, run "source" command on them
+	 */
+	optind--; /* fake argv[0] which normally would be "source" command */
+	cmd_source (argc-optind, argv+optind);
     } else {
-	char *av[]={"source", NULL};
-	cmd_source (1, av);
+	/* No more args present. Read commands from stdin unless at least
+	   one command was already executed.
+	 */
+	if (need_stdin) {
+	    char *av[]={"source", NULL};
+	    cmd_source (1, av);
+	}
     }
 
     clean_exit (EXIT_SUCCESS);

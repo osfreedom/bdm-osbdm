@@ -1,3 +1,8 @@
+#! $(PREFIX)/bin/$(TARGET)-bdmctrl
+# Usage: $(PREFIX)/share/m68332.test /dev/bdmicd0 object-file-to-load
+
+open $1
+
 reset
 
 # reset sometimes leaves %dfc and %sfc in a broken state. This happens rarely,
@@ -46,7 +51,7 @@ dump-mem 0x0fffa40 48 l  # show the chipselect definitions
 
 check-mem 0x800000 0x0800  # check external RAM
 
-load -v $1 .text .data
+load -v $2 .text .data
 
 write main 0x04afa 2  # BGND instruction should stop target on main()
 

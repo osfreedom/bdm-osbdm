@@ -1,6 +1,6 @@
 #! /bin/sh -ex
 
-# $Id: tcompile,v 1.3 2004/03/24 23:44:03 joewolf Exp $
+# $Id: tcompile,v 1.4 2004/03/26 20:46:44 joewolf Exp $
 #
 # A helper to compile and test flash driver plugins.
 #
@@ -56,7 +56,8 @@ done
 ( cd /m/spool/tmp/build-crossgcc/build/m68k-bdm; make install || exit 1 ) || exit 1
 
 # Now program the beast.
-cat <<__EOF__ | m68k-coff-bdmctrl -v1 $BDMDEVICE
+cat <<__EOF__ | m68k-coff-bdmctrl -v1
+ open $BDMDEVICE
  reset
  write %dfc 5 b
  write %sfc 5 b
