@@ -2685,7 +2685,8 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
 
     case BDM_DEBUG:
       self->debugFlag = iarg;
-      PRINTF ("debugFlag now %d\n", self->debugFlag);
+      if (self->debugFlag)
+        PRINTF ("debugFlag now %d\n", self->debugFlag);
       break;
 
     case BDM_RELEASE_CHIP:
