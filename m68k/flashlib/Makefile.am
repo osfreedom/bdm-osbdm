@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.4 2004/01/08 20:37:25 codewiz Exp $
+## $Id: Makefile.am,v 1.5 2004/03/21 01:48:20 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -14,7 +14,7 @@ AM_CFLAGS = @BFD_INCLUDE@ @CFLAGS@
 
 if BDMFLASHLIB
 
-pkglib_LIBRARIES = libbdmflash.a
+lib_LIBRARIES = libbdmflash.a
 
 include_HEADERS = \
 	bdmfilt.h \

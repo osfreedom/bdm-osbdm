@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.4 2004/01/08 20:37:25 codewiz Exp $
+## $Id: Makefile.am,v 1.5 2004/03/21 01:48:21 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -24,7 +24,7 @@ if BDM_DRIVER
 AM_CFLAGS += -DBDM_DEVICE_LOCAL
 endif
 
-pkglib_LIBRARIES = libBDM.a
+lib_LIBRARIES = libBDM.a
 
 include_HEADERS = \
 	BDMlib.h \
