@@ -31,6 +31,9 @@
  *
  * HISTORY:
  * $Log: BDMFlash.h,v $
+ * Revision 1.2  2003/07/04 22:33:01  codewiz
+ * Applied SST block-erase patch.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *
@@ -77,6 +80,9 @@ BDMFlashProbe( FlashStyle_t /*out*/ *Style );
 FlashError_t
 BDMFlashEraseSector( unsigned int addr );
 
+/* erase flash, addr is base of a block of a byte-wide flash */
+FlashError_t
+BDMFlashEraseBlock( unsigned int addr );
 
 FlashError_t
 BDMFlashIDRead( FlashID_t /*out*/ *ID );

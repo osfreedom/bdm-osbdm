@@ -36,6 +36,9 @@
  *
  * HISTORY:
  * $Log: bdmops.c,v $
+ * Revision 1.2  2003/07/04 22:33:01  codewiz
+ * Applied SST block-erase patch.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *
@@ -61,11 +64,12 @@
 #undef   _COMPILING_
 
 #include <assert.h>
-#include <BDMDriver.h>
-#include <Debug.h>
+#include "BDMDriver.h"
+#include "Debug.h"
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>

@@ -50,6 +50,9 @@
  * 
  * HISTORY:
  * $Log: Flash.h,v $
+ * Revision 1.2  2003/07/04 22:33:01  codewiz
+ * Applied SST block-erase patch.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *
@@ -210,6 +213,11 @@ FlashErase( Flash_t const *Flash );
 /* erase one sector of the flash */
 FlashError_t
 FlashEraseSector( Flash_t const *Flash,
+		  unsigned long OffsetInFlash /* sector identified by offset */ );
+
+/* erase one block of the flash */
+FlashError_t
+FlashEraseBlock( Flash_t const *Flash,
 		  unsigned long OffsetInFlash /* sector identified by offset */ );
 
 typedef struct FlashInfo_s {

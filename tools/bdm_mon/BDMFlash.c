@@ -28,6 +28,9 @@
  *
  * HISTORY:
  * $Log: BDMFlash.c,v $
+ * Revision 1.2  2003/07/04 22:33:01  codewiz
+ * Applied SST block-erase patch.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *
@@ -64,7 +67,7 @@ Usage( char const *ProgName )
 {
   fprintf( stderr, 
 	   "usage: %s DeviceFile FlashBaseAddress NumChips ByteWidth "
-	   "[probe | detect | erase | SectorErase Offset | write BinaryFile Offset | read BinaryFile Offset Length]\n",
+	   "[probe | detect | erase | SectorErase Offset | BlockErase Offset | write BinaryFile Offset | read BinaryFile Offset Length]\n",
 	   ProgName );
   exit( EXIT_FAILURE );
 }
@@ -170,6 +173,29 @@ SectorErase( int ArgC, char *ArgV[] )
     {
       fprintf( stderr, 
 	       "Problem erasing flash sector at 0x%08lx; error code = %d, '%s'.\n", 
+	       Offset,
+	       (int) Error,
+	       FlashErrorDescriptionEnglish[Error] );
+      exit( EXIT_FAILURE );
+    }
+}
+
+static
+void
+BlockErase( int ArgC, char *ArgV[] )
+{
+  unsigned long Offset;
+  FlashError_t Error;
+
+  if (ArgC != 7)
+    Usage( ArgV[0] );
+
+  Offset = strtoul( ArgV[6], NULL, 0 );
+
+  if ((Error = BDMFlashEraseBlock( Offset )) != FlashErrorOkay_c)
+    {
+      fprintf( stderr, 
+	       "Problem erasing flash block at 0x%08lx; error code = %d, '%s'.\n", 
 	       Offset,
 	       (int) Error,
 	       FlashErrorDescriptionEnglish[Error] );
@@ -303,6 +329,10 @@ main( int ArgC, char *ArgV[] )
   else if (strcasecmp( Operation, "SectorErase" ) == 0)
     {
 	SectorErase( ArgC, ArgV );
+    }
+  else if (strcasecmp( Operation, "BlockErase" ) == 0)
+    {
+	BlockErase( ArgC, ArgV );
     }
   else if (strcasecmp( Operation, "write" ) == 0)
     {

@@ -49,6 +49,9 @@
  * 
  * HISTORY:
  * $Log: Flash.c,v $
+ * Revision 1.2  2003/07/04 22:33:01  codewiz
+ * Applied SST block-erase patch.
+ *
  * Revision 1.1  2003/06/03 15:42:04  codewiz
  * Import userland tools from bdm-fiedler
  *
@@ -86,6 +89,7 @@
 #include <Flash.h>
 
 #include <assert.h>
+#include <string.h>
 
 /* #define DEBUG */
 
@@ -154,7 +158,8 @@ typedef enum FlashStyleAMDCommand_en {
   FlashStyleAMDCommandInvalidReserved_c = 0x00,
   FlashStyleAMDCommandChipEraseConfirm_c = 0x10,
   FlashStyleAMDCommandReserved_c = 0x20,
-  FlashStyleAMDCommandBlockEraseResumeConfirm_c = 0x30,
+  FlashStyleAMDCommandSectorEraseResumeConfirm_c = 0x30,
+  FlashStyleAMDCommandBlockEraseResumeConfirm_c = 0x50,
   FlashStyleAMDCommandSetUpErase_c = 0x80,
   FlashStyleAMDCommandReadSignatureBlockStatus_c = 0x90,
   FlashStyleAMDCommandProgram_c = 0xA0,
@@ -543,6 +548,49 @@ FlashStyleAMDWrite( Flash_t const *Flash,
 FlashError_t
 FlashStyleAMDEraseSector( Flash_t const *Flash,
 			  unsigned long OffsetInFlash /* sector identified by offset */ )
+{
+  unsigned long ParallelChipI;
+  FlashError_t Error;
+
+  /* erase sector in each parallel flash */
+  for (ParallelChipI=0; ParallelChipI < Flash->NumParallelChips; ParallelChipI++) 
+    {
+      Error = FlashStyleAMDCommand( Flash,
+				    ParallelChipI,
+				    FlashStyleAMDCommandSetUpErase_c );
+      if (Error != FlashErrorOkay_c) return (Error);
+
+      Error = FlashStyleAMDCommandUnlock( Flash,
+					  ParallelChipI );
+      if (Error != FlashErrorOkay_c) return (Error);
+
+      Error = WritePattern( Flash,
+			    OffsetInFlash+ParallelChipI*Flash->NumParallelChips,
+			    FlashStyleAMDCommandSectorEraseResumeConfirm_c );
+      if (Error != FlashErrorOkay_c) return (Error);
+    }
+
+  /* wait for each parallel flash to complete */
+  for (ParallelChipI=0; ParallelChipI < Flash->NumParallelChips; ParallelChipI++) 
+    {
+#ifdef DEBUG
+      DebugFlashStatusCheckIterationsMax = 0;
+#endif
+
+      Error = FlashStyleAMDOperationCompletedWait( Flash,
+						   OffsetInFlash+Flash->ChipWidthBytes*ParallelChipI,
+						   /* Expect all bits to be erased */
+						   &ULongFFFFFFFF );
+      if (Error != FlashErrorOkay_c)
+	return (Error);
+    }
+  return (FlashErrorOkay_c);
+}
+
+
+FlashError_t
+FlashStyleAMDEraseBlock( Flash_t const *Flash,
+			  unsigned long OffsetInFlash /* block identified by offset */ )
 {
   unsigned long ParallelChipI;
   FlashError_t Error;
@@ -1338,6 +1386,24 @@ FlashEraseSector( Flash_t const *Flash,
 }
 
 
+/* erase one block of the flash */
+FlashError_t
+FlashEraseBlock( Flash_t const *Flash,
+		  unsigned long OffsetInFlash /* sector identified by offset */ )
+{
+  switch (Flash->Style)
+    {
+    default:
+    case FlashStyleUndefined_c:
+    case FlashStyleMicron_c:
+      return (FlashErrorStyle_c);
+      break;
+    case FlashStyleAMD_c:
+      return (FlashStyleAMDEraseBlock( Flash,
+				       OffsetInFlash ));
+      break;
+    }
+}
 
 
 /* erase the whole flash */
@@ -1429,6 +1495,7 @@ static FlashInfo_t const flash_table[]= {
   {FlashIDMake_M( FlashManufacturerAMD_c,              0xB9 ),  0x80000, 0x00000,  0x70000, 0x10000, "Am29LV400BT"},
   {FlashIDMake_M( FlashManufacturerAMD_c,              0x5B ), 0x100000, 0x10000, 0x100000, 0x10000, "Am29LV800BB"},
   {FlashIDMake_M( FlashManufacturerAMD_c,              0xDA ), 0x100000, 0x00000, 0x0F0000, 0x10000, "Am29LV800BT"},
+  {FlashIDMake_M( FlashManufacturerAMD_c,              0x45 ), 0x200000, 0x40000, 0x200000, 0x40000, "Am29PL160"},
   {FlashIDMake_M( FlashManufacturerAMD_c,              0x49 ), 0x200000, 0x10000, 0x200000, 0x10000, "Am29LV160DB"},
   {FlashIDMake_M( FlashManufacturerAMD_c,              0xC4 ), 0x200000, 0x00000, 0x1F0000, 0x10000, "Am29LV160DT"},
   {FlashIDMake_M( FlashManufacturerAtmel_c,            0xD5 ),  0x40000,  0x8000,  0x40000,  0x8000, "29C010"},
