@@ -3,6 +3,15 @@ prefix = /usr
 OSVER   = $(shell uname -r)
 INCDIR	= /lib/modules/$(OSVER)/build/include
 MODDIR	= /lib/modules/$(OSVER)/misc
+KSRCDIR = /usr/src/linux-$(OSVER)
+
+ifneq ($(KSRCDIR),$(wildcard $(KSRCDIR)))
+
+ifneq ($(MAKECMDGOALS),clean)
+$(warning WARNING: Linux kernel sources not found so driver will not be built)
+endif
+
+else
 
 ifneq ($(INCDIR),$(wildcard $(INCDIR)))
 INCDIR  = /usr/include
@@ -30,6 +39,8 @@ install: all
 	/sbin/depmod -a
 
 linux-bdm.o: ../bdm.h ../bdm.c
+
+endif
 
 clean:
 	rm -f *.o $(LIB)
