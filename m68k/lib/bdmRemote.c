@@ -477,8 +477,8 @@ bdmRemoteOpen (const char *name)
   }
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0) {
-    printf ("bdm-remote:open: wait failed\n");
     int save_errno = errno;
+    printf ("bdm-remote:open: wait failed\n");
     close (fd);
     fd = -1;
     errno = save_errno;
