@@ -11,12 +11,12 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
@@ -29,7 +29,7 @@
 #define _BDM_LIB_H_
 
 #if __cplusplus
-extern "C" 
+extern "C"
 {
 #endif
 
@@ -54,11 +54,16 @@ const char *bdmErrorString (void);
  * The following routines return, or are passed, data with byte
  * order (big-endian or little-endian) of the machine on which
  * the routines are running.
+ *
+ * Note, the control registers are the values documented in the
+ *       devices data sheet.
  */
+int bdmReadControlRegister (int code, unsigned long *lp);
 int bdmReadSystemRegister (int code, unsigned long *lp);
 int bdmReadRegister (int code, unsigned long *lp);
 int bdmReadMBAR (unsigned long *lp);
 
+int bdmWriteControlRegister (int code, unsigned long l);
 int bdmWriteSystemRegister (int code, unsigned long l);
 int bdmWriteRegister (int code, unsigned long l);
 int bdmWriteMBAR (unsigned long l);
@@ -80,6 +85,13 @@ int bdmGetProcessor (int *processor);
 int bdmGetInterface (int *iface);
 
 /*
+ * Get and set the PST signal state. 1 = enabled, 0 = disabled.
+ */
+
+int bdmColdfireGetPST (int *pst);
+int bdmColdfireSetPST (int pst);
+
+/*
  * The following routines control execution of the target machine
  */
 int bdmReset (void);
@@ -97,7 +109,7 @@ int bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nby
 int bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes);
 
 /*
- * The following routines are low-level and are used to implement a 
+ * The following routines are low-level and are used to implement a
  * client/interface.
  */
 int bdmIoctlInt (int code, int *var);
@@ -105,6 +117,12 @@ int bdmIoctlCommand (int code);
 int bdmIoctlIo (int code, struct BDMioctl *ioc);
 int bdmRead (unsigned char *cbuf, unsigned long nbytes);
 int bdmWrite (unsigned char *cbuf, unsigned long nbytes);
+
+/*
+ * BDM debug channel. Applications may use this to have a common
+ * debug trace environment.
+ */
+void bdmDebug (const char *format, ...);
 
 #if __cplusplus
 }
