@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.5 2004/04/25 14:24:53 codewiz Exp $
+## $Id: Makefile.am,v 1.6 2004/05/14 09:22:15 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -13,7 +13,6 @@ CFLAGS = @CFLAGS@
 
 SUBDIRS = @BDM_SUBDIRS@
 
-EXTRA_SUBDIRS = local_scripts
 EXTRA_DIST = \
 	README.insight \
 	BUGS \
@@ -46,5 +45,10 @@ EXTRA_DIST = \
 	driver/sco/Space.c \
 	driver/sco/System \
 	driver/win/win-bdm.c \
-	driver/win/win-io.h
+	driver/win/win-io.h \
+	local_scripts/MAKEDEV \
+	local_scripts/README \
+	local_scripts/build-it \
+	local_scripts/makegdb68kbdm \
+	local_scripts/rtsetup
 
