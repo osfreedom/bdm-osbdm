@@ -1,4 +1,4 @@
-/* $Id: cpu32-check.c,v 1.2 2003/09/17 15:04:27 cjohns Exp $
+/* $Id: cpu32-check.c,v 1.3 2003/09/18 20:07:14 joewolf Exp $
 0        1         2         3         4         5         6         7
 123456789012345678901234567890123456789012345678901234567890123456789012345678
  * 
@@ -1110,9 +1110,9 @@ initialize_system(void)
 void
 usage()
 {
-  printf("cpu32_check -d -v -r [loops] -m [loops] -M [loops] -a [loops] -E [loops] -e [loops] -C -Q [device]\n"
+  printf("cpu32-check -d [level] -v -r [loops] -m [loops] -M [loops] -a [loops] -E [loops] -e [loops] -C -Q [device]\n"
    " where :\n"
-   "    -d           : Enable driver debug output\n"
+   "    -d [level]   : Enable driver debug output\n"
    "    -v           : Enable verbose output\n"
    "    -r [loops]   : Number of register check loops\n"
    "    -m [loops]   : Number of internal RAM check loops\n"

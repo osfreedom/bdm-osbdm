@@ -702,7 +702,7 @@ checkAlignment (int cpu, int loops)
 void
 Usage()
 {
-  printf("chk -d -p [pc] -r [loops] -s [loops] -C -Q -R [device]\n"
+  printf("chk -d [level] -p [pc] -r [loops] -s [loops] -C -Q -R [device]\n"
    " where :\n"
    "    -d [level]   : enable driver debug output\n"
    "    -p [pc]      : address to run to for the CPU32 target\n"
@@ -711,7 +711,7 @@ Usage()
    "    -a [loops]   : number or alignment check loops\n"
    "    -D [delay]   : delay count for the clock generation\n"
    "    -C           : continue on an error\n"
-   "    -Q           : be quite on errors\n"
+   "    -Q           : be quiet on errors\n"
    "    -R           : reset on a register check fail\n"
    "    [device]     : the bdm device, eg /dev/bdmcf0\n");
   exit(0);

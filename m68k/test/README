@@ -11,7 +11,7 @@ To clean the directory do :
 
   $ make clean
 
-Running the program with any command line options displays the options
+Running the program without any command line options displays the options
 which you can use :
 
   $ ./chk
@@ -145,7 +145,7 @@ error occurs.
 The third test is an SRAM test. A bit pattern is written and read from
 the SRAM which is internal to the Coldfire. The write then read is a
 block write then read. This is a special operation which typically
-only results in two calls to the driver. If the a mismatch occurs the
+only results in two calls to the driver. If a mismatch occurs the
 address is displayed and the test stops unless the continue option is
 provided. The conintue option is useful when probing an interface
 which is not working. The `-s' option controls the number of times the

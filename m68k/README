@@ -173,12 +173,12 @@ Step 1 -- Compile and install the BDM device driver
   To make the special files by hand you can enter:
 
     # mknod /dev/bdmcpu320 c 34 0
-                                 ^^ ^
-                           |  |
-                           |  +--Minor device number (see below).
-                           |
-               +--This value must match the
-            BDM_MAJOR_NUMBER in driver/bdm.h
+                             ^^ ^
+                             |  |
+                             |  +--Minor device number (see below).
+                             |
+                             +--This value must match the
+                                BDM_MAJOR_NUMBER in driver/bdm.h
 
   To have the module module loaded by kerneld when needed
   adding to /etc/conf.modules the line:
@@ -279,14 +279,14 @@ Step 3 -- Installing the Server
   on different platforms. This means a Linux server can be accessed from MacOS
   or Windows clients.
 
-  The server runs from the xindetd or inetd daemon, and installs into
+  The server runs from the xinetd or inetd daemon, and installs into
   the 'sbin' directory under the configure prefix when building the user
   programs in Step 2 above.
 
   For inetd users:
 
     You need to edit the /etc/services file to add the port number bdmd
-    users. Add this line at the bottom of the /etc/services file:
+    uses. Add this line at the bottom of the /etc/services file:
 
     bdm             6543/tcp                        # BDM server
 
@@ -385,7 +385,7 @@ Step 6 -- Compile and install the cross-GDB with BDM support
 
     $ make
 
-  For user who have not installed the BDM library you need to:
+  For users who have not installed the BDM library you need to:
 
     $ make \
        CFLAGS="-I/fix-this-path/m68k/lib \
@@ -550,8 +550,9 @@ CPU type:
                |                                     10 - LPT3
                |
                +-- These six bits select the target CPU type:
-                   000000 - CPU32+
+                   000000 - CPU32+ (PD adaptor)
                    000001 - Coldfire
+                   000010 - CPU32+ (ICD adaptor)
 
 Examples
 ========
