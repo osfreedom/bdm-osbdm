@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.7 2003/11/25 22:22:41 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.8 2003/11/26 20:34:31 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -585,8 +585,8 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		break;
 
     if (verbosity) {
-	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s 0x%08x:   ",
-		addr, addr+length, length, flags, sec->name, off);
+	printf (" fl:0x%08x %10s 0x%08lx..0x%08lx (0x%08lx) 0x%08x:   ",
+		flags, sec->name, addr, addr+length, length, off);
 	fflush (stdout);
     }
 
