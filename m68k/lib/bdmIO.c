@@ -22,23 +22,23 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- * 
+ *
  * W. Eric Norum
  * Saskatchewan Accelerator Laboratory
  * University of Saskatchewan
  * 107 North Road
  * Saskatoon, Saskatchewan, CANADA
  * S7N 5C6
- * 
+ *
  * eric@skatter.usask.ca
  *
  * Coldfire support by:
@@ -63,8 +63,16 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+
+/*
+ * This test should be done by autoconf. Please fix if you
+ * know how.
+ */
+#if !defined (__WIN32__) || defined (__CYGWIN__)
+#define HAVE_SYSLOG 1
 #include <syslog.h>
- 
+#endif
+
 #include "BDMlib.h"
 
 #if defined (BDM_DEVICE_REMOTE)
@@ -73,7 +81,12 @@
 
 #endif
 
-static void bdmDebug (const char *format, ...);
+/*
+ * Provide the driver print interface so any debug IO
+ * does not end up on stdout if the library is embedded
+ * in a server, ie bdmd.
+ */
+
 #define PRINTF bdmDebug
 
 /*
@@ -100,7 +113,7 @@ static void bdmDebug (const char *format, ...);
 /*
  * Limit of one BDM per process
  */
-static int fd        = -1;
+static int bdm_fd    = -1;
 static int mustSwap  = 0;
 static int cpu       = BDM_CPU32;
 static int iface     = BDM_CPU32_PD;
@@ -118,7 +131,9 @@ const char *bdmIO_lastErrorString = "No BDM error (yet!)";
  * Debugging
  */
 static int debugFlag = 0;
+#if HAVE_SYSLOG
 static int debug_syslog = 0;
+#endif
 static const char *const sysregName[BDM_MAX_SYSREG] = {
   "RPC",  "PCC",    "SR",   "USP",
   "SSP",  "SFC",    "DFC",  "ATEMP",
@@ -141,23 +156,26 @@ bdmLogSyslog (void)
     debug_syslog = 1;
 }
 
-static void
+void
 bdmDebug (const char *format, ...)
 {
   va_list ap;
 
   va_start (ap, format);
-  
+
   if (debugFlag) {
+#if HAVE_SYSLOG
     if (debug_syslog) {
       vsyslog (LOG_INFO, format, ap);
-    } else {
+    } else
+#endif
+    {
       fprintf (stderr, "BDM: ");
       vfprintf (stderr, format, ap);
     }
   }
 
-  va_end (ap);  
+  va_end (ap);
 }
 
 void
@@ -172,7 +190,7 @@ bdmSetDebugFlag (int flag)
 int
 bdmCheck (void)
 {
-  if (fd < 0) {
+  if (bdm_fd < 0) {
     bdmIO_lastErrorString = "BDM not open";
     return 0;
   }
@@ -197,7 +215,7 @@ bdmStrerror (int error_no)
 #if defined (BDM_DEVICE_REMOTE)
   return bdmRemoteStrerror (error_no);
 #else
-  return strerror (error_no);  
+  return strerror (error_no);
 #endif
 }
 
@@ -211,7 +229,7 @@ bdmIoctlInt (int code, int *var)
     return -1;
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
-    if (bdmRemoteIoctlInt (fd, code, var) < 0) {
+    if (bdmRemoteIoctlInt (bdm_fd, code, var) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -219,14 +237,14 @@ bdmIoctlInt (int code, int *var)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (fd, code, var) < 0) {
+    if (ioctl (bdm_fd, code, var) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
-#endif    
+#endif
 #if defined (BDM_DEVICE_REMOTE)
   }
-#endif    
+#endif
   return 0;
 }
 
@@ -240,7 +258,7 @@ bdmIoctlCommand (int code)
     return -1;
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
-    if (bdmRemoteIoctlCommand (fd, code) < 0) {
+    if (bdmRemoteIoctlCommand (bdm_fd, code) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -248,14 +266,14 @@ bdmIoctlCommand (int code)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (fd, code, NULL) < 0) {
+    if (ioctl (bdm_fd, code, NULL) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
-#endif    
+#endif
 #if defined (BDM_DEVICE_REMOTE)
   }
-#endif    
+#endif
   return 0;
 }
 
@@ -269,7 +287,7 @@ bdmIoctlIo (int code, struct BDMioctl *ioc)
     return -1;
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
-    if (bdmRemoteIoctlIo (fd, code, ioc) < 0) {
+    if (bdmRemoteIoctlIo (bdm_fd, code, ioc) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -277,14 +295,14 @@ bdmIoctlIo (int code, struct BDMioctl *ioc)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (fd, code, ioc) < 0) {
+    if (ioctl (bdm_fd, code, ioc) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
-#endif    
+#endif
 #if defined (BDM_DEVICE_REMOTE)
   }
-#endif    
+#endif
   return 0;
 }
 
@@ -298,7 +316,7 @@ bdmRead (unsigned char *cbuf, unsigned long nbytes)
     return -1;
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
-    if (bdmRemoteRead (fd, cbuf, nbytes) != nbytes) {
+    if (bdmRemoteRead (bdm_fd, cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -306,14 +324,14 @@ bdmRead (unsigned char *cbuf, unsigned long nbytes)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (read (fd, cbuf, nbytes) != nbytes) {
+    if (read (bdm_fd, cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
-#endif    
+#endif
 #if defined (BDM_DEVICE_REMOTE)
   }
-#endif    
+#endif
   return nbytes;
 }
 
@@ -327,7 +345,7 @@ bdmWrite (unsigned char *cbuf, unsigned long nbytes)
     return -1;
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
-    if (bdmRemoteWrite (fd, cbuf, nbytes) != nbytes) {
+    if (bdmRemoteWrite (bdm_fd, cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -335,14 +353,14 @@ bdmWrite (unsigned char *cbuf, unsigned long nbytes)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (write (fd, cbuf, nbytes) != nbytes) {
+    if (write (bdm_fd, cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
-#endif    
+#endif
 #if defined (BDM_DEVICE_REMOTE)
   }
-#endif    
+#endif
   return nbytes;
 }
 
@@ -451,38 +469,36 @@ bdmOpen (const char *name)
    * First we try to open a remote connection if remote is
    * supported. If this fails we attempt to open the driver.
    */
-    
-  if (fd >= 0) {
+
+  if (bdm_fd >= 0) {
 #if defined (BDM_DEVICE_REMOTE)
     if (bdmRemote)
-      bdmRemoteClose (fd);
+      bdmRemoteClose (bdm_fd);
+#endif
 #if defined (BDM_DEVICE_LOCAL)
     else
-#endif
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-      close (fd);
+      close (bdm_fd);
 #endif
   }
 
-  fd = -1;
-  
-  if ((fd = remoteOpen (name)) < 0) {
+  bdm_fd = -1;
+
+  if ((bdm_fd = remoteOpen (name)) < 0) {
 #if !defined (BDM_DEVICE_LOCAL)
     bdmIO_lastErrorString = bdmStrerror (2);
     return -1;
 #endif
-  }  
+  }
 
 #if defined (BDM_DEVICE_LOCAL)
-  if (fd == -1) {
-    if ((fd = open (name, O_RDWR)) < 0) {
+  if (bdm_fd < 0) {
+    if ((bdm_fd = open (name, O_RDWR)) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
   }
 #endif
-  
+
 #if defined (BDM_LIB_CHECKS_VERSION)
   /*
    * CCJ: This is better done by the user as they produce a better
@@ -516,8 +532,8 @@ bdmOpen (const char *name)
     bdmClose ();
     return -1;
   }
-    
-  return fd;
+
+  return bdm_fd;
 }
 
 /*
@@ -531,14 +547,16 @@ bdmClose (void)
 #if defined (BDM_DEVICE_REMOTE)
   if (bdmRemote) {
     bdmRemote = 0;
-    if (bdmRemoteClose (fd) < 0) {
+    if (bdmRemoteClose (bdm_fd) < 0) {
+      bdm_fd = -1;
       return -1;
     }
   }
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (close (fd) < 0) {
+    if (close (bdm_fd) < 0) {
+      bdm_fd = -1;
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -546,7 +564,7 @@ bdmClose (void)
 #if defined (BDM_DEVICE_REMOTE)
   }
 #endif
-  fd = -1;
+  bdm_fd = -1;
   return 0;
 }
 
@@ -556,7 +574,7 @@ bdmClose (void)
 int
 bdmIsOpen (void)
 {
-  return (fd >= 0);
+  return (bdm_fd >= 0);
 }
 
 /*
@@ -598,6 +616,45 @@ bdmSetDriverDebugFlag (int debugFlag)
 }
 
 /*
+ * Get the Coldfire PST enable state.
+ */
+int
+bdmColdfireGetPST (int *pst)
+{
+  if (bdmIoctlInt (BDM_GET_CF_PST, pst) < 0)
+    return -1;
+  PRINTF ("Get Coldfire PST state: %d\n", debugFlag);
+  return 0;
+}
+
+/*
+ * Set the Coldfire PST enable state.
+ */
+int
+bdmColdfireSetPST (int pst)
+{
+  if (bdmIoctlInt (BDM_SET_CF_PST, &pst) < 0)
+    return -1;
+  PRINTF ("Set Coldfire PST state: %d\n", debugFlag);
+  return 0;
+}
+
+/*
+ * Read a control register
+ */
+int
+bdmReadControlRegister (int code, unsigned long *lp)
+{
+  unsigned long ltmp;
+
+  if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
+    return -1;
+  PRINTF ("Read system register 0x%04x: %#8lx\n", code, ltmp);
+  *lp = ltmp;
+  return 0;
+}
+
+/*
  * Read a system register
  */
 int
@@ -625,6 +682,18 @@ bdmReadRegister (int code, unsigned long *lp)
     return -1;
   PRINTF ("Read register %s: %#8lx\n", regName[code], ltmp);
   *lp = ltmp;
+  return 0;
+}
+
+/*
+ * Write a control register
+ */
+int
+bdmWriteControlRegister (int code, unsigned long l)
+{
+  if (writeTarget (BDM_WRITE_CTLREG, code, l) < 0)
+    return -1;
+  PRINTF ("Write system register 0x%04x: %#8lx\n", code, l);
   return 0;
 }
 
@@ -814,7 +883,7 @@ bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
 {
   if (nbytes == 0)
     return 0;
-  
+
   if (!bdmCheck ())
     return -1;
 
@@ -877,10 +946,10 @@ int
 bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
 {
   int ret;
-  
+
   if (nbytes == 0)
     return 0;
-  
+
   if (!bdmCheck ())
     return -1;
 
