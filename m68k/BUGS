@@ -1,25 +1,31 @@
 BUGS 
 ==== 
 
-1) Dell Pentium III machines seem to not work. Not really sure why
-but clearing the parallel port register for the CF processors causes
-the parallel port to either initialise or reset and not work.
+1) Dell Pentium III machines seem to not work. Not really sure why but clearing
+the parallel port register for the CF processors causes the parallel port to
+either initialise or reset and not work.
 
-2) Coldfire - support to detect version of the debug module for auto
-detection of the PST lines has problems if a BDM pod is not connected to
-the target or the target is not powered.
+2) Coldfire - support to detect version of the debug module for auto detection
+of the PST lines has problems if a BDM pod is not connected to the target or
+the target is not powered.
 
-3) For m68k ELF systems you need to be careful about the binutils mix 
-you use. Binutils of versions 2.9.5.* will not work with gdb-4.18 or
-earilier. You will get core dumps. Earilier version of gcc and binutils
-as used by the uLinux project have some problems.
+3) The 5407 BDM hardware does not implement the SSI bit and the driver tries to
+use it. No idea why this bit was removed as it was just stupid. The work
+arounds for the driver are complex and not yet implemented.
+
+3) For m68k ELF systems you need to be careful about the binutils mix you
+use. Binutils of versions 2.9.5.* will not work with gdb-4.18 or earilier. You
+will get core dumps. Earilier version of gcc and binutils as used by the uLinux
+project have some problems.
 
                     ---------------------------
 
 Reporting Them:
 
-If you find a bug, or have a problem send a mail to Eric Norum
-(eric@skatter.usask.ca) or Chris Johns (ccj@acm.org).
+If you've got any questions about any of this, please contact the BDM project
+mailing list on the SourceForge web site:
+
+  http://sourceforge.net/projects/bdm/
 
 It is a good idea to turn on the debug and look at the output. Keep
 the log as it might be useful for us to track the problem down.
