@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.1 2003/12/29 22:18:49 codewiz Exp $
+## $Id: Makefile.am,v 1.2 2004/01/07 20:01:58 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -9,8 +9,7 @@
 ## GNU General Public License for more details.
 ##
 
-INCLUDES = @INCLUDES@ -I$(top_srcdir)/driver -I$(top_srcdir)/lib
-
+INCLUDES = -I$(top_srcdir)/driver -I$(top_srcdir)/lib @INCLUDES@ 
 CFLAGS = @CFLAGS@
 
 noinst_LIBRARIES = libbdmabstraction.a
