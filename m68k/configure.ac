@@ -33,14 +33,6 @@ AC_CHECK_TOOL(RANLIB, ranlib, ranlib)
 AC_SUBST(RANLIB)
 AC_CHECK_TOOL(LD, ld, ld)
 AC_SUBST(LD)
-
-dnl
-dnl Defaults.
-dnl
-
-bdm_subdirs="lib flashlib test utils"
-bdm_win32=false
-
 AC_SUBST(INCLUDES, ${INCLUDES})
 
 
@@ -194,13 +186,21 @@ case ${host} in
     bdm_win32=true
     bdm_server=false
     ;;
+  *)
+    bdm_win32=false
+    ;;
 esac
 
 AM_CONDITIONAL(WIN32, test x$bdm_win32 = xtrue)
 
+dnl
+dnl Collect list of subdirectories to build
+dnl
+bdm_subdirs="lib"
 AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
-AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="flashlib ${bdm_subdirs}")
-AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], bdm_subdirs="bdmabstraction ${bdm_subdirs}")
+AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
+AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], bdm_subdirs="${bdm_subdirs} bdmabstraction")
+bdm_subdirs="${bdm_subdirs} test utils"
 AC_SUBST(BDM_SUBDIRS, ${bdm_subdirs})
 
 dnl
