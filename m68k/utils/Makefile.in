@@ -39,6 +39,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 @BDM_REMOTE_TRUE@@WIN32_TRUE@am__append_1 = -l wsock32
+@BDMCTRL_TRUE@am__append_2 = bdmctrl
 ACLOCAL = @ACLOCAL@
 AMDEP_FALSE = @AMDEP_FALSE@
 AMDEP_TRUE = @AMDEP_TRUE@
@@ -49,7 +50,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BDM_CFLAGS = @BDM_CFLAGS@
+BDMCTRL_FALSE = @BDMCTRL_FALSE@
+BDMCTRL_TRUE = @BDMCTRL_TRUE@
 BDM_DRIVER_FALSE = @BDM_DRIVER_FALSE@
 BDM_DRIVER_TRUE = @BDM_DRIVER_TRUE@
 BDM_IOPERM_FALSE = @BDM_IOPERM_FALSE@
@@ -60,7 +62,7 @@ BDM_SUBDIRS = @BDM_SUBDIRS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 
-CFLAGS = @BDM_CFLAGS@
+CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -69,6 +71,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EXEEXT = @EXEEXT@
+
+INCLUDES = @INCLUDES@ -I$(srcdir)/../driver -I$(srcdir)/../lib
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -137,9 +141,19 @@ target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
 
-INCLUDES = -I$(srcdir)/../driver -I$(srcdir)/../lib
+bin_PROGRAMS = bdmreset $(am__append_2)
 
-bin_PROGRAMS = bdmreset
+bdmctrl_SOURCES = \
+	bdmctrl.c
+
+#bdmctrl_CFLAGS = \
+#	@CFLAGS@ \
+#	-I${prefix}/${host_alias}/${target_alias}/include \
+#	-I${prefix}/include
+bdmctrl_LDFLAGS = -static
+bdmctrl_LDADD = ../lib/libBDM.a	-lbfd -liberty \
+	-L${prefix}/${host_alias}/${target_alias}/lib
+
 
 bdmreset_SOURCES = \
 	bdmreset.c
@@ -149,9 +163,13 @@ subdir = utils
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/config/mkinstalldirs
 CONFIG_CLEAN_FILES =
-bin_PROGRAMS = bdmreset$(EXEEXT)
+@BDMCTRL_TRUE@bin_PROGRAMS = bdmreset$(EXEEXT) bdmctrl$(EXEEXT)
+@BDMCTRL_FALSE@bin_PROGRAMS = bdmreset$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
 
+am_bdmctrl_OBJECTS = bdmctrl.$(OBJEXT)
+bdmctrl_OBJECTS = $(am_bdmctrl_OBJECTS)
+bdmctrl_DEPENDENCIES = ../lib/libBDM.a
 am_bdmreset_OBJECTS = bdmreset.$(OBJEXT)
 bdmreset_OBJECTS = $(am_bdmreset_OBJECTS)
 bdmreset_DEPENDENCIES = ../lib/libBDM.a
@@ -160,14 +178,14 @@ bdmreset_LDFLAGS =
 DEFAULT_INCLUDES =  -I. -I$(srcdir)
 depcomp = $(SHELL) $(top_srcdir)/config/depcomp
 am__depfiles_maybe = depfiles
-@AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/bdmreset.Po
+@AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/bdmctrl.Po ./$(DEPDIR)/bdmreset.Po
 COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-DIST_SOURCES = $(bdmreset_SOURCES)
+DIST_SOURCES = $(bdmctrl_SOURCES) $(bdmreset_SOURCES)
 DIST_COMMON = ChangeLog Makefile.am Makefile.in
-SOURCES = $(bdmreset_SOURCES)
+SOURCES = $(bdmctrl_SOURCES) $(bdmreset_SOURCES)
 
 all: all-am
 
@@ -202,6 +220,9 @@ uninstall-binPROGRAMS:
 
 clean-binPROGRAMS:
 	-test -z "$(bin_PROGRAMS)" || rm -f $(bin_PROGRAMS)
+bdmctrl$(EXEEXT): $(bdmctrl_OBJECTS) $(bdmctrl_DEPENDENCIES) 
+	@rm -f bdmctrl$(EXEEXT)
+	$(LINK) $(bdmctrl_LDFLAGS) $(bdmctrl_OBJECTS) $(bdmctrl_LDADD) $(LIBS)
 bdmreset$(EXEEXT): $(bdmreset_OBJECTS) $(bdmreset_DEPENDENCIES) 
 	@rm -f bdmreset$(EXEEXT)
 	$(LINK) $(bdmreset_LDFLAGS) $(bdmreset_OBJECTS) $(bdmreset_LDADD) $(LIBS)
@@ -212,6 +233,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bdmctrl.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bdmreset.Po@am__quote@
 
 distclean-depend:

@@ -49,7 +49,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BDM_CFLAGS = @BDM_CFLAGS@
+BDMCTRL_FALSE = @BDMCTRL_FALSE@
+BDMCTRL_TRUE = @BDMCTRL_TRUE@
 BDM_DRIVER_FALSE = @BDM_DRIVER_FALSE@
 BDM_DRIVER_TRUE = @BDM_DRIVER_TRUE@
 BDM_IOPERM_FALSE = @BDM_IOPERM_FALSE@
@@ -60,7 +61,7 @@ BDM_SUBDIRS = @BDM_SUBDIRS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 
-CFLAGS = @BDM_CFLAGS@
+CFLAGS = @CFLAGS@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -69,6 +70,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EXEEXT = @EXEEXT@
+
+INCLUDES = @INCLUDES@ -I$(srcdir)/../driver -I$(srcdir)/../lib
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -136,8 +139,6 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-
-INCLUDES = -I$(srcdir)/../driver -I$(srcdir)/../lib
 
 bin_PROGRAMS = bdm-chk bdm-cpu32-chk
 

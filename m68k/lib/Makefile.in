@@ -51,7 +51,8 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
-BDM_CFLAGS = @BDM_CFLAGS@
+BDMCTRL_FALSE = @BDMCTRL_FALSE@
+BDMCTRL_TRUE = @BDMCTRL_TRUE@
 BDM_DRIVER_FALSE = @BDM_DRIVER_FALSE@
 BDM_DRIVER_TRUE = @BDM_DRIVER_TRUE@
 BDM_IOPERM_FALSE = @BDM_IOPERM_FALSE@
@@ -62,7 +63,7 @@ BDM_SUBDIRS = @BDM_SUBDIRS@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 
-CFLAGS = @BDM_CFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3)
+CFLAGS = @CFLAGS@ $(am__append_1) $(am__append_2) $(am__append_3)
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
@@ -71,6 +72,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EXEEXT = @EXEEXT@
+
+INCLUDES = @INCLUDES@ -I$(srcdir)/../driver
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
@@ -138,8 +141,6 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-
-INCLUDES = -I$(srcdir)/../driver
 
 pkglib_LIBRARIES = libBDM.a
 

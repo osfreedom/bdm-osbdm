@@ -272,7 +272,7 @@ PACKAGE_VERSION='2.0'
 PACKAGE_STRING='bdm 2.0'
 PACKAGE_BUGREPORT='bdm-devel@lists.sourceforge.net'
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE am__leading_dot CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB AR ac_ct_AR AS ac_ct_AS LD ac_ct_LD BDM_CFLAGS BDM_REMOTE_TRUE BDM_REMOTE_FALSE BDM_IOPERM_TRUE BDM_IOPERM_FALSE BDM_DRIVER_TRUE BDM_DRIVER_FALSE WIN32_TRUE WIN32_FALSE BDM_SUBDIRS LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE am__leading_dot CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB AR ac_ct_AR AS ac_ct_AS LD ac_ct_LD INCLUDES BDM_REMOTE_TRUE BDM_REMOTE_FALSE BDM_IOPERM_TRUE BDM_IOPERM_FALSE BDM_DRIVER_TRUE BDM_DRIVER_FALSE BDMCTRL_TRUE BDMCTRL_FALSE WIN32_TRUE WIN32_FALSE BDM_SUBDIRS LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -813,11 +813,12 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-dependency-tracking Speeds up one-time builds
   --enable-dependency-tracking  Do not reject slow dependency extractors
- --enabled-debug Turn on debug information (enabled)
+ --enable-debug Turn on debug information (enabled)
  --enable-remote Turn on the remote protocol (enabled)
  --enable-ioperm Turn on direct ioperm hardware access (enabled)
  --enable-driver Turn on driver support (enabled)
  --enable-server Turn on server support (enabled)
+ --enable-bdmctrl Turn on bdmctrl support (disabled)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3314,8 +3315,10 @@ fi
 
 
 bdm_subdirs="lib test utils"
-bdm_cflags="-Wall -O2"
 bdm_win32=false
+
+INCLUDES=${INCLUDES}
+
 
 
 # Check whether --enable-debug or --disable-debug was given.
@@ -3331,13 +3334,6 @@ echo "$as_me: error: bad value ${enableval} for --enable-debug" >&2;}
 else
   debug=true
 fi;
-
-if test x$debug = xtrue; then
-  bdm_cflags="${bdm_cflags} -g"
-fi
-
-BDM_CFLAGS=${bdm_cflags}
-
 
 # Check whether --enable-remote or --disable-remote was given.
 if test "${enable_remote+set}" = set; then
@@ -3427,6 +3423,31 @@ echo "$as_me: error: bad value ${enableval} for --enable-server" >&2;}
 else
   bdm_server=true
 fi;
+
+# Check whether --enable-bdmctrl or --disable-bdmctrl was given.
+if test "${enable_bdmctrl+set}" = set; then
+  enableval="$enable_bdmctrl"
+  case "${enableval}" in
+    yes) bdm_bdmctrl=true ;;
+    no)  bdm_bdmctrl=false ;;
+    *) { { echo "$as_me:$LINENO: error: bad value ${enableval} for --enable-bdmctrl" >&5
+echo "$as_me: error: bad value ${enableval} for --enable-bdmctrl" >&2;}
+   { (exit 1); exit 1; }; } ;;
+   esac
+else
+  bdm_bdmctrl=false
+fi;
+
+
+
+if test x$bdm_bdmctrl = xtrue; then
+  BDMCTRL_TRUE=
+  BDMCTRL_FALSE='#'
+else
+  BDMCTRL_TRUE='#'
+  BDMCTRL_FALSE=
+fi
+
 
 
 case ${host} in
@@ -3611,6 +3632,13 @@ if test -z "${BDM_DRIVER_TRUE}" && test -z "${BDM_DRIVER_FALSE}"; then
   { { echo "$as_me:$LINENO: error: conditional \"BDM_DRIVER\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"BDM_DRIVER\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${BDMCTRL_TRUE}" && test -z "${BDMCTRL_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"BDMCTRL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"BDMCTRL\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -4204,13 +4232,15 @@ s,@AS@,$AS,;t t
 s,@ac_ct_AS@,$ac_ct_AS,;t t
 s,@LD@,$LD,;t t
 s,@ac_ct_LD@,$ac_ct_LD,;t t
-s,@BDM_CFLAGS@,$BDM_CFLAGS,;t t
+s,@INCLUDES@,$INCLUDES,;t t
 s,@BDM_REMOTE_TRUE@,$BDM_REMOTE_TRUE,;t t
 s,@BDM_REMOTE_FALSE@,$BDM_REMOTE_FALSE,;t t
 s,@BDM_IOPERM_TRUE@,$BDM_IOPERM_TRUE,;t t
 s,@BDM_IOPERM_FALSE@,$BDM_IOPERM_FALSE,;t t
 s,@BDM_DRIVER_TRUE@,$BDM_DRIVER_TRUE,;t t
 s,@BDM_DRIVER_FALSE@,$BDM_DRIVER_FALSE,;t t
+s,@BDMCTRL_TRUE@,$BDMCTRL_TRUE,;t t
+s,@BDMCTRL_FALSE@,$BDMCTRL_FALSE,;t t
 s,@WIN32_TRUE@,$WIN32_TRUE,;t t
 s,@WIN32_FALSE@,$WIN32_FALSE,;t t
 s,@BDM_SUBDIRS@,$BDM_SUBDIRS,;t t
