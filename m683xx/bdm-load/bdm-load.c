@@ -96,14 +96,13 @@ int bdm_autoreset = 0;		/* automatic reset before load */
 int bdm_ttcu = 0;		/* time to come up for init by rom */
 char *initname;			/* need reimplement !!!!!!!!! */
 char *bdm_dev_name;		/* device name */
-static u_long entry_pt=0;
-
+static char *entry_name=NULL;
 
 int
 mem_dump (char *buf)
 {
   caddr_t adr;
-  u_long len, l;
+  long len, l;
   int i, ret;
   u_char mem[16];
   if (sscanf (buf, " %li %li", &l, &len) != 2)
@@ -497,6 +496,7 @@ main (int argc, char *argv[])
 {
   int done;
   int error;
+  int ret;
   static int print_help = 0;		/* Help */
   static int reset = 0;			/* Reset target */
   static int check = 0;			/* Check flash configuration */
@@ -506,6 +506,9 @@ main (int argc, char *argv[])
   static int run = 0;			/* Run target from entry point */
   static int script = 0;		/* Batch mode */
   static int bdm_delay = 0;		/* Delay/speed for BDM driver */
+  static int set_mbar_fl = 0;		/* Set MBAR requested */
+  static u_long mbar_val = 0;
+  static u_long entry_pt=0;
   str_list_t files2load={0,};		/* List of filenames to load */
   int cmd;
   char buf[255];
@@ -545,12 +548,16 @@ main (int argc, char *argv[])
       {"b", no_argument, &blankck, 1},
       {"load", no_argument, &load, 1},
       {"l", no_argument, &load, 1},
-      {"go", no_argument, &run, 1},
+      {"go", optional_argument, NULL, 'g'},
       {"g", no_argument, &run, 1},
+      {"mbar", required_argument, NULL, 'M'},
+      {"M", required_argument, NULL, 'M'},
       {"script", no_argument, &script, 1},
       {"s", no_argument, &script, 1},
       {"bdm-delay", required_argument, 0, 'd'},
       {"d", required_argument, 0, 'd'},
+      {"bdm-device", required_argument, 0, 'D'},
+      {"D", required_argument, 0, 'D'},
       {0, no_argument, 0, 0}
     };
 
@@ -577,6 +584,28 @@ main (int argc, char *argv[])
 	    if(flash_setup(optarg)<0)
 	      exit(1);
 	    break;
+	  case 'g':
+	    /* Run target from default or optional entry point */
+	    run=1;
+	    if (optarg) {
+		if (entry_name) free (entry_name);
+		entry_name = strdup (optarg);
+	    }
+	    break;
+	  case 'M':
+	    /* Set MBAR register */
+	    mbar_val=strtoul(optarg,&p,0);
+	    set_mbar_fl=1;
+	    if(optarg==p){
+	      fprintf(stderr,"%s: bad numeric format for MBAR\n",argv[0]);
+	      exit(1);
+	    }
+	    break;
+	  case 'D':
+	    if (bdm_dev_name)
+	      free (bdm_dev_name);
+	    bdm_dev_name = strdup (optarg);
+	    break;
 	  case 'i':
 	    /* Init File */
 	    if(initname)
@@ -602,25 +631,27 @@ main (int argc, char *argv[])
 
   if(print_help)
   {
-     printf ("Usage bdm-load [OPTIONS] file1 ...\n\
-\t-h --help            - this help information!\n\
-\t-i --init-file=FILE  - object file to initialize processor\n\
-\t-r --reset           - reset target CPU before other operations\n\
-\t-c --check           - check flash setup (needed for auto)\n\
-\t-e --erase           - erase flash\n\
-\t-b --blankck         - blank check of flash\n\
-\t-l --load            - download listed filenames\n\
-\t-g --go              - run target CPU from entry address\n\
-\t-s --script          - do actions and return\n\
-\t-d --bdm-delay=d     - sets BDM driver speed/delay\n\
-\t-f --flash=TYPE@ADR  - select flash\n\
-For flash TYPE@ADR can be\n\
-  {<TYPE>|auto}[@{csboot|cs<x>|<start>{+<size>|-<end>}}]\n\
-Examples\n\
-  auto@csboot  amd29f400@0x800000-0x87ffff  auto@0+0x80000\n\
-If auto type or cs address is used, check must be\n\
-specified to take effect.\n\
-Known flash types/algorithms :\n");
+     printf ("Usage bdm-load [OPTIONS] file1 ...\n"
+	"\t-h --help            - this help information!\n"
+	"\t-i --init-file=FILE  - object file to initialize processor\n"
+	"\t-r --reset           - reset target CPU before other operations\n"
+	"\t-c --check           - check flash setup (needed for auto)\n"
+	"\t-e --erase           - erase flash\n"
+	"\t-b --blankck         - blank check of flash\n"
+	"\t-l --load            - download listed filenames\n"
+	"\t   --go[=address]    - run target CPU from entry address\n"
+	"\t-M --mbar=val        - setup 68360 MBAR register\n"
+	"\t-s --script          - do actions and return\n"
+	"\t-d --bdm-delay=d     - sets BDM driver speed/delay\n"
+	"\t-D --bdm-device      - sets BDM device file\n"
+	"\t-f --flash=TYPE@ADR  - select flash\n"
+	"For flash TYPE@ADR can be\n"
+	"  {<TYPE>|auto}[@{csboot|cs<x>|<start>{+<size>|-<end>}}]\n"
+	"Examples\n"
+	"  auto@csboot  amd29f400@0x800000-0x87ffff  auto@0+0x80000\n"
+	"If auto type or cs address is used, check must be\n"
+	"specified to take effect.\n"
+	"Known flash types/algorithms :\n");
      for(i=0;flash_alg_infos[i]!=NULL;i++)
        printf("  %s",flash_alg_infos[i]->alg_name);
      printf("\n\n");
@@ -642,9 +673,25 @@ Known flash types/algorithms :\n");
 
 
   /* Connect to target */
-  bdmlib_open (bdm_dev_name);
-  bdmlib_setioctl (BDM_SPEED, bdm_delay);
+  if((ret=bdmlib_open (bdm_dev_name)) != BDM_NO_ERROR) {
+    printf("%s: Open \"%s\" reports %s\n",
+    		argv[0],bdm_dev_name,bdmlib_geterror_str(ret));
+    exit(1);
+  }
+  if((ret=bdmlib_setioctl (BDM_SPEED, bdm_delay)) != BDM_NO_ERROR) {
+    printf("%s: Set bdm_delay failed with error %s\n",
+    		argv[0],bdmlib_geterror_str(ret));
+    exit(1);
+  }
   hashmark = 1;
+  if(set_mbar_fl) {
+    printf ("MBAR setup to %08lX\n",mbar_val);
+    if(bdmlib_set_mbar(mbar_val) != BDM_NO_ERROR) {
+      printf("%s: MBAR setup failed with error %s\n",
+    		argv[0],bdmlib_geterror_str(ret));
+      exit(1);
+    }
+  }
   if(files2load.count>0)
     bdmlib_do_load_macro (files2load.items[0], BEGIN_MACRO);
 
@@ -729,9 +776,9 @@ Known flash types/algorithms :\n");
           for(i=0;i<files2load.count;i++){
             printf("Loading file : %s\n",files2load.items[i]);
             fflush(stdout);
-	    if(bdmlib_load(files2load.items[i], &entry_pt)<0)
+	    if((ret=bdmlib_load(files2load.items[i], entry_name, &entry_pt))<0)
 	    {
-	      printf ("Load Failed\n");
+	      printf ("Load Failed %d\n", ret);
 	      error = 1; //break;
 	    }
 	  }
@@ -751,7 +798,7 @@ Known flash types/algorithms :\n");
 	exit(0);
 
       printf ("bdm-load %d> ", ++cmd);
-      gets (buf);
+      fgets (buf, 250, stdin);
 
       if (!strcmp (buf, "run"))
 	{
@@ -779,7 +826,7 @@ Known flash types/algorithms :\n");
 	    }
 	}
 
-      if (!strcmp (buf, "exit") || !strcmp (buf, "quit"))
+      if (!strncmp (buf, "exit", 4) || !strncmp (buf, "quit", 4))
 	done = 1;
 
       if (!strncmp (buf, "dump", 4))

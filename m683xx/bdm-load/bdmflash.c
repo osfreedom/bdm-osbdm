@@ -930,7 +930,7 @@ bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
         errors++;
       }
     }
-    bdmlib_propeller(stdout);
+    bdmlib_propeller((u_long)in_adr, stdout);
   }
 
   if(errors) fprintf(stderr,"\n");

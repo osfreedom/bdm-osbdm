@@ -17,6 +17,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #define TRUE 1
 #define FALSE 0
 
@@ -592,7 +593,7 @@ DisInst (unsigned long i, FILE * fp)
   f = fp;
   inst = i;
 
-  if (inst != -1)
+  if (inst != 0xffffffff)
     switch (inst >> 30 & 3)	/* type of instruction */
       {
       case 0:			/* format 1 */

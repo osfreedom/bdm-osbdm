@@ -6,11 +6,11 @@ CFLAGS  += -Wstrict-prototypes
 CFLAGS	+= ${TARGET_ARCH}
 
 #/* Select right place or libraries with configured m68k-coff support */
-LDFLAGS += -lbfd
+LDLIBS += -lbfd
 #CFLAGS	+= -I ./gdblibs
 #LOCLIBS += ./gdblibs/libbfd.a ./gdblibs/libiberty.a
 #LDFLAGS += -lintl
-LDFLAGS += -liberty
+LDLIBS += -liberty
 LDFLAGS	+= ${TARGET_ARCH}
 
 all : bdm-load bdm_test tpudb

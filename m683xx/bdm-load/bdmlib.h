@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.h,v 1.1 2003/06/04 01:31:32 ppisa Exp $
+ * $Id: bdmlib.h,v 1.2 2003/08/15 12:06:47 ppisa Exp $
  */
 
 #ifndef BDMLIB_H
@@ -21,8 +21,9 @@ extern int bdmlib_write_var(caddr_t adr, u_short size, u_int val);
 extern int bdmlib_read_var(caddr_t adr, u_short size, void *val);
 extern int bdmlib_write_block(caddr_t adr, u_int size, u_char *block);
 extern int bdmlib_read_block(caddr_t adr, u_int size, u_char *block);
-extern int bdmlib_load(char *file, u_long *entry_pt);
-extern int bdmlib_do_load_binary(char *file_name, u_long *entry_pt);
+extern int bdmlib_load(char *file, char *entry_name, u_long *entry_pt);
+extern int bdmlib_do_load_binary(char *file_name, char *entry_name,
+				 u_long *entry_pt);
 extern int bdmlib_do_load_macro(char *file_name, int is_begin_macro);
 extern int bdmlib_get_sys_reg(u_int, u_int *);
 extern int bdmlib_set_sys_reg(u_int, u_int);
@@ -31,12 +32,13 @@ extern int bdmlib_set_reg(u_int, u_int);
 extern int bdmlib_go(void);
 extern char *bdmlib_geterror_str(int);
 extern char *bdmlib_getstatus_str(bdmstatus);
+extern int bdmlib_set_mbar(u_long mbar_val);
 extern int bdmlib_reset(void);
 extern void bdmlib_setdebug(int switch_on);
 extern int bdmlib_querydebug(void);
 extern void bdmlib_showpc(void);
 extern void bdmlib_log(const char *format, ...);
-extern void bdmlib_propeller(FILE * fp);
+extern void bdmlib_propeller(u_long addr, FILE * fp);
 extern int bdmlib_do_load_binary_section(char *file_name, char *sect_name);
 
 /* some additional error codes beyond those of the driver */

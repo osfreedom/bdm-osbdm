@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
   bdmlib_go();
   sleep(2);
   bdm_step_chip();  
-  ret=bdmlib_load(file_name, &entry_pt);
+  ret=bdmlib_load(file_name, NULL, &entry_pt);
   if(ret<0) printf("bdmlib_load : %s\n",bdmlib_geterror_str(ret));
   bdmlib_set_sys_reg(BDM_REG_RPC, entry_pt);
   ret=bdmlib_go();
@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
     printf("Enter file name : ");
     scanf("%s",file_name);
     printf("\n");
-    ret=bdmlib_load(file_name, &entry_pt);
+    ret=bdmlib_load(file_name, NULL, &entry_pt);
     if(ret<0) printf("bdmlib_load : %s\n",bdmlib_geterror_str(ret));
     else
     {printf("loaded OK, entrypoint %lx\n",entry_pt);

@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.c,v 1.1 2003/06/04 01:31:32 ppisa Exp $
+ * $Id: bdmlib.c,v 1.2 2003/08/15 12:06:47 ppisa Exp $
  *
  * Remote debugging interface for 683xx via Background Debug Mode
  * needs a driver, which controls the BDM interface.
@@ -68,13 +68,12 @@ Boston, MA 02111-1307, USA.
 #include "defs.h"
 #endif
 
+#ifndef PROTO
 /* this is missing in current ansidecl.h - remove it later   gm */
 #if defined (__STDC__) || defined (_AIX) || (defined (__mips) && defined (_SYSTYPE_SVR4))
 
 #define PROTO(type, name, arglist)  type name arglist
-#ifndef PARAMS
 #define PARAMS(paramlist)       paramlist
-#endif
 #define ANSI_PROTOTYPES         1
 
 #else		  /* Not ANSI C.  */
@@ -83,6 +82,7 @@ Boston, MA 02111-1307, USA.
 #define PARAMS(paramlist)       ()
 
 #endif		  /* ANSI C.  */
+#endif
 
 #include <bfd.h>
 #include "bdmlib.h"
@@ -99,6 +99,8 @@ static int bdm_delay=-1;
 #define	BDM_GOTEXCEPTION	(1<<1)
 #define	BDM_DEBUG_NAME	"bdm-dbg.log"
 static int bdm_flags = 0;
+static int mbar_used = 0;
+static u_long mbar_default_val = 0;
 extern char hashmark;
 extern int bdm_autoreset;
 extern int bdm_ttcu;
@@ -348,6 +350,22 @@ bdmlib_go(void)
 }
 
 int
+bdmlib_set_mbar(u_long mbar_val)
+{
+  int ret;
+  bdmlib_set_sys_reg(BDM_REG_DFC, 7);
+  bdmlib_set_sys_reg(BDM_REG_SFC, 7);
+  ret = bdmlib_write_var((caddr_t)0x3ff00, BDM_SIZE_LONG, mbar_val);
+  if(ret >= 0){
+    mbar_used = 1;
+    mbar_default_val = mbar_val;
+  }
+  bdmlib_set_sys_reg(BDM_REG_DFC, 5);
+  bdmlib_set_sys_reg(BDM_REG_SFC, 5);
+  return ret;
+}
+
+int
 bdmlib_reset(void)
 {
 #if SUPPORT_RAMINIT
@@ -373,6 +391,15 @@ bdmlib_reset(void)
 
 	bdmlib_set_sys_reg(BDM_REG_DFC, 5);
 	bdmlib_set_sys_reg(BDM_REG_SFC, 5);
+	
+	/*
+	 * The 68360 targets requires setup of MBAR to enable access
+	 * to integrated modules and system configuration registers
+	 */
+	 
+	if(mbar_used) {
+	  bdmlib_set_mbar(mbar_default_val);
+	}
 
 	/*
 	 * in case we have a monitor in place, we might want to let him do
@@ -1050,13 +1077,13 @@ bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 }
 
 void
-bdmlib_propeller(FILE * fp)
+bdmlib_propeller(u_long addr, FILE * fp)
 {
 static char *str = "\\|/-";
 static int index;
 	
 	if (!hashmark) return;
-	fprintf(fp, "%c\b", str[index++]);
+	fprintf(fp, "%c 0x%08lx\b\b\b\b\b\b\b\b\b\b\b\b", str[index++], addr);
 	fflush(fp);
 	index %= 4;
 }
@@ -1083,7 +1110,7 @@ int version;
 		fprintf(stderr, "Warning: trouble on opening %s: %s\n", name,
 			bdmlib_geterror_str(-errno));
 		bdm_fd = 0;				/* mark unused */
-		return bdm_fd;
+		return BDM_FAULT_PORT;
 	}
 	bdmlib_ioctl(BDM_INIT);
 	if (bdm_delay>=0) {
@@ -1174,10 +1201,9 @@ bdmlib_do_load_macro(char *file_name, int which_suffix)
 	FILE *m_file;
 	char *lptr;
 	char cmd;
-	int line_nr, ret;
+	int line_nr, ret, size;
 	bfd_vma addr1, addr2;
-	u_int size;
-	int size_tag;
+	short size_tag;
 	u_char *buf;
 	int errorcount = 0;
 	char * begin_suffix = ".bdmmb", *end_suffix = ".bdmme", *no_suffix = "";
@@ -1206,10 +1232,11 @@ bdmlib_do_load_macro(char *file_name, int which_suffix)
 	}
 	line_nr = 0;
 	while ((lptr = get_line(m_file, &line_nr))) {
-		bdmlib_propeller(stdout);
-
-		sscanf(lptr, "%c %i %i %i",
-			 &cmd, (unsigned int *) &addr1, (unsigned int *) &addr2, &size);
+		cmd = *lptr++;
+		addr1 = strtoul (lptr, &lptr, 0);
+		addr2 = strtoul (lptr, &lptr, 0);
+		size = strtol (lptr, &lptr, 0);
+		bdmlib_propeller(addr1, stdout);
 		switch (toupper(cmd)) {
 		  case 'W':
 			  dbprintf("\twrite to addr %#x cont %#x size %d\n",
@@ -1288,6 +1315,17 @@ bdm_set size mismatch on write to %#x: wanted %d got %d",
 			  }
 			  free(buf);
 			  break;
+		  case 'M':
+			  dbprintf("\tMBAR setup to %#x\n", addr1);
+			  if ((ret = bdmlib_set_mbar((u_long) addr1))) {
+				  errorcount++;
+				  error("\
+Error in processing macro %s line %d 'M' command:\n\t\
+MBAR set returned %d",
+						m_name, line_nr, ret);
+
+			  }
+			  break;
 #if DEBUGGING_MACROS
 		  case 'T':
 			  {
@@ -1306,7 +1344,7 @@ bdm_set size mismatch on write to %#x: wanted %d got %d",
 		}
 	}
 	if (hashmark) {
-		printf("    \b\b");
+		printf("            \b\b\b\b\b\b\b\b\b\b\b\b");
 		fflush(stdout);
 	}
 	if(m_file) fclose(m_file);
@@ -1385,7 +1423,7 @@ bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
 
 	dbprintf("bdmlib_load_section:\n\tsection %s index %d\n",
 			sec->name, sec->index);
-	dbprintf("\tflags %#x raw_size %d cooked_size %d\n",
+	dbprintf("\tflags %#x raw_size 0x%08x cooked_size 0x%08x\n",
 			sec->flags, sec->_raw_size, sec->_cooked_size);
 	dbprintf("\tvma %#x lma %#x output_offset %#x\n",
 			sec->vma, sec->lma, sec->output_offset);
@@ -1430,7 +1468,7 @@ bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
 		load_bytes -= cnt;
 		addr += cnt;
 		offset += cnt;
-		bdmlib_propeller(stdout);
+		bdmlib_propeller(addr, stdout);
 	}
 }
 
@@ -1460,14 +1498,38 @@ static bfd * prepare_binary(char *file_name)
  * load a binary file, returns error codes
  */
 int
-bdmlib_do_load_binary(char *file_name, u_long *entry_pt)
+bdmlib_do_load_binary(char *file_name, char *entry_name, u_long *entry_pt)
 {
 	bfd *abfd;
 	int ret;
 
 	if ((abfd = prepare_binary(file_name)) == NULL) 
 		return BDM_ERR_OPEN;
+
+	if (entry_name)
+	    while (isspace(*entry_name))
+		entry_name++;
+
+	if (entry_name && isdigit(*entry_name)) {
+	    *entry_pt = strtoul (entry_name, NULL, 0);
+	} else if (entry_name) {
+	    long i, symcnt;
+	    asymbol **symtab;
+	    if ((i=bfd_get_symtab_upper_bound(abfd))<=0 || !(symtab=malloc(i)))
+		return BDM_ERR_OPEN;
+	    if ((symcnt = bfd_canonicalize_symtab (abfd, symtab))<0)
+		return BDM_ERR_OPEN;
+
+	    for (i=0; i<symcnt; i++) {
+		if (!strcmp (entry_name, symtab[i]->name)) {
+		    *entry_pt = symtab[i]->section->vma + symtab[i]->value;
+		    break;
+		}
+	    }
+	} else {
 	*entry_pt = bfd_get_start_address(abfd);
+	}
+
 	load_section_error = BDM_NO_ERROR;
 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED) && 
 		 ((ret = bdmlib_ioctl(BDM_STOP_CHIP)))) {
@@ -1477,7 +1539,7 @@ bdmlib_do_load_binary(char *file_name, u_long *entry_pt)
 	}
 	bfd_map_over_sections(abfd, bdmlib_load_section, NULL);
 	if (hashmark) {
-		printf(" .   \b\b");
+		printf(" .          \b\b\b\b\b\b\b\b\b\b\b\b");
 		fflush(stdout);
 	}
 	bfd_close(abfd);
@@ -1526,7 +1588,7 @@ bdmlib_do_load_binary_section(char *file_name, char *section_name)
  */
 
 int
-bdmlib_load(char *file, u_long * entry_pt)
+bdmlib_load(char *file, char *entry_name, u_long * entry_pt)
 {
 	int ret = 0;
 	u_int sfc, dfc;
@@ -1563,7 +1625,7 @@ bdmlib_load(char *file, u_long * entry_pt)
 	}
 #endif /* SUPPORT_RAMINIT */
 
-	if ((ret = bdmlib_do_load_binary(file, entry_pt)) < 0) {
+	if ((ret = bdmlib_do_load_binary(file, entry_name, entry_pt)) < 0) {
 		error("Download failed.");
 		return ret;
 	}
