@@ -1,4 +1,4 @@
-/* $Id: cpu32-check.c,v 1.1 2003/06/02 15:15:56 codewiz Exp $
+/* $Id: cpu32-check.c,v 1.2 2003/09/17 15:04:27 cjohns Exp $
 0        1         2         3         4         5         6         7
 123456789012345678901234567890123456789012345678901234567890123456789012345678
  * 
@@ -39,6 +39,10 @@
 #include <unistd.h>
 #include <BDMlib.h>
 #include <string.h>
+
+#if defined (__WIN32__)
+#define sleep _sleep
+#endif
 
 static int stop_on_error = 1;
 static int stop_quiet = 0;
@@ -1135,7 +1139,7 @@ main(int argc, char **argv)
   int           options_stop_quiet = 0;
   unsigned int  driver_version;
   int           cpu_type;
-  int           interface;
+  int           iface;
   int           reg_check_loops = 1;
   int           align_check_loops = 1;
   int           external_mem_check_loops = 1;
@@ -1286,10 +1290,10 @@ main(int argc, char **argv)
       break;
   }
 
-  if (bdmGetInterface(&interface) < 0)
+  if (bdmGetInterface(&iface) < 0)
     show_error("GetInterface");
 
-  switch(interface) {
+  switch(iface) {
     case BDM_CPU32_ERIC:
       printf("Interface  : Eric's CPU32\n");
       break;
