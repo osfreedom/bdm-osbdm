@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.2 2003/12/29 22:53:56 joewolf Exp $
+## $Id: Makefile.am,v 1.3 2004/01/07 12:49:04 joewolf Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -11,7 +11,7 @@
 
 INCLUDES = @INCLUDES@ -I$(srcdir)/../driver -I$(srcdir)/../lib
 
-CFLAGS = @CFLAGS@
+CFLAGS = @BFD_INCLUDE@ @CFLAGS@
 
 if BDMFLASHLIB
 
