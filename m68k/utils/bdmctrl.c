@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.12 2004/01/15 22:22:24 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.13 2004/01/21 22:17:09 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -591,6 +591,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
     unsigned long addr;
     unsigned long length;
     unsigned long dfc;
+    unsigned long ret;
     unsigned char buf[1*1024], rbuf[1*1024];
 
     /* FIXME: should use bfd_perror() bfd_errmsg()
@@ -626,10 +627,10 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		break;
 	    }
 
-	    if (write_memory (addr+off, buf, cnt) != cnt) {
+	    if ((ret=write_memory (addr+off, buf, cnt)) != cnt) {
 		if (verbosity) printf ("\b\bFAIL\n");
-		warn ("%swrite_memory(0x%x, xxx, 0x%x) failed\n",
-		      verbosity ? "" : "\n", addr+off, cnt);
+		warn ("%swrite_memory(0x%x, xxx, 0x%x)==%d failed\n",
+		      verbosity ? "" : "\n", addr+off, cnt, ret);
 		break;
 	    }
 

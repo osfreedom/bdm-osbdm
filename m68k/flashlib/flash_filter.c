@@ -1,4 +1,4 @@
-/* $Id: flash_filter.c,v 1.2 2004/01/15 22:22:24 joewolf Exp $
+/* $Id: flash_filter.c,v 1.3 2004/01/21 22:17:09 joewolf Exp $
  *
  * Flash filtering layer.
  *
@@ -438,8 +438,8 @@ unsigned long write_memory (unsigned long adr, unsigned char *data,
 
 	if (area->alg && area->alg->prog) {
 	    ret = prog_clone (area, adr, data, size);
-	    if (ret != size) return wrote;
 	    wrote += ret;
+	    if (ret != size) return wrote;
 	} else {
 	    /* no programming algorithm defined, assume RAM
 	     */

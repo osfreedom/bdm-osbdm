@@ -1,4 +1,4 @@
-/* $Id: flash29.c,v 1.1 2003/12/29 22:53:56 joewolf Exp $
+/* $Id: flash29.c,v 1.2 2004/01/21 22:17:09 joewolf Exp $
  *
  * Driver for 29Fxxx and 49Fxxx flash chips.
  *
@@ -453,7 +453,7 @@ static int flash29_prog (void *chip_descr,
 	wr_func (reg2, ct->alg_info->cmd_resbypass2);
     }
 
-    return i;
+    return i>cnt ? cnt : i;
 }
 
 /* read the chip ID
