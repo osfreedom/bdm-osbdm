@@ -38,6 +38,7 @@ extern "C"
 /*
  * All (int) routines return -1 on error, >=0 otherwise.
  */
+int  bdmCheck (void);
 int  bdmOpen (const char *name);
 int  bdmClose (void);
 int  bdmIsOpen (void);
