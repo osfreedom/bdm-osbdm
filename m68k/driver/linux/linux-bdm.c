@@ -187,13 +187,13 @@ os_copy_out (void *dst, void *src, int size)
 }
 
 static void
-os_lock_module ()
+os_lock_module (void)
 {
   MOD_INC_USE_COUNT;
 }
 
 static void
-os_unlock_module ()
+os_unlock_module (void)
 {
   MOD_DEC_USE_COUNT;
 }
@@ -319,7 +319,7 @@ void cleanup_module (void);
 int
 init_module (void)
 {
-  int minor;
+  unsigned int minor;
 
   printk ("bdm_init_module %d.%d, " __DATE__ ", " __TIME__ "\n",
           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
@@ -421,7 +421,7 @@ init_module (void)
 void
 cleanup_module (void)
 {
-  int minor;
+  unsigned int minor;
 
   for (minor = 0 ;
        minor < (sizeof bdm_device_info / sizeof bdm_device_info[0]) ;

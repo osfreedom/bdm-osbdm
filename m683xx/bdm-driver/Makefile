@@ -76,7 +76,7 @@ all : make_this_module
 
 install : install_this_module
 
-$(MODULE_NAME).c: bdm.c
+$(MODULE_NAME).c: bdm.c bdm.h
 	cp $< $@
 
 make_this_module: $(MODULE_NAME).c

@@ -253,7 +253,7 @@ static void linux_bdm_exit(void);
 static int __init
 linux_bdm_init (void)
 {
-  int minor;
+  unsigned int minor;
 
   printk ("bdm_init_module %d.%d, " __DATE__ ", " __TIME__ "\n",
           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
@@ -355,7 +355,7 @@ linux_bdm_init (void)
 static void __exit
 linux_bdm_exit (void)
 {
-  int minor;
+  unsigned int minor;
 
   for (minor = 0 ;
        minor < (sizeof bdm_device_info / sizeof bdm_device_info[0]) ;
