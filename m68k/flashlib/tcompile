@@ -1,6 +1,6 @@
 #! /bin/sh -ex
 
-# $Id: tcompile,v 1.1 2003/12/29 22:53:56 joewolf Exp $
+# $Id: tcompile,v 1.2 2004/01/15 22:23:13 joewolf Exp $
 #
 # A helper to compile and test flash driver plugins.
 #
@@ -23,12 +23,16 @@
 # This file is a helper to compile and test driver plugins. In the long term,
 # it should be replaced by proper autoconf magic.
 
+BDMDEVICE=$1   # The bdm device
+FILE=$2        # The file we want to download into flash.
 
-# The file we want to download into flash.
-FILE=/m/local/src/crossgcc/foo.cof
+if [ ! -e "$FILE" ] ; then
+    echo "Usage: $0 [host[:port]]/dev/bdmXXX foobar.cof"
+    exit 1
+fi
 
 # Where the sources for the drivers can be found
-cd /m/c/crossgcc/bdm/m68k/flashlib
+cd `echo $0 | sed 's!/[^/]*$!!'` || exit 1
 
 # The known drivers.
 drivers="flash29"
@@ -49,10 +53,10 @@ for driver in $drivers ; do
 done
 
 # compile/install bdm utilities
-( cd /m/spool/tmp/build-crossgcc/build/m68k-bdm; make install || exit 1 )
+( cd /m/spool/tmp/build-crossgcc/build/m68k-bdm; make install || exit 1 ) || exit 1
 
 # Now program the beast.
-cat <<__EOF__ | m68k-coff-bdmctrl -v1 eagle:4712/dev/bdmicd0
+cat <<__EOF__ | m68k-coff-bdmctrl -v1 $BDMDEVICE
  reset
  write %dfc 5 b
  write %sfc 5 b
