@@ -35,7 +35,7 @@ What do you have to do?
       "Loadable module support".
 
 For more details on dynamic kernel module support, see the READMEs
-in the latest modules utilities. The current release is modutils-2.3.19.
+in the latest modules utilities. The current release is modutils-2.4.22.
 
 *** IMPORTANT ***
 
@@ -43,9 +43,26 @@ The bdm driver checks if the required resources (here only the io-port
 addresses) are in use, e.g. by the lp device driver or a parallel port 
 ethernet device. When everything is free, it reserves these resources, and
 releases them when closing the device. So no double access should be possible.
-There can be problem with "parport", "parport_pc" and "lp" module stack,
+
+If BDM driver is compiled without PARPORT support, there could be problem
+with "parport", "parport_pc" and "lp" module stack resource reservation,
 which could compete with "m683xx-bdm" driver. Compile "lp" and "parport"
 as modules in such case and unload them before "m683xx-bdm".
+Opposite is true in the case of BDM driver with PARPORT support.
+You need "parport_pc" compiled into kernel or as module.
+
+Possibilities reworded
+
+A) You need to rmmod parport, if you have compiled BDM driver WITHOUT parport
+   support. It  can be done by next line added to "/etc/modules.conf"
+
+	pre-install   bdm /sbin/modprobe -r lp parport_pc
+	    
+B) If BDM driver is compiled WITH parport support, the "parport_pc" module
+   have to be loaded before "bdm" one. It is loaded by boot process in the
+   most cases but next line in "/etc/modules.conf" doe not hurt
+		    
+	below bdm parport_pc
 
 ** DEVFS support ***
 
