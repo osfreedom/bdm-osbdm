@@ -10,7 +10,7 @@ dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 dnl GNU General Public License for more details.
 
 AC_PREREQ(2.57)
-AC_INIT([m68k-bdm], [1.0.90], [bdm-devel@lists.sourceforge.net])
+AC_INIT([m68k-bdm], [1.1.0], [bdm-devel@lists.sourceforge.net])
 AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 dist-zip])
@@ -18,7 +18,9 @@ AM_INIT_AUTOMAKE([-Wall dist-bzip2 dist-zip])
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_INSTALL
-AC_PROG_LEX
+
+dnl For backwards compatibility with automake 1.4 (AC_PROG_LEX should suffice)
+AC_DECL_YYTEXT
 
 dnl bernie: we should fix all warnings before enabling this
 dnl AX_CFLAGS_WARN_ALL
