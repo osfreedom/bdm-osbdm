@@ -1,7 +1,7 @@
 Begin4
 Title:		bdm-load
-Version:	030519
-Entered-date:	2003-05-19
+Version:	030815
+Entered-date:	2003-08-15
 Description:	Flash writer utility for 683xx target systems through
 		Background Debug Mode interface for Motorola CPU32 and Linux
 		Both Public Domain and ICD interfaces are supported.

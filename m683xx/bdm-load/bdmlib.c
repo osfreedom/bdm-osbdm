@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.c,v 1.2 2003/08/15 12:06:47 ppisa Exp $
+ * $Id: bdmlib.c,v 1.3 2003/08/15 14:32:48 ppisa Exp $
  *
  * Remote debugging interface for 683xx via Background Debug Mode
  * needs a driver, which controls the BDM interface.
@@ -719,7 +719,7 @@ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 	u_long ul;
 	u_short us;
 	u_char uc;
-	int first_acc;
+	u_int first_acc;
 
 	dbprintf("bdmlib_write_block size %#x to adr %#x ", size, in_adr);
 	first_acc = 4 - ((u_long) in_adr & 0x3);
@@ -1005,14 +1005,14 @@ bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 	}
 	switch (first_acc) {
 	  case 4:
-		  if (bdmlib_read_var(in_adr, BDM_SIZE_LONG, (u_int *) & ul) != 4) {
+		  if (bdmlib_read_var(in_adr, BDM_SIZE_LONG, &ul) != 4) {
 			  return got_size;
 		  }
 		  bl_ptr = bdmlib_conv_long_to_char(bl_ptr, ul, 1);
 		  got_size += 4;
 		  break;
 	  case 3:
-		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, (u_int *) & uc) != 1) {
+		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, &uc) != 1) {
 			  return got_size;
 		  }
 		  *bl_ptr++ = uc;
@@ -1020,14 +1020,14 @@ bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 		  in_adr += 1;
 		  /* fall through to 'word' */
 	  case 2:
-		  if (bdmlib_read_var(in_adr, BDM_SIZE_WORD, (u_int *) & us) != 2) {
+		  if (bdmlib_read_var(in_adr, BDM_SIZE_WORD, &us) != 2) {
 			  return got_size;
 		  }
 		  bl_ptr = bdmlib_conv_short_to_char(bl_ptr, us, 1);
 		  got_size += 2;
 		  break;
 	  case 1:
-		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, (u_int *) & uc) != 1) {
+		  if (bdmlib_read_var(in_adr, BDM_SIZE_BYTE, &uc) != 1) {
 			  return got_size;
 		  }
 		  *bl_ptr++ = uc;
@@ -1502,6 +1502,7 @@ bdmlib_do_load_binary(char *file_name, char *entry_name, u_long *entry_pt)
 {
 	bfd *abfd;
 	int ret;
+	u_long entry_addr = 0;
 
 	if ((abfd = prepare_binary(file_name)) == NULL) 
 		return BDM_ERR_OPEN;
@@ -1511,7 +1512,7 @@ bdmlib_do_load_binary(char *file_name, char *entry_name, u_long *entry_pt)
 		entry_name++;
 
 	if (entry_name && isdigit(*entry_name)) {
-	    *entry_pt = strtoul (entry_name, NULL, 0);
+	    entry_addr = strtoul (entry_name, NULL, 0);
 	} else if (entry_name) {
 	    long i, symcnt;
 	    asymbol **symtab;
@@ -1522,13 +1523,14 @@ bdmlib_do_load_binary(char *file_name, char *entry_name, u_long *entry_pt)
 
 	    for (i=0; i<symcnt; i++) {
 		if (!strcmp (entry_name, symtab[i]->name)) {
-		    *entry_pt = symtab[i]->section->vma + symtab[i]->value;
+		    entry_addr = symtab[i]->section->vma + symtab[i]->value;
 		    break;
 		}
 	    }
 	} else {
-	*entry_pt = bfd_get_start_address(abfd);
+	  entry_addr = bfd_get_start_address(abfd);
 	}
+	if(entry_pt) *entry_pt = entry_addr;
 
 	load_section_error = BDM_NO_ERROR;
 	if (!(bdmlib_getstatus() & BDM_TARGETSTOPPED) && 

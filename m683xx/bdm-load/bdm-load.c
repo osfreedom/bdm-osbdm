@@ -800,12 +800,12 @@ main (int argc, char *argv[])
       printf ("bdm-load %d> ", ++cmd);
       fgets (buf, 250, stdin);
 
-      if (!strcmp (buf, "run"))
+      if (!strncmp (buf, "run", 3))
 	{
 	  run = 1;
 	}
 
-      if (!strcmp (buf, "reset"))
+      if (!strncmp (buf, "reset", 5))
 	{
 	  reset = 1;
 	}
