@@ -49,6 +49,9 @@
  * 
  * HISTORY:
  * $Log: Flash.c,v $
+ * Revision 1.2  2004/03/21 01:52:51  codewiz
+ * Add 39VF/LF160 chip.
+ *
  * Revision 1.1  2003/12/29 22:18:49  codewiz
  * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
  *
@@ -1502,7 +1505,7 @@ static FlashInfo_t const flash_table[]= {
   {FlashIDMake_M( FlashManufacturerAMD_c,              0x49 ), 0x200000, 0x10000, 0x200000, 0x10000, "Am29LV160DB"},
   {FlashIDMake_M( FlashManufacturerAMD_c,              0xC4 ), 0x200000, 0x00000, 0x1F0000, 0x10000, "Am29LV160DT"},
   {FlashIDMake_M( FlashManufacturerAtmel_c,            0xD5 ),  0x40000,  0x8000,  0x40000,  0x8000, "29C010"},
-  {FlashIDMake_M( FlashManufacturerAtmel_c,            0xDA ),  0x80000, 0x10000,  0x80000, 0x10000, "29C020"}, 
+  {FlashIDMake_M( FlashManufacturerAtmel_c,            0xDA ),  0x80000, 0x10000,  0x80000, 0x10000, "29C020"},
   {FlashIDMake_M( FlashManufacturerAtmel_c,            0x5B ), 0x100000, 0x20000, 0x100000, 0x20000, "29C040"},
   {FlashIDMake_M( FlashManufacturerAtmel_c,            0xC0 ), 0x200000, 0x00000, 0x1E0000, 0x10000, "AT49BV16x4"},
   {FlashIDMake_M( FlashManufacturerAtmel_c,            0xC2 ), 0x200000, 0x20000, 0x200000, 0x10000, "AT49BV16x4T"},
@@ -1510,6 +1513,7 @@ static FlashInfo_t const flash_table[]= {
   {FlashIDMake_M( FlashManufacturerFujitsu_c,          0xA4 ), 0x100000, 0x20000, 0x100000, 0x20000, "29F040"},
   {FlashIDMake_M( FlashManufacturerFujitsu_c,          0xD5 ), 0x200000, 0x40000, 0x200000, 0x40000, "29F080"},
   {FlashIDMake_M( FlashManufacturerSST_c,              0x07 ),  0x40000,  0x8000,  0x40000,  0x8000, "29EE010"},
+  {FlashIDMake_M( FlashManufacturerSST_c,              0x82 ),  0x40000,  0x8000,  0x40000,  0x8000, "39VF/LF160"},
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0xE2 ), 0x100000, 0x20000, 0x100000, 0x20000, "29F040"},
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0xEE ),  0x80000, 0x00000,  0x70000, 0x10000, "M29W400AT"},
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0xEF ),  0x80000, 0x10000,  0x80000, 0x10000, "M29W400AB"},
@@ -1523,7 +1527,7 @@ static FlashInfo_t const flash_table[]= {
   {FlashIDMake_M( FlashManufacturerMicron_c,           0x71 ),  0x80000, 0x20000,  0x80000, 0x20000, "MTF004B3/400B3xx-xxB"},
   {FlashIDMake_M( FlashManufacturerMicron_c,           0x9C ), 0x100000, 0x00000,  0xE0000, 0x20000, "MTF008B3/800B3xx-xxT"},
   {FlashIDMake_M( FlashManufacturerMicron_c,           0x9D ), 0x100000, 0x20000, 0x100000, 0x20000, "MTF008B3/800B3xx-xxB"},
-  
+
   {0,0,0,0}
 };
 
