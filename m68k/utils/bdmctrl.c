@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.4 2003/11/07 23:47:10 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.5 2003/11/12 23:24:47 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -40,12 +40,10 @@ static int verify;
 static int verbosity=1;
 static int fatal_errors=0;
 static char *progname;
+static int cpu_type;
 
 static unsigned int patcnt=0; /* number of test patterns */
 static unsigned long *pattern=NULL;
-
-static int bfd_cnt=0;
-static bfd **bfd_ptr=NULL;
 
 typedef struct {
     char *name;
@@ -53,6 +51,51 @@ typedef struct {
 } var_t;
 static var_t *var=NULL;
 static int num_vars=0;
+
+
+static int bfd_cnt=0;
+static bfd **bfd_ptr=NULL;
+
+/* define list of known architectures/subarchitectures
+ */
+
+typedef struct {
+    enum bfd_architecture arch;
+    int machcnt;
+    const unsigned long *mach;
+} machlist_t;
+
+typedef struct {
+    int cpu;
+    int listcnt;
+    const machlist_t *machlist;
+} arch_t;
+
+static const unsigned long mach_unknown[] = { 0 };
+static const unsigned long mach_m68k[] = {
+    bfd_mach_m68000, bfd_mach_m68008, bfd_mach_m68010, bfd_mach_m68020,
+    bfd_mach_m68030, bfd_mach_m68040, bfd_mach_m68060, bfd_mach_cpu32,
+};
+static const unsigned long mach_cf[] = {
+    bfd_mach_mcf5200, bfd_mach_mcf5206e, bfd_mach_mcf5307, bfd_mach_mcf5407,
+};
+
+static const machlist_t machlist_cpu32[] = {
+/*    { bfd_arch_unknown, NUMOF(mach_unknown), mach_unknown }, */
+    { bfd_arch_m68k,    NUMOF(mach_m68k),    mach_m68k },
+};
+
+static const machlist_t machlist_coldfire[] = {
+/*    { bfd_arch_unknown, NUMOF(mach_unknown), mach_unknown }, */
+    { bfd_arch_m68k,    NUMOF(mach_cf),      mach_cf },
+};
+
+static arch_t arch[] = {
+    { BDM_CPU32,    NUMOF(machlist_cpu32),    machlist_cpu32 },
+    { BDM_COLDFIRE, NUMOF(machlist_coldfire), machlist_coldfire },
+};
+
+
 
 static void usage(char *progname, char *fmt, ...)
 {
@@ -456,6 +499,8 @@ static unsigned long eval_string (char *val)
 	return v;
     }
 
+    /* FIXME: should use bfd_perror() bfd_errmsg()
+     */
     /* search opened bfd's for the symbol. The bfd's are searched in reverse
        order, so loading a new bfd will override symbols with same name from
        bfd's that were loaded before.
@@ -517,6 +562,8 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
     unsigned long dfc;
     unsigned char buf[4096], rbuf[4096];
 
+    /* FIXME: should use bfd_perror() bfd_errmsg()
+     */
     flags  = bfd_get_section_flags (abfd, sec);
     addr   = bfd_section_lma (abfd, sec);
     length = bfd_get_section_size_before_reloc (sec);
@@ -527,8 +574,8 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		break;
 
     if (verbosity) {
-	printf (" 0x%08lx..0x%08lx (0x%08lx) %10s",
-		addr, addr+length, length, sec->name);
+	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s",
+		addr, addr+length, length, flags, sec->name);
 	fflush (stdout);
     }
 
@@ -682,7 +729,7 @@ static void cmd_dump_mem (size_t argc, char **argv)
 	fflush (file);
     }
 
-    fclose (file);
+    if (file != stdout) fclose (file);
 
     printf ("\nOK\n");
 }
@@ -738,9 +785,12 @@ static void cmd_check_mem (size_t argc, char **argv)
  */
 static void cmd_load (size_t argc, char **argv)
 {
+    int c, a, m;
     bfd *abfd;
     static int need_init=1;
     unsigned long entry_addr=0;
+    enum bfd_architecture cur_arch;
+    unsigned long cur_mach;
 
     if (verbosity) printf ("\n");
 
@@ -773,6 +823,33 @@ static void cmd_load (size_t argc, char **argv)
 
     if (!bfd_check_format (abfd, bfd_object)) {
 	warn ("%s is not an object file, skip it\n", argv[1]);
+    }
+
+    cur_arch = bfd_get_arch (abfd);
+    cur_mach = bfd_get_mach (abfd);
+
+    /* check whether we can find known CPU/arch/mach combination
+     */
+    for (c=0; c<NUMOF(arch); c++) {
+	if (arch[c].cpu != cpu_type) continue;
+	for (a=0; a<arch[c].listcnt; a++) {
+	    if (arch[c].machlist[a].arch != cur_arch) continue;
+	    for (m=0; m<arch[c].machlist[a].machcnt; m++) {
+		if (arch[c].machlist[a].mach[m] != cur_mach) continue;
+		break;
+	    }
+	    break;
+	}
+	break;
+    }
+
+    printf ("arch: %d/%d %d/%d/%d\n", cur_arch, cur_mach, c, a, m);
+    if (c >= NUMOF(arch) ||
+	a >= arch[c].listcnt ||
+	m >= arch[c].machlist[a].machcnt)
+    {
+	warn ("%s: Architecture (%s) don't match CPU %d\n",
+	      argv[1], bfd_printable_name (abfd), cpu_type);
     }
 
     bfd_map_over_sections (abfd, load_section, argv+2);
@@ -1031,7 +1108,7 @@ int main (int argc, char *argv[])
      */
     if (verbosity) {
 	unsigned int driver_version;
-	int cpu_type, iface;
+	int iface;
 
 	if (bdmGetDrvVersion(&driver_version) < 0)
 	    fatal ("bdmGetDrvVersion(): %s\n", bdmErrorString());
@@ -1053,8 +1130,8 @@ int main (int argc, char *argv[])
 	    fatal ("bdmGetInterface(): %s", bdmErrorString());
 
 	switch(iface) {
-	    case BDM_COLDFIRE:   printf("Interface: P&E Coldfire\n");    break;
-	    case BDM_CPU32_ERIC: printf("Interface: Eric's CPU32\n");    break;
+	    case BDM_COLDFIRE_PE: printf("Interface: P&E Coldfire\n");   break;
+	    case BDM_CPU32_PD:   printf("Interface: Eric's CPU32\n");    break;
 	    case BDM_CPU32_ICD:  printf("Interface: ICD (P&E) CPU32\n"); break;
 	    default:
 		fatal ("Unknown or unsupported interface type %d!\n", iface);

@@ -128,6 +128,8 @@ load [-v] <object-file> [ <section> ... ]
   verified.
   After the load, the symbols from the loaded file are known to the commands
   which can deal with symbols.
+  Please note that s-record and intel-hex don't have section names. In this
+  cases BFD assigns ".sec1", ".sec2" and so forth as section names.
 
 execute [<address>]
   Run the target at <address>. If <address> is omitted, the target will run
@@ -153,15 +155,11 @@ short time
 
  - Cleanup/extend output to make it easier to analyze hardware defects.
 
- - implement a "dump" command to dump memory contents to a file
-
  - Extend the "execute" command to pass arguments to the target function.
    The big question for this extension is: where to allocate the memory
    for the stack that is needed to put the arguments (and the bgnd
    instruction)
    This extension is a prerequisite for the "flash" command. 
-
- - Implement a "step" command.
 
 long run
 --------
