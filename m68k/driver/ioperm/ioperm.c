@@ -253,7 +253,7 @@ ioperm_bdm_init (int minor)
     case 0:  port = 0x378;  break;  /* LPT1 */
     case 1:  port = 0x278;  break;  /* LPT2 */
     case 2:  port = 0x3bc;  break;  /* LPT3 */
-    case 3:  port = 0x2bc;  break;  /* LPT4, ccj - made this up :-) */
+    case 3:  port = 0x9400; break;  /* PCI parallel port cards */
     default:
       printf ("BDM driver has no address for LPT%d.\n",
               BDM_IFACE_MINOR (minor) + 1);
@@ -272,13 +272,24 @@ ioperm_bdm_init (int minor)
    */
     
   self->debugFlag = BDM_DEFAULT_DEBUG;
-    
+
   /*
-   * Try the ioperm call to claim the parallel port.
+   * Try the ioperm() call to claim standard parallel ports.
+   *
+   * For PCI parallel port adaptors in extended IO space, use
+   * iopl() instead.
    */
-  if (ioperm (port, 3, 1) < 0)
-    return -1;
-  
+  if (port < 0x400)
+  {
+    if (ioperm (port, 3, 1) < 0)
+      return -1;
+  }
+  else
+  {
+    if (iopl(3) != 0)
+      return -1;
+  }
+
   /*
    * See if the port exists
    */
