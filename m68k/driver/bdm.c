@@ -130,8 +130,8 @@ struct BDM {
   int (*get_status)(struct BDM *self);
   int (*init_hardware) (struct BDM *self);
   int (*serial_clock) (struct BDM *self, unsigned short wval, int holdback);
-  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc);
-  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc, int raw);
+  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc, int raw);
   int (*gen_bus_error) (struct BDM *self);
   int (*restart_chip) (struct BDM *self);
   int (*release_chip) (struct BDM *self);
@@ -195,12 +195,12 @@ static int bdmDrvFillBuf (struct BDM *self, int count);
 static int bdmDrvSendBuf (struct BDM *self, int count);
 static int bdmDrvFetchWord (struct BDM *self, unsigned short *sp);
 static int bdmDrvGo (struct BDM *self);
-static int bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc);
+static int bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc, int raw);
 static int bdmDrvReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvReadLongWord (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvReadWord (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvReadByte (struct BDM *self, struct BDMioctl *ioc);
-static int bdmDrvWriteSystemRegister (struct BDM *self, struct BDMioctl *ioc);
+static int bdmDrvWriteSystemRegister (struct BDM *self, struct BDMioctl *ioc, int raw);
 static int bdmDrvWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvWriteLongWord (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvWriteWord (struct BDM *self, struct BDMioctl *ioc);
@@ -532,7 +532,7 @@ static int cpu32_sysreg_map[BDM_REG_VBR + 1] =
 };
 
 /* need by cpu32_read_sysreg() */
-static int cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc);
+static int cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw);
 static int cpu32_icd_stop_chip (struct BDM *self);
 
 /*
@@ -1019,7 +1019,7 @@ cpu32_icd_step_chip (struct BDM *self)
  */
 
 static int 
-cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
+cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
   int err, cmd;
   unsigned short msw, lsw;
@@ -1033,12 +1033,12 @@ cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
     unsigned long sfc;
 
     mbar_ioc.address = BDM_REG_SFC;
-    if ((err = cpu32_read_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_read_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     sfc = mbar_ioc.value;
     mbar_ioc.address = BDM_REG_SFC;
     mbar_ioc.value = 7;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_write_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     mbar_ioc.address = 0x3FF00;
     if ((err = bdmDrvReadLongWord (self, &mbar_ioc)) < 0)
@@ -1046,15 +1046,19 @@ cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
     ioc->value = mbar_ioc.value;
     mbar_ioc.address = BDM_REG_SFC;
     mbar_ioc.value = sfc;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_write_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     return 0;
   }
   
   if (ioc->address > BDM_REG_VBR)
     return BDM_FAULT_NVC;
+
+  if (raw)
+    cmd = BDM_RSREG_CMD | (ioc->address & 0xffff);
+  else
+    cmd = BDM_RSREG_CMD | cpu32_sysreg_map[ioc->address];
   
-  cmd = BDM_RSREG_CMD | cpu32_sysreg_map[ioc->address];
   if (((err = cpu32_serial_clock (self, cmd, 0)) != 0) ||
       ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
       ((err = bdmDrvFetchWord (self, &lsw)) != 0))
@@ -1067,7 +1071,7 @@ cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
  * Write system register
  */
 static int
-cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
+cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
   int err, cmd;
 
@@ -1080,12 +1084,12 @@ cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
     unsigned long dfc;
 
     mbar_ioc.address = BDM_REG_DFC;
-    if ((err = cpu32_read_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_read_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     dfc = mbar_ioc.value;
     mbar_ioc.address = BDM_REG_DFC;
     mbar_ioc.value = 7;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_write_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     mbar_ioc.address = 0x3FF00;
     mbar_ioc.value = ioc->value;
@@ -1093,14 +1097,17 @@ cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
       return err;
     mbar_ioc.address = BDM_REG_DFC;
     mbar_ioc.value = dfc;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc)) < 0)
+    if ((err = cpu32_write_sysreg (self, &mbar_ioc, 0)) < 0)
       return err;
     return 0;
   }
   
   if (ioc->address > BDM_REG_VBR)
     return BDM_FAULT_NVC;
-  cmd = BDM_WSREG_CMD | cpu32_sysreg_map[ioc->address];
+  if (raw)
+    cmd = BDM_WSREG_CMD | (ioc->address & 0xffff);
+  else
+    cmd = BDM_WSREG_CMD | cpu32_sysreg_map[ioc->address];
   if (((err = cpu32_serial_clock (self, cmd, 0)) != 0) ||
       ((err = cpu32_serial_clock (self, ioc->value >> 16, 0)) != 0) ||
       ((err = cpu32_serial_clock (self, ioc->value, 0)) != 0))
@@ -1281,8 +1288,8 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
   0xf       /* BDM_REG_DBMR     */
 };
 
-static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc);
-static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc);
+static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw);
+static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw);
 
 /*
  * Get direct target status, that is from the parallel port.
@@ -1370,7 +1377,7 @@ cf_pe_invalidate_cache (struct BDM *self)
 
   cacr_ioc.address = BDM_REG_CACR;
 
-  if (cf_pe_read_sysreg (self, &cacr_ioc) < 0)
+  if (cf_pe_read_sysreg (self, &cacr_ioc, 0) < 0)
       return BDM_TARGETNC;
 
   /*
@@ -1383,7 +1390,7 @@ cf_pe_invalidate_cache (struct BDM *self)
     if (self->debugFlag > 2)
       PRINTF (" cf_pe_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
   
-    if (cf_pe_write_sysreg (self, &cacr_ioc) < 0)
+    if (cf_pe_write_sysreg (self, &cacr_ioc, 0) < 0)
       return BDM_TARGETNC;
   }
   
@@ -1401,7 +1408,7 @@ cf_pe_pc_read_check (struct BDM *self)
 
   pc_ioc.address = BDM_REG_RPC;
 
-  if (cf_pe_read_sysreg (self, &pc_ioc) < 0)
+  if (cf_pe_read_sysreg (self, &pc_ioc, 0) < 0)
       return BDM_TARGETNC;
 
   return 0;
@@ -1433,7 +1440,7 @@ cf_pe_get_status (struct BDM *self)
 
     csr_ioc.address = BDM_REG_CSR;
 
-    if (cf_pe_read_sysreg (self, &csr_ioc) < 0)
+    if (cf_pe_read_sysreg (self, &csr_ioc, 0) < 0)
       return BDM_TARGETNC;
 
     csr = csr_ioc.value;
@@ -1499,7 +1506,7 @@ cf_pe_init_hardware (struct BDM *self)
    
   self->cf_running   = 1;
   self->cf_debug_ver = 0;
-  self->cf_use_pst   = 0;
+  self->cf_use_pst   = 1;
   
   status = cf_pe_get_status (self);
   
@@ -1511,9 +1518,6 @@ cf_pe_init_hardware (struct BDM *self)
    */
 
   self->cf_debug_ver = (self->cf_csr >> 20) & 0x0f;
-
-  if (self->cf_debug_ver)
-    self->cf_use_pst = 1;
 
   if (self->debugFlag)
     PRINTF (" cf_ps_init_hardware: debug version is %d, PST %s\n",
@@ -1617,28 +1621,33 @@ cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
  */
 
 static int 
-cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
+cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
   int            err;
   unsigned short msw, lsw;
+  int            cmd;
 
-  if (ioc->address >= BDM_MAX_SYSREG)
+  if (!raw && (ioc->address >= BDM_MAX_SYSREG))
     return BDM_FAULT_NVC;
 
   /*
    * For the Coldfire we need to select the type of command
    * to use.
    */
-  if (ioc->address < BDM_REG_CSR) {
+  if (raw || (ioc->address < BDM_REG_CSR)) {
+    if (raw)
+      cmd = ioc->address & 0xffff;
+    else
+      cmd = cf_sysreg_map[ioc->address];
     if (((err = cf_pe_serial_clock (self, BDM_RCREG_CMD, 0)) != 0) ||
         ((err = cf_pe_serial_clock (self, 0, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, cf_sysreg_map[ioc->address], 0)) != 0) ||
+        ((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
         ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
         ((err = bdmDrvFetchWord (self, &lsw)) != 0))
       return err;
   }
   else {
-    int cmd = BDM_RDMREG_CMD | cf_sysreg_map[ioc->address];
+    cmd = BDM_RDMREG_CMD | cf_sysreg_map[ioc->address];
     
     /*
      * Are the registers write only ?
@@ -1647,7 +1656,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
       ioc->value = self->shadow_sysreg[ioc->address];
       if (self->debugFlag > 1)
         PRINTF (" cf_pe_read_sysreg - Reg:0x%x is write only, 0x%08x\n",
-              ioc->address, ioc->value);
+                ioc->address, ioc->value);
       return 0;
     }
   
@@ -1723,11 +1732,12 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc)
  * Write system register
  */
 static int
-cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
+cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
   int err;
-
-  if (ioc->address >= BDM_MAX_SYSREG)
+  int cmd;
+  
+  if (!raw && (ioc->address >= BDM_MAX_SYSREG))
     return BDM_FAULT_NVC;
   
   if (self->debugFlag)
@@ -1737,16 +1747,20 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
    * For the Coldfire we need to select the type of command
    * to use.
    */
-  if (ioc->address < BDM_REG_CSR) {
+  if (raw || (ioc->address < BDM_REG_CSR)) {
+    if (raw)
+      cmd = ioc->address & 0xffff;
+    else
+      cmd = cf_sysreg_map[ioc->address];
     if (((err = cf_pe_serial_clock (self, BDM_WCREG_CMD, 0)) != 0) ||
         ((err = cf_pe_serial_clock (self, 0, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, cf_sysreg_map[ioc->address], 0)) != 0) ||
+        ((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
         ((err = cf_pe_serial_clock (self, ioc->value >> 16, 0)) != 0) ||
         ((err = cf_pe_serial_clock (self, ioc->value, 0)) != 0))
       return err;
   }
   else {
-    int cmd = BDM_WDMREG_CMD | cf_sysreg_map[ioc->address];
+    cmd = BDM_WDMREG_CMD | cf_sysreg_map[ioc->address];
 
     self->shadow_sysreg[ioc->address] = ioc->value;
     
@@ -1902,7 +1916,7 @@ cf_pe_run_chip (struct BDM *self)
   csr_ioc.address = BDM_REG_CSR;
   csr_ioc.value   = 0x00000000;
 
-  if ((err = cf_pe_write_sysreg (self, &csr_ioc)) < 0)
+  if ((err = cf_pe_write_sysreg (self, &csr_ioc, 0)) < 0)
     return err;
 
   /*
@@ -1945,7 +1959,7 @@ cf_pe_step_chip (struct BDM *self)
   csr_ioc.address = BDM_REG_CSR;
   csr_ioc.value   = 0x00000030;
 
-  if ((err = cf_pe_write_sysreg (self, &csr_ioc)) < 0)
+  if ((err = cf_pe_write_sysreg (self, &csr_ioc, 0)) < 0)
     return err;
 
   /*
@@ -2351,9 +2365,9 @@ bdmDrvFetchWord (struct BDM *self, unsigned short *sp)
  * Read system register
  */
 static int
-bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc)
+bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
-  return (self->read_sysreg) (self, ioc);
+  return (self->read_sysreg) (self, ioc, raw);
 }
 
 /*
@@ -2465,9 +2479,9 @@ bdmDrvReadByte (struct BDM *self, struct BDMioctl *ioc)
  * Write system register
  */
 static int
-bdmDrvWriteSystemRegister (struct BDM *self, struct BDMioctl *ioc)
+bdmDrvWriteSystemRegister (struct BDM *self, struct BDMioctl *ioc, int raw)
 {
-  return (self->write_sysreg) (self, ioc);
+  return (self->write_sysreg) (self, ioc, raw);
 }
 
 /*
@@ -2582,7 +2596,7 @@ bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
 
 static int
 bdm_open (unsigned int minor)
-{
+{  
   struct BDM *self;
   int status, err = 0;
 
@@ -2684,11 +2698,13 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
   
   switch (cmd) {
     case BDM_READ_REG:
+    case BDM_READ_CTLREG:
     case BDM_READ_SYSREG:
     case BDM_READ_LONGWORD:
     case BDM_READ_WORD:
     case BDM_READ_BYTE:
     case BDM_WRITE_REG:
+    case BDM_WRITE_CTLREG:
     case BDM_WRITE_SYSREG:
     case BDM_WRITE_LONGWORD:
     case BDM_WRITE_WORD:
@@ -2698,9 +2714,10 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
 
     case BDM_SPEED:
     case BDM_DEBUG:      
+    case BDM_SET_CF_PST:      
       err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
       if (self->debugFlag > 3)
-	  PRINTF ("BDMioctl cmd:0x%x\n", iarg);
+        PRINTF ("BDMioctl cmd->iarg:0x%x\n", iarg);
       break;
   }
 
@@ -2759,12 +2776,16 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
       err = bdmDrvReleaseChip (self);
       break;
 
-    case BDM_READ_SYSREG:
-      err = bdmDrvReadSystemRegister (self, &ioc);
+    case BDM_READ_CTLREG:
+      err = bdmDrvReadSystemRegister (self, &ioc, 1);
       break;
 
     case BDM_READ_REG:
       err = bdmDrvReadProcessorRegister (self, &ioc);
+      break;
+
+    case BDM_READ_SYSREG:
+      err = bdmDrvReadSystemRegister (self, &ioc, 0);
       break;
 
     case BDM_READ_LONGWORD:
@@ -2779,8 +2800,12 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
       err = bdmDrvReadByte (self, &ioc);
       break;
 
+    case BDM_WRITE_CTLREG:
+      err = bdmDrvWriteSystemRegister (self, &ioc, 1);
+      break;
+
     case BDM_WRITE_SYSREG:
-      err = bdmDrvWriteSystemRegister (self, &ioc);
+      err = bdmDrvWriteSystemRegister (self, &ioc, 0);
       break;
 
     case BDM_WRITE_REG:
@@ -2811,6 +2836,14 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
       iarg = BDM_DRV_VERSION;
       break;
 
+    case BDM_GET_CF_PST:
+      iarg = self->cf_use_pst;
+      break;
+
+    case BDM_SET_CF_PST:
+      self->cf_use_pst = iarg;
+      break;
+
     default:
       err = EINVAL;
       break;
@@ -2824,6 +2857,7 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
    */
   switch (cmd) {
     case BDM_READ_REG:
+    case BDM_READ_CTLREG:
     case BDM_READ_SYSREG:
     case BDM_READ_LONGWORD:
     case BDM_READ_WORD:
@@ -2835,6 +2869,7 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
     case BDM_GET_CPU_TYPE:
     case BDM_GET_IF_TYPE:
     case BDM_GET_DRV_VER:
+    case BDM_GET_CF_PST:
       err = os_copy_out ((void*) arg, (void*) &iarg, sizeof iarg);
   }
 
