@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.1 2003/11/10 23:25:00 ppisa Exp $
+## $Id: Makefile.am,v 1.2 2003/12/29 22:53:56 joewolf Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -19,10 +19,14 @@ pkglib_LIBRARIES = libbdmflash.a
 
 include_HEADERS = \
 	bdmfilt.h \
-	bdmflash.h
+	bdmflash.h \
+	flash_filter.h \
+	flash29.h
 
 libbdmflash_a_SOURCES = \
 	bdmfilt.c \
-	bdmflash.c
+	bdmflash.c \
+	flash_filter.c \
+	flash29.c
 
 endif

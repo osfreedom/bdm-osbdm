@@ -1,0 +1,55 @@
+This is a rough overview of the flashing architecture. I keep this description
+short (and probably not very accurate) because I expect that the architecture
+will change short-term.
+
+In order to avoid confusion in discussions, I want to define some terms:
+
+filter: The filter is the main interace to the application. The application
+	don't really need to know about the flashing details. Filter's
+	write_memory() function is the flashing aequivalent of the memcpy()
+	function.
+
+driver: A driver is the implementation of a specific flashing algorithm.
+
+chip description: The chip description describes details of a flash chip. What
+		  information needs to be stored in the description is up to
+		  the driver. Most drivers will probably want to store at
+		  least chip-type and bus-interface.
+
+flash region: A flash region describes a specific flash chip. The most
+	      important information herein is the base-address, the length,
+	      the driver and the chip description.
+
+plugin: A driver that can be downloaded and executed on the target.
+
+host-only mode: All operations are piped through the BDM interface. This is
+		extremely slow but very usefull for bootstrapping/debugging.
+
+host-assisted mode: Host downloads plugin. The actual flashing operation is
+		    executed by the plugin. This is the preferred operation
+		    mode for flashing under host-control.
+
+target-assisted mode: Same as host-assisted mode. We should really decide
+		      how we want to call this operation mode.
+
+target-only mode: This mode is for operation without a host.
+
+
+How to compile target-assisted and target-only
+==============================================
+Please check the tcompile script in the flashlib subdirectory.
+
+How to write a new driver
+=========================
+
+Best is to start with a copy of flash29.[ch]. You should rename the
+init_flash29() function and add the new function to the algorithm[] array
+in flash_filter.c. Next is to give a new value to the driver_magic string.
+This name should be unique because it is used to identify the driver
+that belongs to a loaded plugin. Change the download_struct() function to 
+download the chip description structure of the new driver properly to the
+target. Make sure byte orderings and alignment is not messed up while
+downloading.
+
+
+2003-12-28 Josef Wolf (jw@raven.inka.de)
