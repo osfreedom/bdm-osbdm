@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.2 2003/11/06 21:02:23 joewolf Exp $
+## $Id: Makefile.am,v 1.3 2004/03/21 01:49:35 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -12,3 +12,6 @@
 CFLAGS = @CFLAGS@
 
 SUBDIRS = @BDM_SUBDIRS@
+
+EXTRA_SUBDIRS = local_scripts
+EXTRA_DIST = README.insight BUGS config/bootstrap
