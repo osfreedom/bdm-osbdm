@@ -189,8 +189,9 @@ struct BDMioctl {
 #define BDM_GET_IF_TYPE    _IOR('B', 32, int)
 
 /*
- * Coldfire specific call to control the user of the
- * PST signals.
+ * Coldfire specific call to control the use of the
+ * PST signals. This is only needed on 5206e targets that
+ * use the PST signals for IO.
  */
 
 #define BDM_GET_CF_PST     _IOR('B', 33, int)

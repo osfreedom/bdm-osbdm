@@ -623,7 +623,7 @@ bdmColdfireGetPST (int *pst)
 {
   if (bdmIoctlInt (BDM_GET_CF_PST, pst) < 0)
     return -1;
-  PRINTF ("Get Coldfire PST state: %d\n", debugFlag);
+  PRINTF ("Get Coldfire PST state: %d\n", *pst);
   return 0;
 }
 
@@ -635,7 +635,7 @@ bdmColdfireSetPST (int pst)
 {
   if (bdmIoctlInt (BDM_SET_CF_PST, &pst) < 0)
     return -1;
-  PRINTF ("Set Coldfire PST state: %d\n", debugFlag);
+  PRINTF ("Set Coldfire PST state: %d\n", pst);
   return 0;
 }
 
@@ -649,7 +649,7 @@ bdmReadControlRegister (int code, unsigned long *lp)
 
   if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read system register 0x%04x: %#8lx\n", code, ltmp);
+  PRINTF ("Read control  register 0x%04x: %#8lx\n", code, ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -693,7 +693,7 @@ bdmWriteControlRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_CTLREG, code, l) < 0)
     return -1;
-  PRINTF ("Write system register 0x%04x: %#8lx\n", code, l);
+  PRINTF ("Write control register 0x%04x: %#8lx\n", code, l);
   return 0;
 }
 
