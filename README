@@ -2,7 +2,7 @@ The subdirectories contain:
 
   m68k/
     The ColdFire/CPU32 BDM driver and tools originally developed by
-    W. Eric Norum and later enhanced by Chris Jones.
+    W. Eric Norum and later enhanced by Chris Johns.
 
   m683xx/
     The CPU32 BDM driver enhanced by Pavel Pisa.  This version
