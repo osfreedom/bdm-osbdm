@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.2 2003/11/06 21:02:25 joewolf Exp $
+## $Id: Makefile.am,v 1.3 2003/11/26 21:20:26 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -29,9 +29,14 @@ pkglib_LIBRARIES = libBDM.a
 
 include_HEADERS = \
 	BDMlib.h \
+	bdmRemote.h \
 	../driver/bdm.h
 
 libBDM_a_SOURCES = \
 	bdmIO.c \
 	bdmRemote.c
 
+# FIXME: these would belong to driver/Makefile.am, which we don't have
+EXTRA_DIST = \
+	../driver/bdm.c \
+	../driver/ioperm/ioperm.c
