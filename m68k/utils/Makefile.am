@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.8 2004/01/14 00:09:38 joewolf Exp $
+## $Id: Makefile.am,v 1.9 2004/03/28 23:43:16 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -68,3 +68,4 @@ bdmmon_LDADD = \
 	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
 	$(top_builddir)/lib/libBDM.a
 
+EXTRA_DIST = README.bdmctrl m68332.test
