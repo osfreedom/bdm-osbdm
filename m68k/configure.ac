@@ -38,8 +38,9 @@ dnl Defaults.
 dnl
 
 bdm_subdirs="lib test utils"
-bdm_cflags="-Wall -O2"
 bdm_win32=false
+
+AC_SUBST(INCLUDES, ${INCLUDES})
 
 dnl
 dnl Handle our configuration options.
@@ -53,9 +54,6 @@ AC_ARG_ENABLE(debug,
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-debug) ;;
    esac],
  [debug=true])
-
-AS_IF([test x$debug = xtrue], bdm_cflags="${bdm_cflags} -g")
-AC_SUBST(BDM_CFLAGS, ${bdm_cflags})
 
 AC_ARG_ENABLE(remote,
  [ --enable-remote Turn on the remote protocol (enabled)],

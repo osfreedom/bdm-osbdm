@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.1 2003/09/17 15:24:44 cjohns Exp $
+## $Id: Makefile.am,v 1.2 2003/11/06 21:02:23 joewolf Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -8,5 +8,7 @@
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ## GNU General Public License for more details.
 ##
+
+CFLAGS = @CFLAGS@
 
 SUBDIRS = @BDM_SUBDIRS@
