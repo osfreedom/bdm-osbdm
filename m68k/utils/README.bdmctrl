@@ -11,7 +11,7 @@ gdb-patches from the m68k branch to work).
 
 Bdmctrl is invoked like this:
 
-    Usage: %s [options] [<command> [arguments [...]]]
+    Usage: %s [options] [<script> [arguments [...]]]
      where options are one ore more of:
        -h <cmd>   Get additional description for command <cmd>.
        -d <level> Choose driver debug level (default=0).
@@ -20,13 +20,12 @@ Bdmctrl is invoked like this:
        -c <cmd>   Split <cmd> into args and execute resulting command.
        -f         Turn warnings into fatal errors.
 
-If a command is specified on the command line, bdmctrl executs the command
-and exits. If no command is specified on the command line, commands are read
-and executed from stdin until EOF is encountered. The most common way of
-invocations is to give the "source" command on the command line (see below).
-So a typical invocation would be like this:
+If a script is specified on the command line, bdmctrl reads and executes
+commands from the script file.  Otherwise commands are read and executed
+from stdin until EOF is encountered.  If you have a file /foo/bar/baz then
+there are several ways to let bdmctrl execute commands from this file:
 
-  bdmctrl source /foo/bar/baz /dev/bdmicd0 myfirmware.coff
+  bdmctrl /foo/bar/baz /dev/bdmicd0 myfirmware.coff
 
 or like this:
 
@@ -47,7 +46,7 @@ exception.
 
 For example, the bundeled test script can be executed with
 
-  bdmctrl source m68332.test /dev/bdmicd0 /path/to/my/executable.coff
+  bdmctrl m68332.test /dev/bdmicd0 /path/to/my/executable.coff
 
 If you set the executable bit, you can execute it with:
 

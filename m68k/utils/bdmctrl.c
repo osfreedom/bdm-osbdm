@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.16 2004/03/26 20:46:45 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.17 2004/04/06 18:56:03 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -1369,7 +1369,7 @@ static void usage(char *progname, char *fmt, ...)
     }
 
     fprintf(stderr,
-	    "Usage: %s [options] [<command> [arguments [...]]]\n"
+	    "Usage: %s [options] [<script> [arguments [...]]]\n"
 	    " where options are one ore more of:\n"
 	    "   -h <cmd>   Get additional description for command <cmd>.\n"
 	    "   -d <level> Choose driver debug level (default=0).\n"
