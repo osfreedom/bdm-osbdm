@@ -113,19 +113,23 @@ struct BDMioctl {
 };
 
 /*
- * ioctl codes. If these change insure the remote client and server
- * interfaces are kept in sync.
+ * The ioctl codes. If these change insure the remote client and server
+ * interfaces are kept in sync. Assumes Cygwin does not define Win32.
  */
 
-#ifndef _IO
-# include <sys/ioctl.h>
+#if !defined (_IO)
+#if defined (__WIN32__)
+#include <winsock2.h>
+#else
+#include <sys/ioctl.h>
+#endif
 #endif
 
-#ifndef _IO
 /*
- *  Under SCO these are not defined by anything useful,  so if we get here
- *  and we still need some then define our own.
+ * If the OS does not provide any ioctl support as found on
+ * some Unix systems then provide something.
  */
+#if !defined (_IO)
 #undef _IOR
 #undef _IOW
 #undef _IOWR
@@ -133,6 +137,13 @@ struct BDMioctl {
 #define _IOR(x,y,t)    ((x<<8)|y|0x10000)
 #define _IOW(x,y,t)    ((x<<8)|y|0x20000)
 #define _IOWR(x,y,t)   ((x<<8)|y|0x30000)
+#endif
+
+#if !defined (_IOWR)
+#if !defined (IOC_OUTIN)
+#define IOC_OUTIN   0x10000000      /* copy in parameters */
+#endif
+#define _IOWR(x,y,t) (IOC_OUTIN|(((long)sizeof(t)&IOCPARM_MASK)<<16)|(x<<8)|y)
 #endif
 
 #define BDM_INIT         _IO('B', 0)
