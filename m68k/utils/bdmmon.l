@@ -3,26 +3,26 @@
  * Copyright (c) 1997, Rolf Fiedler. .
  * Copyright (c) 1999-2000, Brett Wuth.
  */
-/* @#License: 
+/* @#License:
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2, or (at your option)
  * any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; see the file COPYING.  If not, write to
  * the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
 /* File:	bdm_mon.lex (BDM Monitor)
- * Purpose:	
+ * Purpose:
  * Author:	Rolf Fielder
- * Created:	
+ * Created:
  *
  * Initials:
  *	BCW - Brett Wuth
@@ -32,6 +32,9 @@
  *
  * HISTORY:
  * $Log: bdmmon.l,v $
+ * Revision 1.2  2004/01/08 14:16:17  codewiz
+ * Avoid duplicate definition of TRUE/FALSE. Remove trailing whitespace.
+ *
  * Revision 1.1  2003/12/29 22:19:11  codewiz
  * Move bdmmon and bdmflash to m68k/utils.
  *
@@ -60,11 +63,14 @@
 #include <BDMFlash.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <string.h>    
-#define REG_NAMES    
+#include <string.h>
+#define REG_NAMES
 #include "bdmops.h"
-#define TRUE -1
-#define FALSE 0
+
+#ifndef TRUE
+# define TRUE -1
+# define FALSE 0
+#endif
 
 void print_status(void);
 
@@ -110,11 +116,11 @@ int tokenize(char * str, char *args[])
 {
     int n=0;
     static char argv_buf[1024];
-    char *string; 
+    char *string;
 
     strcpy(&argv_buf[0], str);
     string=&argv_buf[0];
-    
+
     while(1) {
 	while(*string==' ' || *string=='\t' || *string=='\n') {
 	    if(*string == '\0') {
@@ -139,7 +145,7 @@ int find_token(char *string, struct token array[])
 {
     char *x;
     int n;
-    
+
     x=string;
     while(*x) {
 	*x=toupper(*x);
@@ -164,7 +170,7 @@ int mem_dump(unsigned long from, int count)
         if(count>256) read=256;
 	else read=count;
         if(bdm_read_mem(from, buffer, read)<0) {
-  	    error=1;
+	    error=1;
 	    printf("Bus error or target disconnected.\n");
 	    break;
 	};
@@ -172,7 +178,7 @@ int mem_dump(unsigned long from, int count)
 	    if(i%16==0) {
 	        strcpy(line, "                ");
 	        printf("%08x: ", from);
-	    }	
+	    }
 	    printf("%02x ", buffer[i]);
 	    if(buffer[i]<' ' || buffer[i]>0x7f) {
 	        line[i%16]='.';
@@ -181,7 +187,7 @@ int mem_dump(unsigned long from, int count)
 	    }
 	    if(i%16==15) {
 	        printf(" * %s *\n", line);
-	    }	
+	    }
 	    from++;
 	}
 	count-=read;
@@ -191,7 +197,7 @@ int mem_dump(unsigned long from, int count)
 	} else {
 	    if(i%16 != 15) printf("\n");
 	}
-    }	
+    }
     return error;
 }
 
@@ -210,7 +216,7 @@ mem_write(unsigned long from, unsigned long count, FILE *file )
         if(count>256) read=256;
 	else read=count;
         if(bdm_read_mem(from, buffer, read)<0) {
-  	    error=1;
+	    error=1;
 	    printf("Bus error or target disconnected.\n");
 	    break;
 	};
@@ -219,7 +225,7 @@ mem_write(unsigned long from, unsigned long count, FILE *file )
 	    from++;
 	}
 	count-=read;
-    }	
+    }
     return error;
 }
 
@@ -232,14 +238,14 @@ void store_line(void)
 /*    printf("last line was: %s\n", buffer); */
 }
 
-int no_prompt=0;
+int no_prompt=FALSE;
 void prompt(void)
 {
     if(!no_prompt) {
         store_line();
         printf("> ");
     }
-}   
+}
 
 static unsigned long me_addr=0, addr=0, len=0x10, maxstack=0;
 static int flash_ok=0;
@@ -325,7 +331,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 {WS}*{RREG}{WS}*\n {
     int i, n;
     unsigned long j;
-    
+
     bdm_stop();
     for(i=0; i<=REG_CSR; i++) {
         bdm_read_reg(i, &j);
@@ -373,7 +379,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 {WS}*{MD}{WS}+{VALUE}{WS}+{VALUE}{WS}*\n {
     char *args[20];
     int i, error;
-    
+
     tokenize(yytext, args);
     error=0;
     if(sscanf(args[1], "%x", &addr) != 1) {
@@ -400,7 +406,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     char *args[20];
     int i, error;
     FILE *file;
-    
+
     tokenize(yytext, args);
     error=0;
     if(sscanf(args[1], "%x", &addr) != 1) {
@@ -851,7 +857,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     if(!flash_ok) {
         printf("Please configure flash memory first!");
 	error=1;
-    }	
+    }
     if(!error) {
         bdm_stop();
 	printf("Programming FLASH-ROM from file %s.\n", args[2]);
@@ -878,10 +884,10 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 {WS}*{ERASE}{WS}*\n {
     if(!flash_ok) {
         printf("Please configure flash memory first!\n");
-    } else {	
+    } else {
         bdm_stop();
         BDMFlashErase();
-    }	
+    }
     prompt();
 }
 
@@ -922,7 +928,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     int error;
     unsigned long addr, mask;
     char *args[20];
-    
+
     bdm_stop();
     tokenize(yytext, args);
     error=0;
@@ -946,7 +952,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     int error;
     unsigned long from, to;
     char *args[20];
-    
+
     bdm_stop();
     tokenize(yytext, args);
     error=0;
@@ -970,7 +976,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     int error;
     unsigned long value, mask;
     char *args[20];
-    
+
     bdm_stop();
     tokenize(yytext, args);
     error=0;
@@ -981,7 +987,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     if(sscanf(args[2], "%x", &mask) != 1) {
 	printf("ERROR\n");
 	error=1;
-    } 
+    }
     if(!error) {
         bdm_set_data_bp(value, mask);
     } else {
@@ -1009,7 +1015,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     int i, error;
     unsigned long addr, len;
     char *args[20];
-    
+
     bdm_stop();
     tokenize(yytext, args);
     error=0;
@@ -1020,7 +1026,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     if(sscanf(args[2], "%x", &len) != 1) {
 	printf("ERROR\n");
 	error=1;
-    } 
+    }
     for(; len>0; len--) {
         if(bdm_read_mem(addr, buffer, 16)<0) {
             /* report error and clear buffer */
@@ -1037,7 +1043,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 		/* addr++; */
 	    }
 	    fflush(stdout);
-	}    
+	}
     }
     printf("\n");
     prompt();
@@ -1075,12 +1081,12 @@ int main(int argc, char **argv, char **envp)
     int base, i, dev, file;
     char *filename, default_file[]="stdin";
     char *devicename, default_device[]="/dev/bdm0";
-    
+
     filename = default_file;
     devicename = default_device;
     dev = 0;
     file = 0;
-    
+
     for(i=1; i<argc; i++) {
         if(!strcmp(argv[i], "-f")) {
 	    if(!file) {
@@ -1089,7 +1095,7 @@ int main(int argc, char **argv, char **envp)
 	            fprintf(stderr, USAGE, argv[0]);
 		    return -1;
 	        }
-	  	filename = argv[i];
+		filename = argv[i];
 		file = -1;
 	    } else {
 	        fprintf(stderr, USAGE, argv[0]);
@@ -1105,12 +1111,12 @@ int main(int argc, char **argv, char **envp)
 	    }
 	}
     }
-    
+
     if((BDMHandle = bdm_init(devicename))<0) {
         fprintf(stderr, "Problem opening bdm device.\n");
         return -1;
     }
-    
+
     if(strcmp(filename, default_file)) {
 	yyin = fopen(filename, "r");
 	if(!yyin) {
@@ -1122,8 +1128,8 @@ int main(int argc, char **argv, char **envp)
     } else {
 	yyin = stdin;
     }
-    
-    print_status();    
+
+    print_status();
     printf("> ");
     yylex();
     return 0;
@@ -1132,7 +1138,7 @@ int main(int argc, char **argv, char **envp)
 void print_status(void)
 {
     int x;
-    
+
     x=bdm_query_status();
     if(x<0) {
         printf("ERROR\n");
