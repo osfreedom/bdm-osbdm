@@ -6,16 +6,16 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- * 
+ *
  * I/O Permssion support by:
  * Chris Johns
  * Cybertec Pty Ltd.
@@ -111,7 +111,7 @@ bdm_delay (int counter)
 {
 #if 0
   volatile unsigned long junk;
-  
+
   while (counter--) {
     junk++;
   }
@@ -121,7 +121,7 @@ bdm_delay (int counter)
 /*
  * Delay specified number of milliseconds
  */
-void 
+void
 bdm_sleep (unsigned long time)
 {
   usleep (time * (1000 * (1000 / HZ)));
@@ -209,7 +209,7 @@ bdm_cleanup_module (int fd)
   if (bdm_dev_registered)
   {
     if ((fd >= 0) &&
-        (((unsigned)fd) < (sizeof(bdm_device_info)/sizeof(*bdm_device_info))))
+        (((unsigned) fd) < (sizeof (bdm_device_info) / sizeof (*bdm_device_info))))
     {
       struct BDM *self = &bdm_device_info[fd];
       ioperm (self->portBase, 3, 0);
@@ -232,7 +232,7 @@ ioperm_bdm_init (int minor)
 {
   unsigned short port;
   struct BDM     *self;
-  
+
 #ifdef BDM_VER_MESSAGE
   printf ("bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
@@ -242,9 +242,9 @@ ioperm_bdm_init (int minor)
   {
     printf ("BDM driver is already registered (Please report to BDM project).\n");
     errno = EIO;
-    return -1;
+    return -2;
   }
-  
+
   /*
    * Choose a port number
    */
@@ -266,11 +266,11 @@ ioperm_bdm_init (int minor)
    */
 
   self = &bdm_device_info[minor];
-  
+
   /*
    * First set the default debug level.
    */
-    
+
   self->debugFlag = BDM_DEFAULT_DEBUG;
 
   /*
@@ -293,14 +293,14 @@ ioperm_bdm_init (int minor)
   /*
    * See if the port exists
    */
-    
+
   self->exists = 1;
 
   bdm_dev_registered = 1;
 
   outb (0x00, port);
   udelay (50);
-  
+
   if (inb (port) != 0x00)
   {
     self->exists = 0;
@@ -309,15 +309,15 @@ ioperm_bdm_init (int minor)
               BDM_IFACE_MINOR (minor) + 1);
     bdm_cleanup_module (minor);
     errno = EIO;
-    return -1;
+    return -3;
   }
-    
+
   sprintf (self->name, "bdm%d", minor);
   self->portBase    = self->dataPort = port;
   self->statusPort  = port + 1;
-  self->controlPort = port + 2;  
+  self->controlPort = port + 2;
   self->delayTimer  = 0;
-    
+
   switch (BDM_IFACE (minor))
   {
     case BDM_CPU32_PD:    cpu32_pd_init_self (self); break;
@@ -329,7 +329,7 @@ ioperm_bdm_init (int minor)
       errno = EIO;
       return -1;
   }
-  
+
   return 0;
 }
 
@@ -347,6 +347,7 @@ ioperm_bdm_open (const char *devname, int flags, ...)
 {
   const char* device = devname;
   int         port = 0;
+  int         result;
 
   if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1))
   {
@@ -386,25 +387,30 @@ ioperm_bdm_open (const char *devname, int flags, ...)
    * bdmServer. This local server may be using ioperm so no driver.
    */
 
-  if (ioperm_bdm_init (port) < 0)
+  result = ioperm_bdm_init (port);
+  if (result < 0)
   {
-    int fd;
-    printf ("trying kernel driver: %s\n", devname);
-    if ((fd = driver_open (devname, flags)) < 0) {
-      if ((strlen (devname) + sizeof ("localhost")) < 128)
-      {
-        char lname[128];
-        strcpy (lname, "localhost:");
-        strcat (lname, devname);
-        printf ("trying bdm server: %s\n", lname);
-        return remoteOpen (lname);
+    if (result == -1)
+    {
+      int fd;
+      printf ("trying kernel driver: %s\n", devname);
+      if ((fd = driver_open (devname, flags)) < 0) {
+        if ((strlen (devname) + sizeof ("localhost")) < 128)
+        {
+          char lname[128];
+          strcpy (lname, "localhost:");
+          strcat (lname, devname);
+          printf ("trying bdm server: %s\n", lname);
+          return remoteOpen (lname);
+        }
+        return -1;
       }
-      return -1;
+      bdm_driver_open = 1;
+      return fd;
     }
-    bdm_driver_open = 1;
-    return fd;
+    return -1;
   }
-  
+
   errno = bdm_open (port);
   if (errno)
     return -1;
@@ -469,7 +475,7 @@ ioperm_bdm_ioctl (int fd, unsigned int cmd, ...)
   if (!bdm_dev_registered) {
 
     switch (cmd) {
-      case BDM_DEBUG:      
+      case BDM_DEBUG:
         err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
         break;
     }
@@ -478,14 +484,14 @@ ioperm_bdm_ioctl (int fd, unsigned int cmd, ...)
 
     if (debugLevel > 3)
       printf ("ioperm_bdm_ioctl cmd:0x%08x\n", cmd);
-  
+
     switch (cmd) {
       case BDM_DEBUG:
         debugLevel = iarg;
         break;
     }
   }
-       
+
   errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
   if (errno)
     return -1;
