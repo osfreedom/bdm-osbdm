@@ -1,1 +1,4 @@
-Makefile.in
+bdm-chk
+bdm-chk.exe
+bdm-cpu32-chk
+bdm-cpu32-chk.exe
