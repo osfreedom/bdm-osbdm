@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.7 2004/05/29 17:00:28 codewiz Exp $
+## $Id: Makefile.am,v 1.8 2004/06/01 02:02:25 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -48,13 +48,10 @@ EXTRA_DIST = \
 	driver/win/win-io.h
 
 dist-hook:
-	mkdir $(distdir)/local_scripts
-	cp -R -p $(srcdir)/local_scripts $(distdir)/local_scripts
+	cp -R -p $(srcdir)/local_scripts $(distdir)
 	rm -r -f `find $(distdir)/local_scripts -name CVS`
-	mkdir $(distdir)/gdb
-	cp -R -p $(srcdir)/../gdb $(distdir)/gdb
+	cp -R -p $(srcdir)/../gdb $(distdir)
 	rm -r -f `find $(distdir)/gdb -name CVS`
-	mkdir $(distdir)/schematics
-	cp -R -p $(srcdir)/../schematics $(distdir)/schematics
+	cp -R -p $(srcdir)/../schematics $(distdir)
 	rm -r -f `find $(distdir)/schematics -name CVS`
 
