@@ -1,5 +1,7 @@
 autom4te.cache
+configure
 config.log
 config.status
+aclocal.m4
 Makefile.in
 Makefile

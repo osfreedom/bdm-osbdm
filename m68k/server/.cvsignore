@@ -1,4 +1,5 @@
 bdmd
 .deps
 Makefile
+Makefile.in
 
