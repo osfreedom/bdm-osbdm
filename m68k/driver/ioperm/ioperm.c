@@ -66,7 +66,7 @@ int
 driver_ioctl (int fd, unsigned long int request, ...)
 {
   va_list args;
-  unsigned long arg;
+  unsigned long *arg;
 
   va_start (args, request);
   arg = va_arg (args, unsigned long *);
@@ -357,6 +357,11 @@ ioperm_bdm_open (const char *devname, int flags, ...)
   {
     port = 0;
     device += 5;  /* s.b. 5 */
+  }
+  else if (strncmp (device, "icd", 3) == 0)
+  {
+    port = 8;
+    device += 3;
   }
   else if (strncmp (device, "cf", 2) == 0)
   {

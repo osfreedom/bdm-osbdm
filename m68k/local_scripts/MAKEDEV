@@ -33,18 +33,18 @@ then
   mknod bdmcf2    c 34 6 
   chmod 666 bdmcf2 
 fi
-if [ ! -c bdmidc0 ]
+if [ ! -c bdmicd0 ]
 then
-  mknod bdmidc0   c 34 8  
-  chmod 666 bdmidc0
+  mknod bdmicd0   c 34 8  
+  chmod 666 bdmicd0
 fi
-if [ ! -c bdmidc1 ]
+if [ ! -c bdmicd1 ]
 then
-  mknod bdmidc1   c 34 9  
-  chmod 666 bdmidc1
+  mknod bdmicd1   c 34 9  
+  chmod 666 bdmicd1
 fi
-if [ ! -c bdmidc2 ]
+if [ ! -c bdmicd2 ]
 then
-  mknod bdmidc2   c 34 10 
-  chmod 666 bdmidc2
+  mknod bdmicd2   c 34 10 
+  chmod 666 bdmicd2
 fi
