@@ -307,12 +307,18 @@ Step 3 -- Installing the Server
   the 'sbin' directory under the configure prefix when building the user
   programs in Step 2 above.
 
-  For inetd users:
-
-    You need to edit the /etc/services file to add the port number bdmd
-    uses. Add this line at the bottom of the /etc/services file:
+  You need to edit the /etc/services file to add the port number bdmd
+  uses. Add this line at the bottom of the /etc/services file:
 
     bdm             6543/tcp                        # BDM server
+
+  The BDM remote library will check /etc/services to see if a port is
+  provided. If not found the remote library will default to 6543.
+
+  It is recommended you add the entry to /etc/services and you check
+  the client and server match.
+
+  For inetd users:
 
     You need to edit the /etc/inetd.conf file. Add this line at the end of
     /etc/inetd.conf:
@@ -339,6 +345,55 @@ Step 3 -- Installing the Server
       }
 
   then get xinetd to reload its configuration.
+
+  To test the bdmd server open a shell on the machine bdmd has been installed
+  and condigured. At the shell prompt run telnet as follows:
+
+    $ telnet localhost bdm
+    Trying 127.0.0.1...
+    Connected to localhost.
+    Escape character is '^]'.
+ >> helo
+    HELO 2 ted BDM server 1.0.0 ready.
+ >> quit
+    Connection closed by foreign host.
+    $
+
+  The lines marked '>>' you type and press enter. Once the connected to
+  localhost appears enter 'helo' and enter. The server should respond with
+  version etc. To exit enter 'quit' then enter.
+
+  If is not working you are best to check your system log (/var/log/messages)
+  to locate the reason xinetd is not starting the bdmd server. To debug an
+  xinetd setup, as root do:
+
+    # kill -SIGUSR1 $(pidof xinetd)
+    # less /var/run/xinetd.dump
+
+   The look for the BDM entry and check entry is correct. Here is an
+   example:
+
+    Service = bdm
+            State = Active
+            Service configuration: bdm
+                    id = bdm
+                    flags = IPv4
+                    socket_type = stream
+                    Protocol (name,number) = (tcp,6)
+                    port = 6543
+                    Groups = no
+                    Bind = All addresses.
+                    Server = /usr/sbin/bdmd
+                    Server argv = bdmd -n
+                    Only from: All sites
+                    No access: No blocked sites
+                    Logging to syslog. Facility = authpriv, level = info
+                    Log_on_success flags = HOST PID
+                    Log_on_failure flags = HOST USERID
+                    running servers = 1
+                    retry servers = 0
+                    attempts = 0
+                    service fd = 5
 
 Step 4 -- (Optional) Testing the driver.
 
