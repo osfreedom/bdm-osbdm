@@ -1,4 +1,4 @@
-/* $Id: flash_filter.h,v 1.1 2003/12/29 22:53:56 joewolf Exp $
+/* $Id: flash_filter.h,v 1.2 2004/01/15 22:22:24 joewolf Exp $
  *
  * Header for the flash filtering layer.
  *
@@ -49,7 +49,8 @@ void register_algorithm (
 /* Load target drivers. ADR and LEN define memory region in the target that
    can be used for downloading code/data.
  */
-int flash_plugin (unsigned long adr, unsigned long len, char *argv[]);
+int flash_plugin (int (*prfunc) (const char *format, ...),
+		  unsigned long adr, unsigned long len, char *argv[]);
 
 /* Register a flash chip on ADR
  */

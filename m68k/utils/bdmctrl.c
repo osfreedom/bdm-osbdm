@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.11 2003/12/29 23:02:28 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.12 2004/01/15 22:22:24 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -620,17 +620,27 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 	    if (cnt > sizeof(buf)) cnt = sizeof(buf);
 
 	    if (!bfd_get_section_contents (abfd, sec, buf, off, cnt)) {
-		warn ("\nCan not read contents for section %s\n", sec->name);
-		continue;
+		if (verbosity) printf ("\b\bFAIL\n");
+		warn ("%sCan not read section contents on offset 0x%x..0x%x\n",
+		      verbosity ? "" : "\n", off, off+cnt);
+		break;
 	    }
 
-	    write_memory (addr+off, buf, cnt);
+	    if (write_memory (addr+off, buf, cnt) != cnt) {
+		if (verbosity) printf ("\b\bFAIL\n");
+		warn ("%swrite_memory(0x%x, xxx, 0x%x) failed\n",
+		      verbosity ? "" : "\n", addr+off, cnt);
+		break;
+	    }
 
 	    if (verify) {
 		read_memory (addr+off, rbuf, cnt);
-		if (memcmp (buf, rbuf, cnt))
-		    warn ("\nRead back contents from 0x%08lx don't match\n",
-			   addr+off);
+		if (memcmp (buf, rbuf, cnt)) {
+		    if (verbosity) printf ("\b\bFAIL\n");
+		    warn ("%sRead back contents from 0x%08lx don't match\n",
+			   verbosity ? "" : "\n", addr+off);
+		    break;
+		}
 	    }
 
 	    if (verbosity) {
@@ -640,8 +650,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 	}
 
 	write_register ("dfc", dfc);
-
-	if (verbosity) printf ("\b\bOK\n");
+	if (verbosity && off>=length) printf ("\n");
     } else {
 	if (verbosity) printf ("\b\bSkip\n");
     }
@@ -1060,35 +1069,43 @@ static void cmd_echo (size_t argc, char **argv)
 static void cmd_flash (size_t argc, char **argv)
 {
     char name[1024];
-
-    if (flash_register (name, strtoul (argv[1], NULL, 0)) && verbosity)
-	printf ("%s\n", name);
+    unsigned long adr=strtoul (argv[1], NULL, 0);
+    if (flash_register (name, adr)) {
+	if (verbosity) printf ("%s\n", name);
+    } else {
+	warn ("Could not detect flash hardware on 0x%x\n", adr);
+    }
 }
 
 /* load target flash driver
  */
 static void cmd_flashplug (size_t argc, char **argv)
 {
-    char name[1024];
     unsigned long adr = strtoul (argv[1], NULL, 0);
     unsigned long len = strtoul (argv[2], NULL, 0);
 
-    flash_plugin (adr, len, argv+3);
-    printf ("\n");
+    flash_plugin (verbosity ? printf : NULL, adr, len, argv+3);
+    if (verbosity) printf ("\n");
 }
 
 /* erase flash hardware
  */
 static void cmd_erase (size_t argc, char **argv)
 {
+    int ret;
     unsigned long adr = strtoul (argv[1], NULL, 0);
 
     if (STREQ (argv[2], "wait")) {
-	flash_erase_wait (adr);
+	ret = flash_erase_wait (adr);
     } else {
-	flash_erase (adr, strtol (argv[2], NULL, 0));
+	ret = flash_erase (adr, strtol (argv[2], NULL, 0));
     }
-    if (verbosity) printf ("OK\n");
+
+    if (ret) {
+	if (verbosity) printf ("OK\n");
+    } else {
+	warn ("FAIL\n");
+    }
 }
 
 /* read commands from a file and execute them

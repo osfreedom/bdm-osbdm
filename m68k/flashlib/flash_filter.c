@@ -1,4 +1,4 @@
-/* $Id: flash_filter.c,v 1.1 2003/12/29 22:53:56 joewolf Exp $
+/* $Id: flash_filter.c,v 1.2 2004/01/15 22:22:24 joewolf Exp $
  *
  * Flash filtering layer.
  *
@@ -174,7 +174,8 @@ static unsigned long get_symadr (char *symnam, asymbol **sym,
 /* register target flash plugins. The adr/len defines a RAM area on the
    target that can be used to download plugin and contents.
  */
-int flash_plugin (unsigned long adr, unsigned long len, char *argv[])
+int flash_plugin (int (*prfunc) (const char *format, ...),
+		  unsigned long adr, unsigned long len, char *argv[])
 {
     int i, cnt;
     long sc, symcnt;
@@ -214,7 +215,8 @@ int flash_plugin (unsigned long adr, unsigned long len, char *argv[])
 	    algorithm[i].ram = adr;
 	    algorithm[i].len = len;
 
-	    printf ("\nfound plugin %s size:%d", driver_magic, plen);
+	    if (prfunc)
+		prfunc ("\nfound plugin %s size:%d", driver_magic, plen);
 
 	    break;
 	}
@@ -386,10 +388,13 @@ int flash_erase (unsigned long adr, long sector_offset)
     if (!(a=search_area(adr))) return 0;
 
     if (alg = a->alg) {
-	if (alg->erase) alg->erase (a->chip_descriptor, sector_offset);
+	if (alg->erase) {
+	    alg->erase (a->chip_descriptor, sector_offset);
+	    return 1;
+	}
     }
 
-    return 1;
+    return 0;
 }
 
 /* Search area of address and call its erase_wait algorithm.
@@ -402,10 +407,12 @@ int flash_erase_wait (unsigned long adr)
     if (!(a=search_area(adr))) return 0;
 
     if (alg = a->alg) {
-	if (alg->erase_wait) alg->erase_wait (a->chip_descriptor);
+	if (alg->erase_wait) {
+	    return alg->erase_wait (a->chip_descriptor);
+	}
     }
 
-    return 1;
+    return 0;
 }
 
 /* Write to memory through registered algorithms.
