@@ -1,2 +1,6 @@
+.deps
+Makefile
 bdmreset
 bdmreset.exe
+bdmctrl
+bdmctrl.exe

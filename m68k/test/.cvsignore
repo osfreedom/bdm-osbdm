@@ -1,3 +1,5 @@
+.deps
+Makefile
 bdm-chk
 bdm-chk.exe
 bdm-cpu32-chk
