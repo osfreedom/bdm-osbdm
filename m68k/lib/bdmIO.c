@@ -153,7 +153,9 @@ static const char *const regName[] = {
 void
 bdmLogSyslog (void)
 {
-    debug_syslog = 1;
+#if HAVE_SYSLOG
+  debug_syslog = 1;
+#endif
 }
 
 void
