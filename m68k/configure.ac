@@ -47,7 +47,7 @@ dnl Handle our configuration options.
 dnl
 
 AC_ARG_ENABLE(debug,
- [ --enable-debug Turn on debug information (enabled)],
+ [  --enable-debug Turn on debug information (enabled)],
  [case "${enableval}" in
     yes) debug=true ;;
     no)  debug=false ;;
@@ -56,7 +56,7 @@ AC_ARG_ENABLE(debug,
  [debug=true])
 
 AC_ARG_ENABLE(remote,
- [ --enable-remote Turn on the remote protocol (enabled)],
+ [  --enable-remote Turn on the remote protocol (enabled)],
  [case "${enableval}" in
     yes) bdm_remote=true ;;
     no)  bdm_remote=false ;;
@@ -67,7 +67,7 @@ AC_ARG_ENABLE(remote,
 AM_CONDITIONAL(BDM_REMOTE, test x$bdm_remote = xtrue)
 
 AC_ARG_ENABLE(ioperm,
- [ --enable-ioperm Turn on direct ioperm hardware access (enabled)],
+ [  --enable-ioperm Turn on direct ioperm hardware access (enabled)],
  [case "${enableval}" in
     yes) bdm_ioperm=true ;;
     no)  bdm_ioperm=false ;;
@@ -78,7 +78,7 @@ AC_ARG_ENABLE(ioperm,
 AM_CONDITIONAL(BDM_IOPERM, test x$bdm_ioperm = xtrue)
 
 AC_ARG_ENABLE(driver,
- [ --enable-driver Turn on driver support (enabled)],
+ [  --enable-driver Turn on driver support (enabled)],
  [case "${enableval}" in
     yes) bdm_driver=true ;;
     no)  bdm_driver=false ;;
@@ -89,7 +89,7 @@ AC_ARG_ENABLE(driver,
 AM_CONDITIONAL(BDM_DRIVER, test x$bdm_driver = xtrue)
 
 AC_ARG_ENABLE(server,
- [ --enable-server Turn on server support (enabled)],
+ [  --enable-server Turn on server support (enabled)],
  [case "${enableval}" in
     yes) bdm_server=true ;;
     no)  bdm_server=false ;;
@@ -98,7 +98,7 @@ AC_ARG_ENABLE(server,
  [bdm_server=true])
 
 AC_ARG_ENABLE(bdmctrl,
- [ --enable-bdmctrl Turn on bdmctrl support (disabled)],
+ [  --enable-bdmctrl Turn on bdmctrl support (disabled)],
  [case "${enableval}" in
     yes) bdm_bdmctrl=true ;;
     no)  bdm_bdmctrl=false ;;
@@ -107,6 +107,17 @@ AC_ARG_ENABLE(bdmctrl,
  [bdm_bdmctrl=false])
 
 AM_CONDITIONAL(BDMCTRL, test x$bdm_bdmctrl = xtrue)
+
+AC_ARG_ENABLE(flashlib,
+ [  --enable-flashlib Turn on flashlib support (enabled)],
+ [case "${enableval}" in
+    yes) bdm_flashlib=true ;;
+    no)  bdm_flashlib=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-flashlib) ;;
+   esac],
+ [bdm_flashlib=true])
+
+AM_CONDITIONAL(BDMFLASHLIB, test x$bdm_flashlib = xtrue)
 
 dnl
 dnl If on a Win32 target such as MinGW do not build
@@ -122,7 +133,8 @@ esac
 
 AM_CONDITIONAL(WIN32, test x$bdm_win32 = xtrue)
 
-AS_IF([test x$bdm_server = xtrue], bdm_subdirs="${bdm_subdirs} server")
+AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
+AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
 AC_SUBST(BDM_SUBDIRS, ${bdm_subdirs})
 
 dnl
@@ -130,6 +142,7 @@ dnl Output the Makefiles.
 dnl
 
 AC_CONFIG_FILES(Makefile \
+                flashlib/Makefile \
                 lib/Makefile \
                 server/Makefile \
                 test/Makefile \

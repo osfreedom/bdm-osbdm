@@ -272,7 +272,7 @@ PACKAGE_VERSION='2.0'
 PACKAGE_STRING='bdm 2.0'
 PACKAGE_BUGREPORT='bdm-devel@lists.sourceforge.net'
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE am__leading_dot CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB AR ac_ct_AR AS ac_ct_AS LD ac_ct_LD INCLUDES BDM_REMOTE_TRUE BDM_REMOTE_FALSE BDM_IOPERM_TRUE BDM_IOPERM_FALSE BDM_DRIVER_TRUE BDM_DRIVER_FALSE BDMCTRL_TRUE BDMCTRL_FALSE WIN32_TRUE WIN32_FALSE BDM_SUBDIRS LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO AMTAR install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM AWK SET_MAKE am__leading_dot CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE RANLIB ac_ct_RANLIB AR ac_ct_AR AS ac_ct_AS LD ac_ct_LD INCLUDES BDM_REMOTE_TRUE BDM_REMOTE_FALSE BDM_IOPERM_TRUE BDM_IOPERM_FALSE BDM_DRIVER_TRUE BDM_DRIVER_FALSE BDMCTRL_TRUE BDMCTRL_FALSE BDMFLASHLIB_TRUE BDMFLASHLIB_FALSE WIN32_TRUE WIN32_FALSE BDM_SUBDIRS LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -813,12 +813,13 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-dependency-tracking Speeds up one-time builds
   --enable-dependency-tracking  Do not reject slow dependency extractors
- --enable-debug Turn on debug information (enabled)
- --enable-remote Turn on the remote protocol (enabled)
- --enable-ioperm Turn on direct ioperm hardware access (enabled)
- --enable-driver Turn on driver support (enabled)
- --enable-server Turn on server support (enabled)
- --enable-bdmctrl Turn on bdmctrl support (disabled)
+  --enable-debug Turn on debug information (enabled)
+  --enable-remote Turn on the remote protocol (enabled)
+  --enable-ioperm Turn on direct ioperm hardware access (enabled)
+  --enable-driver Turn on driver support (enabled)
+  --enable-server Turn on server support (enabled)
+  --enable-bdmctrl Turn on bdmctrl support (disabled)
+  --enable-flashlib Turn on flashlib support (enabled)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3449,6 +3450,31 @@ else
 fi
 
 
+# Check whether --enable-flashlib or --disable-flashlib was given.
+if test "${enable_flashlib+set}" = set; then
+  enableval="$enable_flashlib"
+  case "${enableval}" in
+    yes) bdm_flashlib=true ;;
+    no)  bdm_flashlib=false ;;
+    *) { { echo "$as_me:$LINENO: error: bad value ${enableval} for --enable-flashlib" >&5
+echo "$as_me: error: bad value ${enableval} for --enable-flashlib" >&2;}
+   { (exit 1); exit 1; }; } ;;
+   esac
+else
+  bdm_flashlib=true
+fi;
+
+
+
+if test x$bdm_flashlib = xtrue; then
+  BDMFLASHLIB_TRUE=
+  BDMFLASHLIB_FALSE='#'
+else
+  BDMFLASHLIB_TRUE='#'
+  BDMFLASHLIB_FALSE=
+fi
+
+
 
 case ${host} in
   *mingw*)
@@ -3472,11 +3498,15 @@ if test x$bdm_server = xtrue; then
   bdm_subdirs="${bdm_subdirs} server"
 fi
 
+if test x$bdm_flashlib = xtrue; then
+  bdm_subdirs="${bdm_subdirs} flashlib"
+fi
+
 BDM_SUBDIRS=${bdm_subdirs}
 
 
 
-                                                  ac_config_files="$ac_config_files Makefile lib/Makefile server/Makefile test/Makefile utils/Makefile"
+                                                            ac_config_files="$ac_config_files Makefile flashlib/Makefile lib/Makefile server/Makefile test/Makefile utils/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3639,6 +3669,13 @@ if test -z "${BDMCTRL_TRUE}" && test -z "${BDMCTRL_FALSE}"; then
   { { echo "$as_me:$LINENO: error: conditional \"BDMCTRL\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"BDMCTRL\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${BDMFLASHLIB_TRUE}" && test -z "${BDMFLASHLIB_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"BDMFLASHLIB\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"BDMFLASHLIB\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -4088,6 +4125,7 @@ do
   case "$ac_config_target" in
   # Handling of arguments.
   "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+  "flashlib/Makefile" ) CONFIG_FILES="$CONFIG_FILES flashlib/Makefile" ;;
   "lib/Makefile" ) CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
   "server/Makefile" ) CONFIG_FILES="$CONFIG_FILES server/Makefile" ;;
   "test/Makefile" ) CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
@@ -4241,6 +4279,8 @@ s,@BDM_DRIVER_TRUE@,$BDM_DRIVER_TRUE,;t t
 s,@BDM_DRIVER_FALSE@,$BDM_DRIVER_FALSE,;t t
 s,@BDMCTRL_TRUE@,$BDMCTRL_TRUE,;t t
 s,@BDMCTRL_FALSE@,$BDMCTRL_FALSE,;t t
+s,@BDMFLASHLIB_TRUE@,$BDMFLASHLIB_TRUE,;t t
+s,@BDMFLASHLIB_FALSE@,$BDMFLASHLIB_FALSE,;t t
 s,@WIN32_TRUE@,$WIN32_TRUE,;t t
 s,@WIN32_FALSE@,$WIN32_FALSE,;t t
 s,@BDM_SUBDIRS@,$BDM_SUBDIRS,;t t
