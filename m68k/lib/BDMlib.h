@@ -71,8 +71,6 @@ int bdmStep (void);
 int bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes);
 int bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes);
 
-int bdmLoadExecutable (const char *name);
-
 /*
  * The following routines are low-level and are used to implement a 
  * client/interface.

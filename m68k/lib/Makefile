@@ -33,7 +33,7 @@ endif
 
 all: $(LIB)
 
-$(LIB): $(LIB)(bdmIO.o) $(LIB)(bdmBFD.o)
+$(LIB): $(LIB)(bdmIO.o)
 	ranlib $(LIB)
 
 install: $(LIB)
