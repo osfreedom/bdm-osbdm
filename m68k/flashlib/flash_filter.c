@@ -1,4 +1,4 @@
-/* $Id: flash_filter.c,v 1.3 2004/01/21 22:17:09 joewolf Exp $
+/* $Id: flash_filter.c,v 1.4 2004/12/05 06:34:07 codewiz Exp $
  *
  * Flash filtering layer.
  *
@@ -202,7 +202,7 @@ int flash_plugin (int (*prfunc) (const char *format, ...),
 		continue;
 
 	    pentry = get_symadr (algorithm[i].prog_entry(),&sym,symcnt,symtab);
-	    plen   = bfd_get_section_size_before_reloc (sym->section);
+	    plen   = bfd_section_size (abfd, sym->section);
 	    if (!(algorithm[i].p_code = malloc (plen))) {
 		break;
 	    }

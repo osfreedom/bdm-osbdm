@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.17 2004/04/06 18:56:03 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.18 2004/12/05 06:34:08 codewiz Exp $
  *
  * A utility to control bdm targets.
  *
@@ -579,7 +579,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
      */
     flags  = bfd_get_section_flags (abfd, sec);
     addr   = bfd_section_lma (abfd, sec);
-    length = bfd_get_section_size_before_reloc (sec);
+    length = bfd_section_size (abfd, sec);
 
     if (sec_names[0])
 	for (off=0; sec_names[off]; off++)
