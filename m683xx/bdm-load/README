@@ -1,4 +1,4 @@
-		BDM-LOAD rewrite 2003-05-19
+		BDM-LOAD snapshot 2003-08-15
 
 This is attempt to rewrite bdm-load utility for 683xx based
 embedded systems.
@@ -85,9 +85,11 @@ Usage bdm-load [OPTIONS] file1 ...
 	-e --erase           - erase flash
 	-b --blankck         - blank check of flash
 	-l --load            - download listed filenames
-	-g --go              - run target CPU from entry address
+	   --go[=address]    - run target CPU from entry address
+	-M --mbar=val        - setup 68360 MBAR register
 	-s --script          - do actions and return
 	-d --bdm-delay=d     - sets BDM driver speed/delay
+	-D --bdm-device      - sets BDM device file
 	-f --flash=TYPE@ADR  - select flash
 For flash TYPE@ADR can be
   {<TYPE>|auto}[@{csboot|cs<x>|<start>{+<size>|-<end>}}]
@@ -170,6 +172,10 @@ z or Z means: (zap, zero)
 c or C means: (copy)
 
   copy memory area from (num1) to (num2) with length (num3) bytes.
+  
+m or M is new command to set 68360 MBAR register.
+
+  the MBAR register is set to value of (num3)
 
 Empty lines and lines with a leading '#' are ignored. See GDB-BDM
 patches for more information.
