@@ -1,0 +1,213 @@
+2001-12-12  Chris Johns  <cjohns@ybertec.com.au>
+
+	* bdm.c: ICD step fix from Thomas Andrews (tandrews@mindspring.co.za).
+
+2001-04-15  Chris Johns  <cjohns@cybertec.com.au>
+
+	* bdm.c: Merged Keith Outwater performance changes into the driver.
+
+2000-11-15  Chris Johns  <ccj@acm.org>
+
+        * bdm.h:
+        The driver ver, cpu type and if type ioctls were the wrong size.
+
+        * bdm.h: New version.
+
+        * bdm.c: Changes to support FreeBSD's memcpy in kernel type operations.
+        Fixed a bug with return of error codes in the ioctl handler.
+
+2000-09-02  Chris Johns  <ccj@acm.org>
+
+        * bdm.c: ICD fixes from Alexander Aganichev <aaganichev@hypercom.com>.
+
+        * bdm.h: New version.
+        Fixed ICD spelling. Patch from Alexander Aganichev <aaganichev@hypercom.com>.
+
+2000-08-31  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: New version.
+
+22000-08-03  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: New minor version number.
+ 
+        * bdm.c:
+        Changed the CF ctrl port init value to 0x00. This value is correct.
+        Merged an IDC patch from Adam Kropelin <akropel1@rochester.rr.com>.
+
+2000-06-27  Chris Johns  <ccj@acm.org>
+
+        * bdm.c: Changed the control register default value to 0x0f which
+        allowed the driver to work on a DELL 500MHz Pentium III
+        machine.
+
+2000-06-25  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: New version for the CF long reset.
+
+        * bdm.c:
+        Slowed the reset down on the Coldfire. The PLL needs time to up.
+
+2000-05-31  Chris Johns  <ccj@acm.org>
+
+        * bdm.c, bdm.h: Support for IDC added.
+
+2000-05-27  Chris Johns  <ccj@acm.org>
+
+        * bdm.c: Change all bdm* functions to bdmDev* to stop clashes
+        Win9x builds.
+
+2000-05-18  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: Error bits as shifted values.
+        New version.
+
+2000-05-17  Chris Johns  <ccj@acm.org>
+
+        * bdm.c: Moved Coldfire variables in struct BDM for multi port support.
+        Added Coldfire debug module version detection and then
+        selection of PST support based on it. Ver B uses PST (5307).
+        Longer reset delays.
+        Removed setting the DSI signal to 0 on each bit.
+        Added support to detect false halt conditions by attempting
+        to read the PC twice. If you can the target has halted.
+        The cache is invalidated only if it is enabled.
+        Debug trace clean ups.
+
+2000-03-30  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: Added the timeout error code. This is used by the remote
+        interface.
+
+        * bdm.c: Changed the delay in the hardware init for the CPU32.
+
+2000-03-30  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Added the USE_PST support. Moved to clean OS structure.
+
+        * linux-bdm.c: New file.
+
+12000-03-30  Chris Johns  <ccj@acm.org>
+
+        * bdm.h: Added the timeout error code. This is used by the remote
+        interface.
+
+        * bdm.c: Changed the delay in the hardware init for the CPU32.
+
+1999-10-23  Chris Johns  <ccj@acm.org>
+
+        * bdm.c:
+        Remved the Linux specific parts to allow easier OS integration.
+
+        * bdm.h: Merged in the SCO changes.
+
+1999-05-25  source  <ccj@acm.org>
+
+        * Makefile:
+        It seems that depmod complains about unresolved symbols even
+        when the driver loads and works properly.  I don't know what's
+        changed in Linux to cause this, but for now just get rid of
+        the depmod.
+	
+1999-03-18  Chris Johns  <ccj@acm.org>
+
+        * bdm.c: Add support for 2.2.xx kernels.
+
+Fri Jan 15 05:43:55 1999  Chris Johns  <ccj@acm.org>
+
+	* bdm.c:
+	Added Coldfire support to invalidate the cache when get status detects
+	a change of state from running to stopped, or when go or step commands
+	are issued.
+
+Sat Jan  9 03:04:03 1999  Chris Johns  <ccj@acm.org>
+
+	* bdm.c: Remove the `sti()' calls in the `bdm_sleep' function.
+
+Tue Jan  5 07:39:40 1999  Chris Johns  <ccj@acm.org>
+
+	* bdm.h, bdm.c: Merged David Fiddes 5307 bkpt signal hold patch.
+
+Sat Dec 12 04:23:28 1998  Chris Johns  <ccj@acm.org>
+
+	* bdm.c: Fixed the region control logic in open.
+	Fixed printing csr.
+	Extended some of the timeouts in the CF driver.
+	Fixed some incorrect labels.
+	Fixed a lock up bug after a bus error.
+
+	* bdm.h: New version.
+
+	* Makefile: Fixed the modversions.
+
+Sat Oct 31 05:06:15 1998  Chris Johns  <ccj@acm.org>
+
+	* Makefile: Always over-write the installed header and lib.
+
+	* bdm.c: Fixed tabs, and forced the SR to be 16bit.
+
+Sun Oct 18 04:38:00 1998  Chris Johns  <ccj@acm.org>
+
+	* bdm.c: Added support for generating a bus if no repsonse is
+	always being returned from the BDM module.
+
+Wed Oct 14 14:32:04 1998  Chris Johns  <ccj@acm.org>
+
+	* bdm.c: Mask pending interrupts in single-step mode.
+	Fixed the status handling. It now uses the csr register. It is cached
+	to handle the fact the status bits are set for only one read.
+
+Wed Oct 14 10:55:33 1998  Chris Johns  <ccj@acm.org>
+
+	* bdm.c:
+	Added support for the Coldfire BDM and P&E interface. This has only
+	been tested inthe 5206.
+
+	* bdm.h: Added support for the Coldfire BDM.
+
+	* Makefile: Changed the prefix to the default of /usr.
+
+Fri Oct 31 20:58:23 1997  eric  <eric@skatter.usask.ca>
+
+	* Makefile: Fit into RTEMS distribution.
+
+Thu Aug 21 15:38:28 1997  eric  <eric@skatter.usask.ca>
+
+	* bdm.c: Fix up error on minor device check in bdm_open.
+	Remove erroneous comment in init_module.
+	Improve log messages in init_module.
+
+Wed Jun 11 16:59:06 1997  eric  <eric@skatter.usask.ca>
+
+	* bdm.c:
+	Removed code which sent an extra BDM_FILL_CMD for word or byte values.
+	Cleaned up some formatting.
+
+Wed Feb 19 17:15:06 1997  eric  <eric@skatter.usask.ca>
+
+	* bdm.c, bdm.h: Add `set debug level' ioctl.
+
+Fri Feb  7 15:10:49 1997  eric  <eric@skatter.usask.ca>
+
+	* Makefile: Add a single `prefix'.
+	Make directories if necessary when installing.
+
+	* bdm.c: Clean up some debugging messages.
+
+Thu Feb  6 22:08:52 1997  eric  <eric@skatter.usask.ca>
+
+	* Makefile: Add module installation to install target.
+
+	* bdm.c: Don't release ports that have been stolen from another driver.
+
+	* bdm.c:
+	Install driver even if I/O ports are claimed by some other driver.
+	I don't really like doing this, but the alternative would be to
+	require that the parallel port (LP) driver be unloaded before
+	the BDM driver could be loaded.
+
+	* bdm.c: More init_module message cleanup.
+
+	* bdm.c: Fix up init_module message.
+
+	* Makefile, bdm.c, bdm.h: Initial revision

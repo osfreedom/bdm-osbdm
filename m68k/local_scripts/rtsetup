@@ -1,0 +1,8 @@
+#
+# RTEMS
+#
+PATH="$PATH:/usr/local/RTEMS/tools/bin"
+RTEMS360() { RTEMS_MAKEFILE_PATH=/usr/local/RTEMS/install/rtems/gen68360 ; export RTEMS_MAKEFILE_PATH }
+RTEMS360_040() { RTEMS_MAKEFILE_PATH=/usr/local/RTEMS/install/rtems/gen68360_040 ; export RTEMS_MAKEFILE_PATH }
+
+RTEMS360

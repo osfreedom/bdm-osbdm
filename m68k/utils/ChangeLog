@@ -1,0 +1,25 @@
+2001-04-15  Chris Johns  <cjohns@cybertec.com.au>
+
+	* Makefile: More changes to get the install to work on cygwin.
+
+	* Makefile: Cygwin needs the file extension to copy when installing.
+
+	* Makefile: Fixed a typo.
+
+	* Makefile:
+	Fixed the typo and will now make the bin directory. Needed on Windows builds.
+
+	* Makefile: Added install support.
+
+	* Makefile:
+	Fixed the typo and will now make the bin directory. Needed on Windows builds.
+
+	* Makefile: Added install support.
+
+2000-09-03  Chris Johns  <ccj@acm.org>
+
+        * Makefile: New file.
+
+        * bdmreset.c: Removed warning.
+
+        * bdmreset.c: New file.

@@ -1,0 +1,55 @@
+diff -urN insight-5.0.orig/gdb/gdbtk/library/targetselection.itb insight-5.0/gdb/gdbtk/library/targetselection.itb
+--- insight-5.0.orig/gdb/gdbtk/library/targetselection.itb	Fri Feb  2 17:34:20 2001
++++ insight-5.0/gdb/gdbtk/library/targetselection.itb	Fri Feb  2 23:07:22 2001
+@@ -104,6 +104,20 @@
+   set gdb_target(remotetcp,runlist) {1 1 0 1}
+   set gdb_target(remotetcp,after_attaching) {}
+ 
++  # BDM
++  set gdb_target(bdm,pretty-name) "BDM/Direct"
++  set gdb_target(bdm,defbaud) "DIRECT"
++  set gdb_target(bdm,baud-rates) {}
++  set gdb_target(bdm,cmd) "bdm /dev/bdmcf0"
++  set gdb_target(bdm,runlist) {1 1 0 1}
++  set gdb_target(bdm,after_attaching) { setup-and-load }
++  set gdb_target(bdmtcp,pretty-name) "BDM/TCP"
++  set gdb_target(bdmtcp,defbaud) "TCP"
++  set gdb_target(bdmtcp,baud-rates) {}
++  set gdb_target(bdmtcp,cmd) "BDM tcpX"
++  set gdb_target(bdmtcp,runlist) {1 1 0 1}
++  set gdb_target(bdmtcp,after_attaching) { setup-and-load }
++
+   # ARM Angel
+   set gdb_target(rdi,pretty-name) "ARM Angel/Serial"
+   set gdb_target(rdi,defbaud) "9600"
+@@ -627,7 +641,20 @@
+   pref define gdb/load/$t-verbose [pref get gdb/load/verbose]
+   $f.fr.verb config -variable [pref varname gdb/load/$t-verbose]
+   # Map the correct entries and comboboxes onto the screen
+-  if {$gdb_target($t,defbaud) == "TCP"} {
++  if {$gdb_target($t,defbaud) == "DIRECT"} {
++    # we have a direct device target
++    # map device
++    if {$mapped1 != "$fr.host"} {
++      grid forget $mapped1
++      set mapped1 $fr.host
++      grid $mapped1 -row 1 -column 1 -sticky w -padx 5 -pady 5
++    }
++    $fr.cbl configure -text "Device:"
++    $fr.host config -textvariable [pref varname gdb/load/$t-device]
++
++    $mapped1 configure -state normal
++#    $mapped2 configure -state normal
++  } elseif {$gdb_target($t,defbaud) == "TCP"} {
+     # we have a tcp target
+     # map host and porte
+     if {$mapped1 != "$fr.host"} {
+@@ -769,7 +796,7 @@
+ # ------------------------------------------------------------------
+ body TargetSelection::change_baud {w {baud ""}} {
+   if {$baud != ""} {
+-    if {[string compare $baud "TCP"] != 0} {
++    if {[string compare $baud "TCP"] != 0 && [string compare $baud "DIRECT"] != 0} {
+       gdb_cmd "set remotebaud $baud"
+       if {[catch {gdb_cmd "show remotebaud"} res]} {
+ 	set newbaud 0

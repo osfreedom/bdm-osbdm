@@ -1,0 +1,73 @@
+Insight Support
+
+Chris Johns <ccj@acm.org>, 3rd Feb 2001.
+
+Support has been added to allow Insight to run. The GDB backend and
+driver are working, how-ever the dialog box for target connection
+could do with more work. You can make connections, set break points,
+but I have not done any real debugging. The reason is I have been
+testing on Win9x and do not have any compilers setup. I also only ran
+Insight from a Cygwin bash prompt.
+
+To build Insight, first apply the gdb patch to the Insight
+sources. This should apply cleanly. Then apply the Insight patch. The
+Insight patch add BDM support to the target dialog box. Insight is
+built the same way as GDB so the notes in the main README can be
+followed. Just apply two patches instead of the one.
+
+You need to have a GDB init file which is loaded when you start
+Insight. This is the standard GDB script for booting your
+processor. It must contain a GDB command `setup-and-load'. The target
+dialog box should default to this, but more on the dialog box setup
+later. You can find an example for the Coldfire processor in :
+
+  gdbScripts/sfp.insight
+
+The command `setup-and-load' command must configure enough of the
+processor so RAM is working and the code can be downloaded. You should
+also download the code using the load command and set the program
+counter.
+
+I found on the Win9x that I could not get Insight to automatically
+load a command file. On Unix having a file called `.gdbinit' in the
+directory you start GDB works. The documentation for GDB states a file
+`gdb.ini' should work on Windows. It did not seem to work for me so I
+specified the command file to load on the command line. I suppose this
+can be hidden in a Windows shortcut. The command on Win9x is :
+
+  /insight-5.0-m68-bdm-elf/bin/m68k-bdm-elf --command=sfp.insight sfp.elf
+
+The Target Selection dialog box has two entries for BDM, BDM/Direct
+and BDM/TCP.
+
+Using BDM/Direct.
+
+This target is used when the pod is directly connected to the machine
+you are running Insight on. Enter into the Device field the BDM device
+your pod is connected to, eg. /dev/bdmcf0. The Port field is present,
+and I do not know how to remove it so just ignore it.
+
+Using BDM/TCP.
+
+This target is used when the pod is remote from the computer running
+Insight. Entry into the Hostname the remote machine's name or IP
+address. In the Port field enter the BDM device, eg. /dev/bdmcf0.
+
+The remainder of the dialog box fields should be set in the following
+manner :
+
+ Set breakpoint at `main'         : Do not care, your choice.
+ Set breakpoint at `exit'         : Do not care, your choice.
+ Set breakpoint at [    ]         : Do not care, your choice.
+ Display Download Dialog          : Off, not checked.
+
+ More Options :
+ Attach to Target                 : On, checked.
+ Download Program                 : Off, not checked.
+ Run Program                      : Off, not checked.
+ Continue from Last Stop          : Off, not checked. Not sure what this
+                                    one is.
+ Command to issue after attaching : setup-and-load
+
+Please send me feed back on using Insight as I have no real data of
+how well it is being used.

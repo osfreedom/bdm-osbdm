@@ -1,0 +1,54 @@
+2001-10-19  Chris Johns  <cjohns@cybertec.com.au>
+
+	* Makefile: Fixed the OS file extension plus other cleanups.
+
+	* README.cpu32-check: Checked in updates.
+
+2001-04-15  Chris Johns  <cjohns@cybertec.com.au>
+
+	* chk.c: Do not test the CPU interface using the ICD CPU32.
+
+2001-02-03  Keith Outwater <vac4050@cae597.rsc.raytheon.com>
+
+	* Makefile: Added cpu32_check target
+
+	* README.cpu32_check: Added id to file
+
+	* README.cpu32_check: Misc updates
+
+	* cpu32_memtest.list,
+	  cpu32_check.c,
+	  README.cpu32_check:
+	New file.
+
+2000-09-02  Chris Johns  <cjohns@cybertec.com.au>
+
+	* chk.c: Added the ICD interface message to the test.
+
+2000-09-02  Chris Johns  <cjohns@acm.org>
+
+        * chk.c: Added the ICD interface message to the test.
+
+22000-08-31  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Remove the unwanted libs.
+
+22000-06-25  Chris Johns  <ccj@acm.org>
+
+        * chk.c: Added an alignment test.
+        Print the BDM hardware version number of the Coldfire.
+
+        * coldfire-trace: Show the alignment test of a 5307 processor.
+
+22000-05-31  Chris Johns  <ccj@acm.org>
+
+        * chk.c: Support for IDC interface added.
+
+22000-05-27  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Clean the Win9x exe.
+
+2000-05-18  Chris Johns  <ccj@acm.org>
+
+	* README, coldfire-trace, sram-test.S, Makefile, chk.c: New file.
+

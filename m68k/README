@@ -1,0 +1,345 @@
+INTRODUCTION
+============
+
+This package contains everything you need to be able to run GDB on Linux, 
+FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
+Coldfire (5206/5307) target through a standard PC parallel port.  
+
+The CPU32 interfaces supported are PD and the IDC interface. GDB should now
+operate with the CPU32 processor without error.
+
+The Coldfire interface is the P&E type interface.
+
+You can build Insight if you apply the Insight patch. See the Insight 
+README in this directory.
+
+For WindowsNT or Window2000 you will need the GiveIO package. You are best
+to search the net for the GiveIO (giveio.sys) package.
+
+The subdirectories contain:
+
+driver
+	Source for a Linux, SCO and Windows BDM device driver module.
+
+gdbPatches
+	Contains patches to add BDM support to gdb-5.0 and pre 5.0
+        snapshots.
+
+gdbScripts
+	Example GDB command scripts that show how to initialize and run
+	a Motorola 68360 system using standard GDB commands.
+
+lib
+	User-level library routines for accessing the BDM device driver.
+
+local_scripts
+        Scripts to run on the host machine the driver is being installed
+        on.
+
+Schematics
+	Schematic drawings for a PC parallel port to CPU32 BDM interface.  
+        This directory also contains printed-circuit board drawings and
+	assembly drawings for the interface.
+
+server
+        The BDM server. This is a daemon which interfaces to the local
+        BDM driver remotely. The BDM library can be built to support
+        local and remote, just local or just remote access.
+
+test
+	Programs to test the BDM library and driver routines.
+
+QUICK START
+===========
+
+The `build-it' script in the `local_scripts' directory should build the 
+driver for you.
+
+       $ ./local_script/built-it
+
+INSTALLATION
+============
+
+The Makefiles in all the subdirectories are set up to install their
+results in /usr/{bin,lib,.....}.
+
+On FreeBSD remember to use `gmake' rather than `make'.
+
+Note: For Windows move to step 2 as the driver is built into the
+      library. You may also need to add `CC=gcc' to make's command 
+      line.
+
+You can specify a different `prefix' for the installation directory by
+running all the `make install' commands described below as:
+
+	$ make prefix=/some/directory install
+
+Step 1 -- Compile and install the BDM device driver
+
+	Support for more than Linux has been added. You must
+	enter the OS specific directory then enter the make
+	command. We assume Linux for the remainder of this file.
+
+	If your Linux kernel has been configured for module versions
+	you must uncomment the #MODVERSIONS=-DMODVERSIONS line in
+	driver/linux Makefile.  If the kernel is configured for module
+	versions and you fail to uncomment this line the driver
+	will install and work properly, but depmod will complain
+	about unresolved symbols.
+
+	For Coldfire users the driver now looks for the debug module
+	version and will use the PST signals if it detects a version 1
+	debug module. The debug version 1 is found on the 5307.
+
+	cd driver/linux
+	make install
+
+	You may get a bunch of error messages like:
+		In file included from /usr/include/linux/fs.h:277,
+			 from linux-bdm.c:63:
+		/usr/include/linux/hpfs_fs_i.h:5: parse error before `ino_t'
+		/usr/include/linux/hpfs_fs_i.h:5: warning: no semicolon at \
+						end of struct or union
+		/usr/include/linux/hpfs_fs_i.h:12: parse error before `:'
+	If this happens, try adding `-I /usr/include' to the beginning of
+	the CFLAGS definition in the Makefile in driver/linux.
+
+	A script is provided in `local_scripts' called MAKEDEV which
+	create the special files needed for the CPU32 and Coldfire.
+
+	To make the special files by hand you can enter:
+
+	mknod /dev/bdmcpu320 c 34 0
+                               ^^ ^
+	                       |  |
+	                       |  +--Minor device number (see below).
+	                       |
+			       +--This value must match the
+				  BDM_MAJOR_NUMBER in driver/bdm.h
+
+	To have the module module loaded by kerneld when needed
+	adding to /etc/conf.modules the line:
+
+	        alias char-major-34 bdm
+
+	To automaticially load the driver into the kernel every time
+	you reboot you can add the line:
+
+		/sbin/insmod bdm
+
+	to your startup script, such as /etc/rc.d/rc.local.
+		
+Step 2 -- Compile and install the BDM library
+
+	cd lib
+	make install
+
+	The library can be built to access a BDM driver locally via
+	the kernel's ioctl interface, or remotely via a TCP/IP
+	socket interface. You can have a library which supports both
+	interface or either. This allows you to build the library
+	and therefore gdb on a host which does not support the
+	ioctl interface. Comment out the part of the build line 
+	define in the Makefile.
+
+        On Windows 2000 install the GiveIO driver.
+
+Step 3 -- (Optional) Testing the driver.
+
+	It a good idea to build and run the test program called 
+	`chk'. This will show the library built	correctly, the driver
+	 loads and functions, and your hardware	is connected correctly
+	 and functioning.
+
+	You will need to select the correct device for the Coldfire.
+	The example below is for the CPU32 interface on LPT1 with
+	the devices made by the local script MAKEDEV.
+
+	cd test
+	make
+	./chk /dev/bdmcpu320
+
+Step 4 -- Patch your GDB distribution
+
+	cd /where/you/keep/gdb-5.0
+	patch -p1 < /where/you/unpacked/this/BDM/gdbPatches/gdb-5.0-patch
+
+	Don't worry about complaints like:
+	mkdir: Failed to make directory "gdb"; File exists
+
+	(Please adjust the patch file name if you are using a snapshot 
+	release which is dated.)
+
+Step 5 -- Compile and install the cross-GDB with BDM support
+
+	There is an example script I use to configure, build, and install
+	the cross-GDB on my Linux machine in local_scripts/makegdb68kbdm.
+        Note that although the target is `m68k-bdm-elf', the debugger 
+	should work just fine with COFF executables.
+   
+        GDB asks the driver which processor being used. The driver uses 
+        the minor numbers to select the processor and interface type.
+        This means the single configure target will do both the CPU32 and
+        Coldfire.
+
+        $ ../gdb-5.0-bdm/configure --target=m68k-bdm-elf --prefix=???
+
+        where ??? is your local prefix path. A prefix path is where
+	gdb and the other files it needs are installed too. Providing
+	a prefix stops gdb being installed into the default location. 
+	This is usually a system location. If you are testing a new gdb
+	release it is sometime a good idea to configure and build with
+	a test path in the prefix so an installed and working gdb is
+	not over written until you have tested the new version.
+
+Step 6 -- (Optional) Install the GDB scripts
+
+	cd gdbScripts
+	make install
+
+	You will have to change the scripts to match your CPU32(+) hardware.
+
+Step 6 -- Build a BDM interface
+
+	See the Schematics directory for an example circuit.
+
+Step 7 -- Try it out
+
+	This is left as an exercise for the reader.....
+
+Step 8 -- (Optional) Make the Server
+
+	The server runs from the inetd daemon. Build and install the 
+	server. It installs into the /usr/sbin directory.
+
+	cd server
+	make install
+
+        You need to edit the /etc/services file to add the port number
+	bdmd users. Add this line at the bottom of the /etc/services file:
+
+	bdm             6543/tcp                        # BDM server
+
+	You need to edit the /etc/inetd.conf file. Add this line at the
+	end of /etc/inetd.conf:
+
+	bdm     stream  tcp     nowait  root  /usr/sbin/bdmd bdmd 
+
+	You can specify any user including root. The server has a known
+	problem. If GDB is terminated by a kill the link is not closed so 
+	the server stays up locking the port. You need to log into the
+	remote box and kill the running server.
+
+The Library
+===========
+
+The library provides a higher level interface to the driver without
+requiring you to make low level Linux driver calls.
+
+The library interface consists of two parts:
+
+  1) The driver interface, and
+  2) The download interface.
+
+The driver interface is all but the download functions. The download
+functions allow you to write a downloader which accepts file formats for
+which the BFD library was compiled for. You can check which file
+formats are supported by running the m68k version of objdump without
+any command line arguments.
+
+The library is built using a local copy of the BFD header file
+`bfd.h'. This version is taken from the gdb-5.0 sources so should not
+cause any problems when building gdb-5.0.
+
+Windows 9x,NT,2000
+==================
+
+The library will build the driver in one pass. There is no driver 
+needed for Windows 9x. This should allow GDB to be built. The Cygwin
+package is needed to build the library. I have used the lastest with
+the Cygwin DLL 1.1.2 with the Windows 95 specific fix. The actual
+OS tested on is Windows 2000. Running on Windows 2000 you need the
+GiveIO driver called giveio.sys. You need to install this driver as
+an Administrator as a member of the administrator group.
+
+Setting the minor device number
+===============================
+
+The minor device number (the second number in the mknod command) specifies
+the parallel port to which the BDM interface is connected and the type of
+the target CPU. The least signficant two bits of the minor device  
+number specify the parallel port and the remaining bits specify the target  
+CPU type:
+
+  7    6    5    4    3    2    1    0
++----+----+----+----+----+----+----+----+
+|    |    |    |    |    |    |    |    |
++----+----+----+----+----+----+----+----+
+\                            / \       /
+ \                          /   \     /
+  \                        /     \   /
+   ------------+-----------       -+-
+               |                   |
+               |                   |
+               |                   +-- These two bits select the parallel
+               |                       port to which the BDM interface is
+               |                       connected:    00 - LPT1
+               |                                     01 - LPT2
+               |                                     10 - LPT3
+               |
+               +-- These six bits select the target CPU type:
+                   000000 - CPU32+
+                   000001 - Coldfire
+
+Examples
+========
+1. Target processor is a Motorola MC68360 (CPU32+) connected to LPT1.
+   Minor device number is 0.
+
+2. Target processor is a Motorola MC68360 (CPU32+) connected to LPT2.
+   Minor device number is 1.
+
+3. Target processor is a Motorola MC5206(e) or MCF5307 (Coldfire) connected 
+   to LPT1. Minor device number is 4.
+
+ACKNOWLEDGEMENTS
+================
+
+Thanks very much to Motorola for making the parallel port BDM
+interface circuit freely available and to M. Schraut and G. Magin
+for providing the Linux driver and gdb modifications that got this
+all started.
+
+For the Coldfire additions I would like thank Eric for the clean
+driver frame work, and David L Jenkins
+(David.l.jenkins@btinternet.com) for the orginal post to the Coldfire
+mailing list (ColdFire@WildRice.com) with the pin out and functions
+for the P&E interface. It is what started me doing this and a really
+great help. David Fiddes must be thanked for the testing and 5307
+reset bug.  I would also like to thank Dave Morgan of Plessey Asia
+Pacific for the use of some test equipment which helped.
+
+Thanks to David McCullough (davidm@stallion.oz.au) for the SCO
+support.
+
+ICD fixes from Alexander Aganichev <AAganichev@hypercom.com>.
+
+ICD performace fixed from Keith Outwater <vac4050@cae597.rsc.raytheon.com>.
+
+NT and GiveIO support to Rick Haubenstricker <rickh@perceptron.com>.
+
+Thanks to Sue Cozart and Joe Circello for answering question about
+the Coldfire's BDM hardware.
+
+WHERE TO GET HELP
+=================
+
+If you've got any questions about any of this, please feel free to
+e-mail me at `eric@cls.usask.ca'.
+
+For the Coldfire and any general questions please send me a mail
+to `cjohns@cybertec.com.au' or `ccj@acm.org'.
+
+I'd like to hear any success stories, too.  Suggestions for improvements
+are also welcome.
+

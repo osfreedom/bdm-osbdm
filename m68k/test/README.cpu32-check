@@ -1,0 +1,67 @@
+$Id: README.cpu32-check,v 1.1 2003/06/02 15:15:56 codewiz Exp $
+
+cpu32-check - a program to exercise the gdb-bdm driver and your CPU32 
+(mc68360) based target system.
+
+DESCRIPTION:
+cpu32-check is a derivative of the program 'chk' written by Chris Johns to 
+test both CPU32 and Coldfire targets. cpu32-check provides tests that can
+help verify that both the BDM driver and the target are working properly.
+
+BACKGROUND:
+I found myself in a situation in which I had both an unknown/untested BDM 
+driver and an untested custom CPU32 (mc68360) based target system.
+
+I wrote cpu32-check to help.  I considered augmenting 'chk' to more fully 
+support the CPU32, but I was in a hurry and did not really have the time to 
+do a proper job of integrating the CPU32 target stuff I needed into 'chk'.  
+cpu32-check is the result.
+
+STATUS:
+cpu32-check is very much a work in progress.  I stopped working on it when 
+my target started to work with the P&E BDM driver. It's a little rough around
+the edges, but the program was very useful to for performing hardware
+verification test on my target system and for confirming that the BDM driver
+was functioning properly.
+
+At this point, the only things that don't seem to work are the functions that
+deal with the mc68360's internal memory: the internal memory test and executing
+a program from internal memory.  The fixes are probably pretty simple.
+
+The functions that deal with external memory seem to work fine.
+
+I hope that someone can take a look at the program and make improvements and
+additions, or merge some of the functionality provided in 'cpu32-check' into
+the 'chk' program.
+
+TO DO:
+1. Look at merging useful functions into 'chk'
+2. Fix code execution from internal RAM
+3. Fix internal RAM test
+4. Look at pulling target-specific initializations out of the main program.
+   Perhaps some kind of external configuration file (or command language?)
+5. Make it easier to use cpu32-check to do 'punishment tests' i.e. run
+   the driver and target in a loop for several hours and either stop on
+   errors or otherwise record them.
+
+The portions of this cpu32-chk that I wrote may be freely used for any purpose.
+I ask only that any improvements, enhancements, fixes, etc... be submitted for
+inclusion in the distribution so that others may benefit from them and that 
+the author information in the sources be left intact.
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+
+02/02/2001
+
+Keith Outwater
+(vac4050@cae597.rsc.raytheon.com) or
+(keitho@qwest.net)

@@ -1,0 +1,51 @@
+
+How to use the SCO BDM driver
+-----------------------------
+
+1.	Type "make" to build the driver.  I have only tested it when compiled
+	with the SCO compiler.  It does compile with "gcc",  so you may be in
+	luck if thats the path taht you follow.
+
+2.	Edit "System" and set the entry that corresponds to your parallel port
+	to 'Y'.
+
+3.	Login as root and type "make install".  This will put the driver into
+	the kernel.
+
+4.	Re-build the kernel by running "/etc/conf/bin/idbuild -y" as root,  and
+	the reboot to activate the driver.
+
+5.	Build yourself a GDB with BDM support (documented somewhere else :-)
+
+6.	Run gdb on the executable you want to debug.  At the prompt turn on BDM
+	with "target bdm /dev/XXXX".  The driver automatically installs all the
+	possible devices in /dev:
+
+		/dev/bdmcp0 - CPU32 on LP0
+		/dev/bdmcp1 - CPU32 on LP1
+		/dev/bdmcp2 - CPU32 on LP2
+		/dev/bdmcp3 - CPU32 on LP3
+		/dev/bdmcf0 - Coldfire on LP0
+		/dev/bdmcf1 - Coldfire on LP1
+		/dev/bdmcf2 - Coldfire on LP2
+		/dev/bdmcf3 - Coldfire on LP3
+
+7.	Happy debugging.
+
+Compiling the rest of the tree
+------------------------------
+
+1.	The Makfile in the lib directory needs the ranlib removed and some
+	other options like -Wall taken out for the SCO compiler.
+
+2.	The Makefile in the test directory needs the "-lbfd -liberty" taken
+	out.
+
+3.	If you do want to use parts of the library that require the BFD library
+	then you will have to work through that on your own :-)
+
+
+
+
+Copyright (C) 1999 David McCullough (davidm@stallion.oz.au)
+

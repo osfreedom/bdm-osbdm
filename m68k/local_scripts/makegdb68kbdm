@@ -1,0 +1,18 @@
+#!/bin/sh
+#
+
+set -ex
+
+case "$#" in
+	1)	;;
+	*)	echo "Usage: $0 source_directory" 2>&1 ; exit 1 ;;
+esac
+
+SRCDIR="$1"
+
+"$SRCDIR/configure" --target=m68k-bdm-elf \
+	--srcdir="$SRCDIR" \
+	--prefix=/opt/rtems
+
+gmake -w
+gmake -w install
