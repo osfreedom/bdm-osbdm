@@ -76,7 +76,7 @@
  * If on Cygwin assume Windows.
  */
 
-#if defined (__CYGWIN__)
+#if defined (__WIN32__) || defined (__CYGWIN__)
 
 #include "../driver/win/win-bdm.c"
 
@@ -444,9 +444,9 @@ bdmOpen (const char *name)
 #if defined (BDM_DEVICE_REMOTE)
     if (bdmRemote)
       bdmRemoteClose (fd);
-    else
 #endif
 #if defined (BDM_DEVICE_LOCAL)
+    else
       close (fd);
 #endif
   }
