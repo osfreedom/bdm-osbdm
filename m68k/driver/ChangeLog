@@ -1,3 +1,8 @@
+2004-04-24  Bernardo Innocenti  <bernie@develer.com>
+
+	* bdm.c: Fix CPU32 with ICD cable.  Contributed by Aaron J. Grier
+	<aaron@frye.com>.
+
 2004-04-18  Bernardo Innocenti  <bernie@develer.com>
 
 	* openbsd/openbsd-bdm.c: Add OpenBSD driver derived from the FreeBSD

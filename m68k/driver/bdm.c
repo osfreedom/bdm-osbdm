@@ -874,28 +874,50 @@ cpu32_icd_stop_chip (struct BDM *self)
 {
   int check;
   int pass;
-  int first_time = 1;
-  
+
   if (self->debugFlag)
-    PRINTF (" cpu32_icd_stop_chip\n");
-  if (inb (self->statusPort) & CPU32_ICD_FREEZE)
+    PRINTF (" cpu32_icd_stop_chip: ");
+  /* if FREEZE is already high, we're stopped and we're done here */
+  if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
+    if (self->debugFlag)
+      PRINTF ("already stopped\n");
     return 0;
-  for (pass = 0; pass < 2; pass++) {
-    if (first_time)
+  }
+
+  /* try multiple times... */
+  for (pass = 0; pass < 14; pass++) {
+
+    /* even times, simply assert DSCLK and RESET */
+    if (pass%2 == 0) {
       outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
-    else
+    }
+    /* odd times, yank BERR as well, in case the target is wedged */
+    else {
       outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_FORCE_BERR,
             self->dataPort);
-    first_time = 0;
-    for (check = 0 ; check < 1000 ; check++) {
+    }
+
+    /* now hang around and wait for the freeze line to come up
+     * XXX we're depending on a nop loop for timing?  arrrgh!
+     */
+    for (check = 0 ; check < (1000 + ((pass+1)%2) * 9000) ; check++) {
       if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
-        outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
+	/* if freeze line is high we're OK
+	 * XXX let reset go too?
+	 */
+	if (self->debugFlag)
+	  PRINTF("stopped after %d bdm_delays\n", check);
+	outb (CPU32_ICD_RST_OUT, self->dataPort);
         return 0;
       }
-      bdm_delay (1);
+      bdm_delay (10);
     }
+
   }
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
+  /* we've failed... */
+  outb (CPU32_ICD_RST_OUT, self->dataPort);
+  if (self->debugFlag)
+    PRINTF("failed!\n");
   return BDM_FAULT_RESPONSE;
 }
 
@@ -1087,13 +1109,32 @@ cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc)
 }
 
 /*
- * Generate a bus error as the access has failed. This is
- * not supported on the CPU32.
+ * Generate a bus error for the ICD interface
  */
 
 static int 
+cpu32_icd_gen_bus_error (struct BDM *self)
+{
+  if (self->debugFlag)
+    PRINTF(" cpu32_icd_gen_bus_error\n");
+
+  outb (CPU32_ICD_FORCE_BERR | CPU32_ICD_RST_OUT, self->dataPort);
+  udelay (400);
+  outb (CPU32_ICD_RST_OUT, self->dataPort);
+
+  return BDM_FAULT_BERR;
+}
+
+/*
+ * Generate a bus error as the access has failed. This is
+ * not supported on the CPU32 with PD interface.
+ * (the 7-chip PD interface generates it automatically in hardware
+ */
+static int
 cpu32_gen_bus_error (struct BDM *self)
 {
+  if (self->debugFlag > 1)
+    PRINTF(" cpu32_gen_bus_error\n");
   return 0;
 }
 
@@ -1180,7 +1221,7 @@ cpu32_icd_init_self (struct BDM *self)
   self->get_status    = cpu32_icd_get_status;
   self->init_hardware = cpu32_icd_init_hardware;
   self->serial_clock  = cpu32_icd_serial_clock;
-  self->gen_bus_error = cpu32_gen_bus_error;
+  self->gen_bus_error = cpu32_icd_gen_bus_error;
   self->read_sysreg   = cpu32_read_sysreg;
   self->write_sysreg  = cpu32_write_sysreg;
   self->restart_chip  = cpu32_icd_restart_chip;
@@ -2541,9 +2582,12 @@ bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
 
 static int
 bdm_open (unsigned int minor)
-{  
+{
   struct BDM *self;
   int status, err = 0;
+
+  if (self->debugFlag > 0)
+    PRINTF ("bdm_open -- minor %d\n", minor);
 
   if (minor >= (sizeof bdm_device_info / sizeof bdm_device_info[0]))
     return ENODEV;
