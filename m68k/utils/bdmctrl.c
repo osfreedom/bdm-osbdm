@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.2 2003/11/03 21:05:39 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.3 2003/11/06 22:27:31 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -46,6 +46,13 @@ static unsigned long *pattern=NULL;
 
 static int bfd_cnt=0;
 static bfd **bfd_ptr=NULL;
+
+typedef struct {
+    char *name;
+    char *val;
+} var_t;
+static var_t *var=NULL;
+static int num_vars=0;
 
 static void usage(char *progname, char *fmt, ...)
 {
@@ -105,8 +112,42 @@ static void warn (char *fmt, ...)
     if (fatal_errors) clean_exit (EXIT_FAILURE);
 }
 
-/* Duplicate a string with (rudimentary) variable substitution. For now,
-   only shell-style $0, $1, $2, ... are recognized.
+static void set_var (const char *name, const char *val)
+{
+    int i;
+    char *v;
+
+    if (!(v=strdup (val))) fatal ("Out of memory\n");
+
+    for (i=0; i<num_vars; i++) {
+	if (STREQ (var[i].name, name)) {
+	    free (var[i].val);
+	    var[i].val = v;
+	    return;
+	}
+    }
+
+    if (!(var = realloc (var, (num_vars+1) * sizeof *var)) ||
+	!(var[num_vars].name = strdup (name)))
+	fatal ("Out of memory\n");
+
+    var[num_vars++].val = v;
+}
+
+static char *get_var (const char *name)
+{
+    int i;
+
+    for (i=0; i<num_vars; i++) {
+	if (STREQ (var[i].name, name)) {
+	    return var[i].val;
+	}
+    }
+
+    fatal ("Variable %s note defined\n", name);
+}
+
+/* Duplicate a string with (rudimentary) variable substitution.
  */
 static char *varstrdup (const char *instr, size_t argc, char **vars)
 {
@@ -125,10 +166,14 @@ static char *varstrdup (const char *instr, size_t argc, char **vars)
 	s = str;
 	if ((p=strchr (s, '$'))) {
 	    *p++ = 0;
-	    varnum = strtol (p, &str, 0);
-	    if (varnum<1 || varnum>=argc)
-		fatal ("argument $%d not available\n", varnum);
-	    p = vars[varnum];
+	    if (isdigit (*p)) {
+		varnum = strtol (p, &str, 0);
+		if (varnum<1 || varnum>=argc)
+		    fatal ("argument $%d not available\n", varnum);
+		p = vars[varnum];
+	    } else {
+		p = get_var (p);
+	    }
 	}
 	while (s) {
 	    int slen = strlen (s);
@@ -782,6 +827,48 @@ static void cmd_patterns (size_t argc, char *argv[])
     }
 }
 
+/* set a variable
+ */
+static void cmd_set (size_t argc, char *argv[])
+{
+    set_var (argv[1], argv[2]);
+
+    if (verbosity) printf ("OK\n");
+}
+
+/* read a line from stdin and assign arguments to variables
+ */
+static void cmd_read (size_t argc, char *argv[])
+{
+    int i, ac;
+    char *p, **av, buf[1024];
+
+    if (!fgets (buf, 1020, stdin)) fatal ("Can't read stdin\n");
+    buf[1020]=0;
+    if ((p=strchr(buf, '\n'))) *p=0;
+
+    ac = build_argv (buf, &av, 0, NULL);
+    if (ac) {
+	for (i=1; i<argc; i++) {
+	    if (i>ac) fatal ("Not enough arguments specified\n");
+	    set_var (argv[i], av[i-1]);
+	    free (av[i-1]);
+	}
+	free (av);
+    }
+
+
+    if (verbosity) printf ("OK\n");
+}
+
+/* exit bdmctrl
+ */
+static void cmd_exit (size_t argc, char *argv[])
+{
+    if (verbosity) printf ("OK\n");
+    clean_exit (EXIT_SUCCESS);
+}
+
 /* reset the target
  */
 static void cmd_reset (size_t argc, char *argv[])
@@ -865,9 +952,12 @@ static struct command_s {
     { "write",          4,       4, cmd_write },
     { "load",           2, INT_MAX, cmd_load },
     { "execute",        1,       2, cmd_execute },
+    { "set",            3,       3, cmd_set },
+    { "read",           1, INT_MAX, cmd_read },
     { "sleep",          2,       2, cmd_sleep },
     { "wait",           1,       1, cmd_wait },
     { "echo",           1, INT_MAX, cmd_echo },
+    { "exit",           1,       1, cmd_exit },
     { "source",         1, INT_MAX, cmd_source },
     { "patterns",       2, INT_MAX, cmd_patterns },
 };

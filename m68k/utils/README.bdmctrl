@@ -72,6 +72,16 @@ reset
 sleep <seconds>
   sleep for <seconds>.
 
+echo [ <arguments> ... ]
+  print a line of text.
+
+set <name> <value>
+  define variable <name> and set its value to <value>
+
+read [ <var> ... ]
+  read a line from stdin, split it into arguments and assign the arguments
+  to specified variables.
+
 wait
   wait until target is halted/stopped.
 
@@ -142,6 +152,8 @@ short time
 
  - Cleanup/extend output to make it easier to analyze hardware defects.
 
+ - implement a "dump" command to dump memory contents to a file
+
  - Extend the "execute" command to pass arguments to the target function.
    The big question for this extension is: where to allocate the memory
    for the stack that is needed to put the arguments (and the bgnd
@@ -149,9 +161,6 @@ short time
    This extension is a prerequisite for the "flash" command. 
 
  - Implement a "step" command.
-
- - Implement variables. Currently, I don't see any use cases for this. OTOH,
-   it seems not very hard to do.
 
 long run
 --------
