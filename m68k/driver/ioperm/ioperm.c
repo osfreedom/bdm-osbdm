@@ -124,7 +124,7 @@ bdm_delay (int counter)
 void 
 bdm_sleep (unsigned long time)
 {
-  udelay (time * 1000);
+  usleep (time * (1000 * (1000 / HZ)));
 }
 
 /*
@@ -378,12 +378,14 @@ ioperm_bdm_open (const char *devname, int flags, ...)
   if (ioperm_bdm_init (port) < 0)
   {
     int fd;
+    printf ("tring kernel driver: %s\n", devname);
     if ((fd = driver_open (devname, flags)) < 0) {
       if ((strlen (devname) + sizeof ("localhost")) < 128)
       {
         char lname[128];
         strcpy (lname, "localhost:");
         strcat (lname, devname);
+        printf ("tring bdm server: %s\n", lname);
         return remoteOpen (lname);
       }
       return -1;
