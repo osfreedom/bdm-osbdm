@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.5 2003/11/12 23:24:47 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.6 2003/11/24 23:37:59 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -33,8 +33,13 @@
 
 static void do_command (size_t argc, char **argv);
 
+# ifndef STREQ
 # define STREQ(a,b) (!strcmp((a),(b)))
+# endif
+
+# ifndef NUMOF
 # define NUMOF(ary) (sizeof(ary)/sizeof(ary[0]))
+# endif
 
 static int verify;
 static int verbosity=1;
@@ -560,7 +565,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
     unsigned long addr;
     unsigned long length;
     unsigned long dfc;
-    unsigned char buf[4096], rbuf[4096];
+    unsigned char buf[1024], rbuf[1024];
 
     /* FIXME: should use bfd_perror() bfd_errmsg()
      */
@@ -574,7 +579,7 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		break;
 
     if (verbosity) {
-	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s",
+	printf (" 0x%08lx..0x%08lx (0x%08lx) fl:0x%08x %10s\n",
 		addr, addr+length, length, flags, sec->name);
 	fflush (stdout);
     }
@@ -593,6 +598,11 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		continue;
 	    }
 
+	    if (verbosity) {
+		printf ("\r  0x%08x: ", off);
+		fflush (stdout);
+	    }
+
 	    write_memory (addr+off, buf, cnt);
 
 	    if (verify) {
@@ -601,6 +611,9 @@ static void load_section (bfd *abfd, sec_ptr sec, PTR section_names)
 		    warn ("\nRead back contents from 0x%08lx don't match\n",
 			   addr+off);
 	    }
+
+	    if (verbosity)
+		printf ("OK");
 	}
 
 	write_register ("dfc", dfc);
@@ -843,7 +856,6 @@ static void cmd_load (size_t argc, char **argv)
 	break;
     }
 
-    printf ("arch: %d/%d %d/%d/%d\n", cur_arch, cur_mach, c, a, m);
     if (c >= NUMOF(arch) ||
 	a >= arch[c].listcnt ||
 	m >= arch[c].machlist[a].machcnt)
