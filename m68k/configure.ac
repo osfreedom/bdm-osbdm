@@ -47,7 +47,7 @@ dnl Handle our configuration options.
 dnl
 
 AC_ARG_ENABLE(debug,
- [ --enabled-debug Turn on debug information (enabled)],
+ [ --enable-debug Turn on debug information (enabled)],
  [case "${enableval}" in
     yes) debug=true ;;
     no)  debug=false ;;
@@ -96,6 +96,17 @@ AC_ARG_ENABLE(server,
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-server) ;;
    esac],
  [bdm_server=true])
+
+AC_ARG_ENABLE(bdmctrl,
+ [ --enable-bdmctrl Turn on bdmctrl support (disabled)],
+ [case "${enableval}" in
+    yes) bdm_bdmctrl=true ;;
+    no)  bdm_bdmctrl=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmctrl) ;;
+   esac],
+ [bdm_bdmctrl=false])
+
+AM_CONDITIONAL(BDMCTRL, test x$bdm_bdmctrl = xtrue)
 
 dnl
 dnl If on a Win32 target such as MinGW do not build

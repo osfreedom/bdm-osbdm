@@ -69,6 +69,9 @@ The subdirectories contain:
   test
     Programs to test the BDM library and driver routines.
 
+  utils
+    contains some utilities which might be useful.
+
 WINDOWS
 =======
 
@@ -244,6 +247,15 @@ Step 2 -- Compile and install the library and user programs
                      default.
 
     --enable-server: Turn on building the BDM server. On by default.
+
+    --enable-bdmctrl: Turn on building of the bdmctrl utility. Since there
+                      might be problems to locate bfd.h/libbfd.a which
+                      know how to handle target object files, building
+                      the bdmctrl utility is diabled by default. If you
+                      want to turn it on, you will probably need to specify
+                      "--target=m68k-xxx --host=xxx-yyy" along with it.
+                      Chances are that you will need to define the
+                      INCLUDES variable, too.
 
   To turn off an option use '--disable-*' where '*' is one of the above.
 
