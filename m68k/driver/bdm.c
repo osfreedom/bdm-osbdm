@@ -2586,13 +2586,13 @@ bdm_open (unsigned int minor)
   struct BDM *self;
   int status, err = 0;
 
-  if (self->debugFlag > 0)
-    PRINTF ("bdm_open -- minor %d\n", minor);
-
   if (minor >= (sizeof bdm_device_info / sizeof bdm_device_info[0]))
     return ENODEV;
   
   self = &bdm_device_info[minor];
+
+  if (self->debugFlag > 0)
+    PRINTF ("bdm_open -- minor %d\n", minor);
 
   if (!self->exists)
     return ENODEV;
