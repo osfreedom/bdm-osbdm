@@ -3,7 +3,7 @@
 
 #include <linux/ioctl.h>
 /*
- * $Id: bdmcf.h,v 1.1 2003/06/03 15:42:04 codewiz Exp $
+ * $Id: bdmcf.h,v 1.1 2003/12/29 22:18:49 codewiz Exp $
  *
  * Linux Device Driver for P&E Microcomputer Systems Coldfire Cable
  * (c) 1997 Rolf Fiedler

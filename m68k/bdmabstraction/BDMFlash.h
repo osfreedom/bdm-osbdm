@@ -31,6 +31,9 @@
  *
  * HISTORY:
  * $Log: BDMFlash.h,v $
+ * Revision 1.1  2003/12/29 22:18:49  codewiz
+ * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
+ *
  * Revision 1.2  2003/07/04 22:33:01  codewiz
  * Applied SST block-erase patch.
  *

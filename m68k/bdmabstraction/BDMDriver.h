@@ -31,6 +31,9 @@
  *
  * HISTORY:
  * $Log: BDMDriver.h,v $
+ * Revision 1.1  2003/12/29 22:18:49  codewiz
+ * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
+ *
  * Revision 1.1  2003/06/03 15:42:03  codewiz
  * Import userland tools from bdm-fiedler
  *
