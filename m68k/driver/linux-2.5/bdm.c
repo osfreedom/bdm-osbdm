@@ -184,7 +184,7 @@ os_unlock_module (void)
 static int
 linux_bdm_open (struct inode *inode, struct file *file)
 {
-  return -bdm_open (minor (inode->i_rdev));
+  return -bdm_open (iminor(inode));
 }
 
 /*
@@ -199,19 +199,16 @@ linux_bdm_open (struct inode *inode, struct file *file)
 static int
 linux_bdm_release (struct inode *inode, struct file *file)
 {
-  bdm_close (minor(inode->i_rdev));
+  bdm_close (iminor(inode));
   return 0;
 }
 
 static ssize_t
 linux_bdm_read (struct file *file, char *buf, size_t count, loff_t *offp)
 {
-  unsigned int minor;
   int          err;
  
-  minor = minor(file->f_dentry->d_inode->i_rdev);
-
-  err = bdm_read (minor, buf, count);
+  err = bdm_read (iminor(file->f_dentry->d_inode), buf, count);
   if (err)
     return -err;
   return count;
@@ -220,11 +217,9 @@ linux_bdm_read (struct file *file, char *buf, size_t count, loff_t *offp)
 static ssize_t
 linux_bdm_write (struct file *file, const char *buf, size_t count, loff_t *offp)
 {
-  unsigned int minor;
   int          err;
   
-  minor = minor(file->f_dentry->d_inode->i_rdev);
-  err = bdm_write (minor, (char*) buf, count);
+  err = bdm_write (iminor(file->f_dentry->d_inode), (char*) buf, count);
   if (err)
     return -err;
   return count;
@@ -236,7 +231,7 @@ linux_bdm_ioctl (struct inode  *inode,
                  unsigned int  cmd,
                  unsigned long arg)
 {
-  return -bdm_ioctl (minor (inode->i_rdev), cmd, arg);
+  return -bdm_ioctl (iminor(inode), cmd, arg);
 }
 
 /*
