@@ -203,6 +203,9 @@ main (int argc, char **argv)
       case BDM_COLDFIRE:
         printf ("Interface  : P&E Coldfire\n");
         break;
+      case BDM_CPU32_ICD:
+        printf ("Interface  : ICD CPU32\n");
+        break;
       default:
         printf ("unknown interface type!\n");
         clean_exit (1);
