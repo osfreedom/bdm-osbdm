@@ -154,7 +154,6 @@ bdmDebug (const char *format, ...)
     } else {
       fprintf (stderr, "BDM: ");
       vfprintf (stderr, format, ap);
-      fprintf (stderr, "\n");
     }
   }
 
@@ -457,9 +456,11 @@ bdmOpen (const char *name)
 #if defined (BDM_DEVICE_REMOTE)
     if (bdmRemote)
       bdmRemoteClose (fd);
-#endif
 #if defined (BDM_DEVICE_LOCAL)
     else
+#endif
+#endif
+#if defined (BDM_DEVICE_LOCAL)
       close (fd);
 #endif
   }
@@ -568,7 +569,7 @@ bdmStatus (void)
 
   if (bdmIoctlInt (BDM_GET_STATUS, &status) < 0)
     return -1;
-  PRINTF ("Status %#x", status);
+  PRINTF ("Status %#x\n", status);
   return status;
 }
 
@@ -580,7 +581,7 @@ bdmSetDelay (int delay)
 {
   if (bdmIoctlInt (BDM_SPEED, &delay) < 0)
     return -1;
-  PRINTF ("Set delay %d", delay);
+  PRINTF ("Set delay %d\n", delay);
   return 0;
 }
 
@@ -592,7 +593,7 @@ bdmSetDriverDebugFlag (int debugFlag)
 {
   if (bdmIoctlInt (BDM_DEBUG, &debugFlag) < 0)
     return -1;
-  PRINTF ("Set driver debug flag %d", debugFlag);
+  PRINTF ("Set driver debug flag %d\n", debugFlag);
   return 0;
 }
 
@@ -606,7 +607,7 @@ bdmReadSystemRegister (int code, unsigned long *lp)
 
   if (readTarget (BDM_READ_SYSREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read system register %s: %#8lx", sysregName[code], ltmp);
+  PRINTF ("Read system register %s: %#8lx\n", sysregName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -622,7 +623,7 @@ bdmReadRegister (int code, unsigned long *lp)
   code &= 0xF;
   if (readTarget (BDM_READ_REG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read register %s: %#8lx", regName[code], ltmp);
+  PRINTF ("Read register %s: %#8lx\n", regName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -635,7 +636,7 @@ bdmWriteSystemRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_SYSREG, code, l) < 0)
     return -1;
-  PRINTF ("Write system register %s: %#8lx", sysregName[code], l);
+  PRINTF ("Write system register %s: %#8lx\n", sysregName[code], l);
   return 0;
 }
 
@@ -647,7 +648,7 @@ bdmWriteRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_REG, code, l) < 0)
     return -1;
-  PRINTF ("Write register %s: %#8lx", regName[code], l);
+  PRINTF ("Write register %s: %#8lx\n", regName[code], l);
   return 0;
 }
 
@@ -661,7 +662,7 @@ bdmReadLongWord (unsigned long address, unsigned long *lp)
 
   if (readTarget (BDM_READ_LONGWORD, address, &ltmp) < 0)
     return -1;
-  PRINTF ("Read %#8.8lx @ %#8lx", ltmp, address);
+  PRINTF ("Read %#8.8lx @ %#8lx\n", ltmp, address);
   *lp = ltmp;
   return 0;
 }
@@ -677,7 +678,7 @@ bdmReadWord (unsigned long address, unsigned short *sp)
   if (readTarget (BDM_READ_WORD, address, &ltmp) < 0)
     return -1;
   *sp = ltmp;
-  PRINTF ("Read %#4.4x @ %#8lx", (unsigned short)ltmp, address);
+  PRINTF ("Read %#4.4x @ %#8lx\n", (unsigned short)ltmp, address);
   return 0;
 }
 
@@ -692,7 +693,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
   if (readTarget (BDM_READ_BYTE, address, &ltmp) < 0)
     return -1;
   *cp = ltmp;
-  PRINTF ("Read %#2.2x @ %#8lx", (unsigned char)ltmp, address);
+  PRINTF ("Read %#2.2x @ %#8lx\n", (unsigned char)ltmp, address);
   return 0;
 }
 
@@ -702,7 +703,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
 int
 bdmWriteLongWord (unsigned long address, unsigned long l)
 {
-  PRINTF ("Write %#8.8lx @ %#8lx", l, address);
+  PRINTF ("Write %#8.8lx @ %#8lx\n", l, address);
   return writeTarget (BDM_WRITE_LONGWORD, address, l);
 }
 
@@ -712,7 +713,7 @@ bdmWriteLongWord (unsigned long address, unsigned long l)
 int
 bdmWriteWord (unsigned long address, unsigned short s)
 {
-  PRINTF ("Write %#4.4x @ %#8lx", s, address);
+  PRINTF ("Write %#4.4x @ %#8lx\n", s, address);
   return writeTarget (BDM_WRITE_WORD, address, s);
 }
 
@@ -722,7 +723,7 @@ bdmWriteWord (unsigned long address, unsigned short s)
 int
 bdmWriteByte (unsigned long address, unsigned char c)
 {
-  PRINTF ("Write %#2.2x @ %#8lx", c, address);
+  PRINTF ("Write %#2.2x @ %#8lx\n", c, address);
   return writeTarget (BDM_WRITE_BYTE, address, c);
 }
 
@@ -750,7 +751,7 @@ bdmWriteMBAR (unsigned long l)
 int
 bdmRelease (void)
 {
-  PRINTF ("Release");
+  PRINTF ("Release\n");
   return bdmIoctlCommand (BDM_RELEASE_CHIP);
 }
 
@@ -760,7 +761,7 @@ bdmRelease (void)
 int
 bdmReset (void)
 {
-  PRINTF ("Reset");
+  PRINTF ("Reset\n");
   return bdmIoctlCommand (BDM_RESET_CHIP);
 }
 
@@ -770,7 +771,7 @@ bdmReset (void)
 int
 bdmRestart (void)
 {
-  PRINTF ("Restart");
+  PRINTF ("Restart\n");
   return bdmIoctlCommand (BDM_RESTART_CHIP);
 }
 
@@ -780,7 +781,7 @@ bdmRestart (void)
 int
 bdmGo (void)
 {
-  PRINTF ("Go");
+  PRINTF ("Go\n");
   return bdmIoctlCommand (BDM_GO);
 }
 
@@ -790,7 +791,7 @@ bdmGo (void)
 int
 bdmStop (void)
 {
-  PRINTF ("Stop");
+  PRINTF ("Stop\n");
   return bdmIoctlCommand (BDM_STOP_CHIP);
 }
 
@@ -800,7 +801,7 @@ bdmStop (void)
 int
 bdmStep (void)
 {
-  PRINTF ("Step");
+  PRINTF ("Step\n");
   return bdmIoctlCommand (BDM_STEP_CHIP);
 }
 
@@ -864,7 +865,7 @@ bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
       cbuf[i+1] = c;
     }
   }
-  PRINTF ("Read %d byte%s", nbytes, nbytes == 1 ? "" : "s");
+  PRINTF ("Read %d byte%s\n", nbytes, nbytes == 1 ? "" : "s");
   return 0;
 }
 
@@ -940,7 +941,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
   }
   if (ret < 0)
     return -1;
-  PRINTF ("Wrote %d byte%s", nbytes, nbytes == 1 ? "" : "s");
+  PRINTF ("Wrote %d byte%s\n", nbytes, nbytes == 1 ? "" : "s");
   return 0;
 }
 
@@ -952,7 +953,7 @@ bdmGetDrvVersion (unsigned int *ver)
 {
   if (bdmIoctlInt (BDM_GET_DRV_VER, ver) < 0)
     return -1;
-  PRINTF ("Driver version: %x.%x", *ver >> 8, *ver & 0xff);
+  PRINTF ("Driver version: %x.%x\n", *ver >> 8, *ver & 0xff);
   return 0;
 }
 
@@ -964,7 +965,7 @@ bdmGetProcessor (int *processor)
 {
   if (bdmIoctlInt (BDM_GET_CPU_TYPE, processor) < 0)
     return -1;
-  PRINTF ("CPU type: %d", *processor);
+  PRINTF ("CPU type: %d\n", *processor);
   return 0;
 }
 
@@ -976,6 +977,6 @@ bdmGetInterface (int *iface)
 {
   if (bdmIoctlInt (BDM_GET_IF_TYPE, iface) < 0)
     return -1;
-  PRINTF ("Interface type: %d", *iface);
+  PRINTF ("Interface type: %d\n", *iface);
   return 0;
 }

@@ -2655,7 +2655,8 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
     case BDM_SPEED:
     case BDM_DEBUG:      
       err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
-      PRINTF ("BDMioctl cmd:0x%x\n", iarg);
+      if (self->debugFlag > 3)
+	  PRINTF ("BDMioctl cmd:0x%x\n", iarg);
       break;
   }
 
