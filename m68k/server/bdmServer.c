@@ -692,6 +692,7 @@ main (int argc, char **argv)
   if (hp && (strlen (hp->h_name) > strlen (myname)))
     strncpy (myname, hp->h_name, MAXHOSTNAMELEN);
 
+  bdmLogSyslog ();
   /*
    * Don't pay attention to SIGPIPE; read will give us the problem
    * if it happens.

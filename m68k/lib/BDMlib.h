@@ -45,6 +45,7 @@ int  bdmIsOpen (void);
 int  bdmSetDelay (int delay);
 int  bdmSetDriverDebugFlag (int flag);
 void bdmSetDebugFlag (int flag);
+void bdmLogSyslog (void);
 
 int         bdmStatus (void);
 const char *bdmErrorString (void);

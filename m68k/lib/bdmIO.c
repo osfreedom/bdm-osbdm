@@ -63,6 +63,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <syslog.h>
  
 #include "BDMlib.h"
 
@@ -71,6 +72,9 @@
 #include "bdmRemote.h"
 
 #endif
+
+static void bdmDebug (const char *format, ...);
+#define PRINTF bdmDebug
 
 /*
  * If on Cygwin assume Windows.
@@ -114,6 +118,7 @@ const char *bdmIO_lastErrorString = "No BDM error (yet!)";
  * Debugging
  */
 static int debugFlag = 0;
+static int debug_syslog = 0;
 static const char *const sysregName[BDM_MAX_SYSREG] = {
   "RPC",  "PCC",    "SR",   "USP",
   "SSP",  "SFC",    "DFC",  "ATEMP",
@@ -130,9 +135,13 @@ static const char *const regName[] = {
   "A4", "A5", "A6", "A7",
 };
 
-#define dbprintf bdmDebug
-
 void
+bdmLogSyslog (void)
+{
+    debug_syslog = 1;
+}
+
+static void
 bdmDebug (const char *format, ...)
 {
   va_list ap;
@@ -140,11 +149,15 @@ bdmDebug (const char *format, ...)
   va_start (ap, format);
   
   if (debugFlag) {
-    fprintf (stderr, "BDM: ");
-    vfprintf (stderr, format, ap);
-    fprintf (stderr, "\n");
+    if (debug_syslog) {
+      vsyslog (LOG_INFO, format, ap);
+    } else {
+      fprintf (stderr, "BDM: ");
+      vfprintf (stderr, format, ap);
+      fprintf (stderr, "\n");
+    }
   }
-  
+
   va_end (ap);  
 }
 
@@ -555,7 +568,7 @@ bdmStatus (void)
 
   if (bdmIoctlInt (BDM_GET_STATUS, &status) < 0)
     return -1;
-  dbprintf ("Status %#x", status);
+  PRINTF ("Status %#x", status);
   return status;
 }
 
@@ -567,7 +580,7 @@ bdmSetDelay (int delay)
 {
   if (bdmIoctlInt (BDM_SPEED, &delay) < 0)
     return -1;
-  dbprintf ("Set delay %d", delay);
+  PRINTF ("Set delay %d", delay);
   return 0;
 }
 
@@ -579,7 +592,7 @@ bdmSetDriverDebugFlag (int debugFlag)
 {
   if (bdmIoctlInt (BDM_DEBUG, &debugFlag) < 0)
     return -1;
-  dbprintf ("Set driver debug flag %d", debugFlag);
+  PRINTF ("Set driver debug flag %d", debugFlag);
   return 0;
 }
 
@@ -593,7 +606,7 @@ bdmReadSystemRegister (int code, unsigned long *lp)
 
   if (readTarget (BDM_READ_SYSREG, code, &ltmp) < 0)
     return -1;
-  dbprintf ("Read system register %s: %#8lx", sysregName[code], ltmp);
+  PRINTF ("Read system register %s: %#8lx", sysregName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -609,7 +622,7 @@ bdmReadRegister (int code, unsigned long *lp)
   code &= 0xF;
   if (readTarget (BDM_READ_REG, code, &ltmp) < 0)
     return -1;
-  dbprintf ("Read register %s: %#8lx", regName[code], ltmp);
+  PRINTF ("Read register %s: %#8lx", regName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -622,7 +635,7 @@ bdmWriteSystemRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_SYSREG, code, l) < 0)
     return -1;
-  dbprintf ("Write system register %s: %#8lx", sysregName[code], l);
+  PRINTF ("Write system register %s: %#8lx", sysregName[code], l);
   return 0;
 }
 
@@ -634,7 +647,7 @@ bdmWriteRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_REG, code, l) < 0)
     return -1;
-  dbprintf ("Write register %s: %#8lx", regName[code], l);
+  PRINTF ("Write register %s: %#8lx", regName[code], l);
   return 0;
 }
 
@@ -648,7 +661,7 @@ bdmReadLongWord (unsigned long address, unsigned long *lp)
 
   if (readTarget (BDM_READ_LONGWORD, address, &ltmp) < 0)
     return -1;
-  dbprintf ("Read %#8.8lx @ %#8lx", ltmp, address);
+  PRINTF ("Read %#8.8lx @ %#8lx", ltmp, address);
   *lp = ltmp;
   return 0;
 }
@@ -664,7 +677,7 @@ bdmReadWord (unsigned long address, unsigned short *sp)
   if (readTarget (BDM_READ_WORD, address, &ltmp) < 0)
     return -1;
   *sp = ltmp;
-  dbprintf ("Read %#4.4x @ %#8lx", (unsigned short)ltmp, address);
+  PRINTF ("Read %#4.4x @ %#8lx", (unsigned short)ltmp, address);
   return 0;
 }
 
@@ -679,7 +692,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
   if (readTarget (BDM_READ_BYTE, address, &ltmp) < 0)
     return -1;
   *cp = ltmp;
-  dbprintf ("Read %#2.2x @ %#8lx", (unsigned char)ltmp, address);
+  PRINTF ("Read %#2.2x @ %#8lx", (unsigned char)ltmp, address);
   return 0;
 }
 
@@ -689,7 +702,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
 int
 bdmWriteLongWord (unsigned long address, unsigned long l)
 {
-  dbprintf ("Write %#8.8lx @ %#8lx", l, address);
+  PRINTF ("Write %#8.8lx @ %#8lx", l, address);
   return writeTarget (BDM_WRITE_LONGWORD, address, l);
 }
 
@@ -699,7 +712,7 @@ bdmWriteLongWord (unsigned long address, unsigned long l)
 int
 bdmWriteWord (unsigned long address, unsigned short s)
 {
-  dbprintf ("Write %#4.4x @ %#8lx", s, address);
+  PRINTF ("Write %#4.4x @ %#8lx", s, address);
   return writeTarget (BDM_WRITE_WORD, address, s);
 }
 
@@ -709,7 +722,7 @@ bdmWriteWord (unsigned long address, unsigned short s)
 int
 bdmWriteByte (unsigned long address, unsigned char c)
 {
-  dbprintf ("Write %#2.2x @ %#8lx", c, address);
+  PRINTF ("Write %#2.2x @ %#8lx", c, address);
   return writeTarget (BDM_WRITE_BYTE, address, c);
 }
 
@@ -737,7 +750,7 @@ bdmWriteMBAR (unsigned long l)
 int
 bdmRelease (void)
 {
-  dbprintf ("Release");
+  PRINTF ("Release");
   return bdmIoctlCommand (BDM_RELEASE_CHIP);
 }
 
@@ -747,7 +760,7 @@ bdmRelease (void)
 int
 bdmReset (void)
 {
-  dbprintf ("Reset");
+  PRINTF ("Reset");
   return bdmIoctlCommand (BDM_RESET_CHIP);
 }
 
@@ -757,7 +770,7 @@ bdmReset (void)
 int
 bdmRestart (void)
 {
-  dbprintf ("Restart");
+  PRINTF ("Restart");
   return bdmIoctlCommand (BDM_RESTART_CHIP);
 }
 
@@ -767,7 +780,7 @@ bdmRestart (void)
 int
 bdmGo (void)
 {
-  dbprintf ("Go");
+  PRINTF ("Go");
   return bdmIoctlCommand (BDM_GO);
 }
 
@@ -777,7 +790,7 @@ bdmGo (void)
 int
 bdmStop (void)
 {
-  dbprintf ("Stop");
+  PRINTF ("Stop");
   return bdmIoctlCommand (BDM_STOP_CHIP);
 }
 
@@ -787,7 +800,7 @@ bdmStop (void)
 int
 bdmStep (void)
 {
-  dbprintf ("Step");
+  PRINTF ("Step");
   return bdmIoctlCommand (BDM_STEP_CHIP);
 }
 
@@ -851,7 +864,7 @@ bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
       cbuf[i+1] = c;
     }
   }
-  dbprintf ("Read %d byte%s", nbytes, nbytes == 1 ? "" : "s");
+  PRINTF ("Read %d byte%s", nbytes, nbytes == 1 ? "" : "s");
   return 0;
 }
 
@@ -927,7 +940,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
   }
   if (ret < 0)
     return -1;
-  dbprintf ("Wrote %d byte%s", nbytes, nbytes == 1 ? "" : "s");
+  PRINTF ("Wrote %d byte%s", nbytes, nbytes == 1 ? "" : "s");
   return 0;
 }
 
@@ -939,7 +952,7 @@ bdmGetDrvVersion (unsigned int *ver)
 {
   if (bdmIoctlInt (BDM_GET_DRV_VER, ver) < 0)
     return -1;
-  dbprintf ("Driver version: %x.%x", *ver >> 8, *ver & 0xff);
+  PRINTF ("Driver version: %x.%x", *ver >> 8, *ver & 0xff);
   return 0;
 }
 
@@ -951,7 +964,7 @@ bdmGetProcessor (int *processor)
 {
   if (bdmIoctlInt (BDM_GET_CPU_TYPE, processor) < 0)
     return -1;
-  dbprintf ("CPU type: %d", *processor);
+  PRINTF ("CPU type: %d", *processor);
   return 0;
 }
 
@@ -963,6 +976,6 @@ bdmGetInterface (int *iface)
 {
   if (bdmIoctlInt (BDM_GET_IF_TYPE, iface) < 0)
     return -1;
-  dbprintf ("Interface type: %d", *iface);
+  PRINTF ("Interface type: %d", *iface);
   return 0;
 }
