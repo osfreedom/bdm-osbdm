@@ -12,6 +12,11 @@
 # See file COPYING for details.
 #*******************************************************************/
 
+# Use "make MODULE_NAME=foobar" if you want to give the driver module
+# a different name. This might be usefull if you want to install both,
+# Chris's and Pavel's drivers at the same machine.
+MODULE_NAME=m683xx-bdm
+
 # currently running kernel
 CURRENT=$(shell uname -r)
 KERNEL_NEW=$(shell if [ -d /lib/modules/$(CURRENT)/build ] ; \
@@ -44,7 +49,7 @@ KERNEL_MODULE_V26 := $(shell echo $(KERNEL_VERSION) \
 # Target object file if any
 O_TARGET     :=
 # Regular object files
-O_OBJS       = bdm.o
+O_OBJS       = $(MODULE_NAME).o
 # Objects with exported symbols (-DEXPORT_SYMTAB)
 OX_OBJS      =
 # Module objects 
@@ -71,7 +76,10 @@ all : make_this_module
 
 install : install_this_module
 
-make_this_module:
+$(MODULE_NAME).c: bdm.c
+	cp $< $@
+
+make_this_module: $(MODULE_NAME).c
 	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
 
 install_this_module: make_this_module

@@ -1,5 +1,5 @@
 This version of BDM driver is updated to be compatible with
-the most of existing kernel versions. Main foccuss has been oriented
+the most of existing kernel versions. Main focus has been oriented
 to 2.2.x and 2.4.x, but most of other unstable and stable kernels
 back to 1.3.x stone age should be supported.
 
@@ -44,8 +44,8 @@ addresses) are in use, e.g. by the lp device driver or a parallel port
 ethernet device. When everything is free, it reserves these resources, and
 releases them when closing the device. So no double access should be possible.
 There can be problem with "parport", "parport_pc" and "lp" module stack,
-which could compete with "bdm" driver. Compile "lp" and "parport" as modules
-in such case and unload them before "bdm".
+which could compete with "m683xx-bdm" driver. Compile "lp" and "parport"
+as modules in such case and unload them before "m683xx-bdm".
 
 ** DEVFS support ***
 
@@ -59,15 +59,16 @@ You can add next line to "/etc/devfs.conf"
 
 Next line helps to connect simple "/dev/bdm" name for right configuration
 
-  LOOKUP	bdm		EXECUTE /bin/ln -s ${mntpnt}/m683xx-bdm/icd0 ${mntpnt}/bdm
+  LOOKUP	m683xx-bdm	EXECUTE /bin/ln -s ${mntpnt}/m683xx-bdm/icd0 ${mntpnt}/m683xx-bdm
 
 There are lines for "/dev/modules.conf" with aliases for different kernels
 
   # m68k BDM
-  alias	/dev/bdm      bdm
-  alias	/dev/m683xx-bdm bdm
-  alias	char-major-53 bdm
-  # the next line is required/usable for BDM driver 
-  # compiled without parport support
-  pre-install	bdm /sbin/modprobe -r lp parport_pc
+  alias	/dev/bdm        m683xx-bdm
+  alias	/dev/m683xx-bdm m683xx-bdm
+  alias	char-major-53   m683xx-bdm
+  # the next line is required/usable for BDM driver compiled without
+  # parport support. You might want to remove this line if you get errors
+  # about unresolved symbols when the driver is loaded.
+  pre-install	m683xx-bdm /sbin/modprobe -r lp parport_pc
 
