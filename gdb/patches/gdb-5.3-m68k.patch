@@ -16,7 +16,7 @@ diff -Nru insight-5.3.orig/gdb/config/m68k/bdm.mt insight-5.3/gdb/config/m68k/bd
 @@ -0,0 +1,5 @@
 +# Target: m68k bdm interface for the CPU32 and Coldfire processors.
 +#
-+TM_CLIBS= -L$(prefix)/lib/bdm -lBDM
++TM_CLIBS= -L$(prefix)/lib -lBDM
 +TDEPFILES= m68k-tdep.o remote-m68k-bdm.o
 +TM_FILE= tm-bdm.h
 diff -Nru insight-5.3.orig/gdb/config/m68k/tm-bdm.h insight-5.3/gdb/config/m68k/tm-bdm.h
@@ -346,7 +346,7 @@ diff -Nru insight-5.3.orig/gdb/remote-m68k-bdm.c insight-5.3/gdb/remote-m68k-bdm
 + */
 +
 +/*
-+ * $Revision: 1.3 $    $Date: 2003/11/24 22:08:25 $   $Author: joewolf $
++ * $Revision: 1.4 $    $Date: 2004/03/28 23:10:40 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
