@@ -1,7 +1,7 @@
-diff -Nrup gdb-6.3.orig/gdb/Makefile.in gdb-6.3/gdb/Makefile.in
+diff -Nru gdb-6.3.orig/gdb/Makefile.in gdb-6.3/gdb/Makefile.in
 --- gdb-6.3.orig/gdb/Makefile.in	2004-11-04 03:18:49.000000000 +0100
-+++ gdb-6.3/gdb/Makefile.in	2004-12-05 08:26:48.000000000 +0100
-@@ -1403,7 +1403,7 @@ ALLDEPFILES = \
++++ gdb-6.3/gdb/Makefile.in	2004-11-25 09:32:32.000000000 +0100
+@@ -1403,7 +1403,7 @@
  	ppcobsd-nat.c ppcobsd-tdep.c \
  	procfs.c \
  	remote-e7000.c \
@@ -10,7 +10,7 @@ diff -Nrup gdb-6.3.orig/gdb/Makefile.in gdb-6.3/gdb/Makefile.in
  	remote-rdp.c remote-sim.c \
  	remote-st.c remote-utils.c dcache.c \
  	remote-vx.c \
-@@ -2381,6 +2381,8 @@ remote-hms.o: remote-hms.c $(defs_h) $(g
+@@ -2381,6 +2381,8 @@
  	$(serial_h) $(regcache_h)
  remote-m32r-sdi.o: remote-m32r-sdi.c $(defs_h) $(gdbcmd_h) $(gdbcore_h) \
  	$(inferior_h) $(target_h) $(regcache_h) $(gdb_string_h) $(serial_h)
@@ -19,19 +19,20 @@ diff -Nrup gdb-6.3.orig/gdb/Makefile.in gdb-6.3/gdb/Makefile.in
  remote-mips.o: remote-mips.c $(defs_h) $(inferior_h) $(bfd_h) $(symfile_h) \
  	$(gdbcmd_h) $(gdbcore_h) $(serial_h) $(target_h) $(remote_utils_h) \
  	$(gdb_string_h) $(gdb_stat_h) $(regcache_h) $(mips_tdep_h)
-diff -Nrup gdb-6.3.orig/gdb/config/m68k/bdm.mt gdb-6.3/gdb/config/m68k/bdm.mt
+diff -Nru gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
+diff -Nru gdb-6.3.orig/gdb/config/m68k/bdm.mt gdb-6.3/gdb/config/m68k/bdm.mt
 --- gdb-6.3.orig/gdb/config/m68k/bdm.mt	1970-01-01 01:00:00.000000000 +0100
-+++ gdb-6.3/gdb/config/m68k/bdm.mt	2004-12-04 08:23:53.000000000 +0100
++++ gdb-6.3/gdb/config/m68k/bdm.mt	2004-11-26 11:19:32.000000000 +0100
 @@ -0,0 +1,5 @@
 +# Target: m68k bdm interface for the CPU32 and Coldfire processors.
 +#
 +TM_CLIBS= -L$(prefix)/lib -lBDM
 +TDEPFILES= m68k-tdep.o remote-m68k-bdm.o
-+TM_FILE= tm-bdm.h
-diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.h
++DEPRECATED_TM_FILE= tm-bdm.h
+diff -Nru gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.h
 --- gdb-6.3.orig/gdb/config/m68k/tm-bdm.h	1970-01-01 01:00:00.000000000 +0100
-+++ gdb-6.3/gdb/config/m68k/tm-bdm.h	2004-12-04 08:23:53.000000000 +0100
-@@ -0,0 +1,135 @@
++++ gdb-6.3/gdb/config/m68k/tm-bdm.h	2005-01-17 17:35:57.000000000 +0100
+@@ -0,0 +1,110 @@
 +/*
 + * Target machine description for Coldfire BDM (Moto 5200)
 + * Copyright (C) 1995  W. Eric Norum
@@ -50,19 +51,19 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 + *     107 North Road
 + *     Saskatoon, Saskatchewan, CANADA
 + *     S7N 5C6
-+ * 
++ *
 + * This file is part of GDB.
-+ * 
++ *
 + * This program is free software; you can redistribute it and/or modify
 + * it under the terms of the GNU General Public License as published by
 + * the Free Software Foundation; either version 2 of the License, or
 + * (at your option) any later version.
-+ * 
++ *
 + * This program is distributed in the hope that it will be useful,
 + * but WITHOUT ANY WARRANTY; without even the implied warranty of
 + * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 + * GNU General Public License for more details.
-+ * 
++ *
 + * You should have received a copy of the GNU General Public License
 + * along with this program; if not, write to the Free Software
 + * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
@@ -73,22 +74,18 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 +/*
 + * Function prototypes
 + */
-+extern unsigned char *m68k_bdm_breakpoint_from_pc (CORE_ADDR *pcptr, int *lenptr);
++extern const unsigned char *m68k_bdm_breakpoint_from_pc (CORE_ADDR *pcptr, int *lenptr);
 +extern CORE_ADDR m68k_bdm_saved_pc_after_call (struct frame_info *);
-+extern const char *bdm_register_name (int i);
-+extern int cf_stopped_by_watchpoint (void);
-+extern int cf_can_use_watchpoint (enum target_hw_bp_type type, int cnt, int ot);
-+extern int cf_insert_watchpoint (CORE_ADDR addr, int len, enum target_hw_bp_type type);
-+extern int cf_remove_watchpoint (CORE_ADDR addr, int len, enum target_hw_bp_type type);
-+extern int cf_insert_hw_breakpoint (CORE_ADDR addr, char *shadow);
-+extern int cf_remove_hw_breakpoint (CORE_ADDR addr, char *shadow);
-+extern int cf_stopped_data_address (void);
++extern const char *m68k_bdm_register_name (int i);
++extern int m68k_bdm_decr_pc_after_break();
++extern int m68k_bdm_num_regs();
++extern int m68k_bdm_have_nonsteppable_watchpoint();
 +
 +
 +/*
 + * Coldfire does it for us if we use PCC to get the PC
 + */
-+#define	DECR_PC_AFTER_BREAK	0
++#define	DECR_PC_AFTER_BREAK	m68k_bdm_decr_pc_after_break()
 +
 +/*
 + * We have to control this directly as the CPU32 and Coldfire have different
@@ -99,7 +96,7 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 +/*
 + * Include the generic stuff
 + */
-+#include "m68k/tm-m68k.h"
++//#include "m68k/tm-m68k.h"
 +
 +/*
 + * Override some of the generic definitions
@@ -117,7 +114,7 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 +  (m68k_bdm_saved_pc_after_call (frame))
 +
 +/*
-+ * we need 40 registers for the CPU32 and Coldfire:
++ * we need 48 registers for the CPU32 and Coldfire:
 + *   8 data registers
 + *   8 address registers
 + *   2 other registers (PC, PS)
@@ -125,22 +122,15 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 + *  22 special registers (actual set depends on architecture)
 + *   0 floating point registers
 + */
++
++#define NUM_REGS_BDM 48
 +#undef NUM_REGS
 +#undef REGISTER_BYTES
-+#define NUM_REGS    48
-+#define REGISTER_BYTES (16*4 + 2*4 + 8*4 + 22*4)
++#define NUM_REGS NUM_REGS_BDM
 +
 +#undef REGISTER_NAMES
-+#define REGISTER_NAME(i) bdm_register_name(i)
++#define REGISTER_NAME(i) m68k_bdm_register_name(i)
 +
-+#undef FP0_REGNUM
-+#undef FPC_REGNUM
-+#undef FPS_REGNUM
-+#undef FPI_REGNUM
-+#define FP0_REGNUM NUM_REGS             /* Floating point register 0 */
-+#define FPC_REGNUM FP0_REGNUM + 8       /* 68881 control register */
-+#define FPS_REGNUM FPC_REGNUM + 1       /* 68881 status register */
-+#define FPI_REGNUM FPS_REGNUM + 1       /* 68881 iaddr register */
 +
 +/*
 + * The other definitions and macros don't need to be changed:
@@ -152,48 +142,22 @@ diff -Nrup gdb-6.3.orig/gdb/config/m68k/tm-bdm.h gdb-6.3/gdb/config/m68k/tm-bdm.
 +
 +/* We need to remove watchpoints when stepping, else we hit them again! */
 +
-+#define HAVE_NONSTEPPABLE_WATCHPOINT 1
-+
-+#define STOPPED_BY_WATCHPOINT(w) (cf_stopped_by_watchpoint ())
-+
-+/* Use these macros for watchpoint insertion/deletion.  */
-+/* type can be 0: write watch, 1: read watch, 2: access watch (read/write) */
-+
-+#define TARGET_CAN_USE_HARDWARE_WATCHPOINT(type, cnt, ot) \
-+		(cf_can_use_watchpoint (type, cnt, ot))
-+
-+#define target_insert_watchpoint(addr, len, type) (cf_insert_watchpoint (addr, len, type))
-+#define target_remove_watchpoint(addr, len, type) (cf_remove_watchpoint (addr, len, type))
-+#define target_insert_hw_breakpoint(addr, shadow) (cf_insert_hw_breakpoint (addr, shadow))
-+#define target_remove_hw_breakpoint(addr, shadow) (cf_remove_hw_breakpoint (addr, shadow))
-+#define target_stopped_data_address() (cf_stopped_data_address ())
-diff -Nrup gdb-6.3.orig/gdb/configure.tgt gdb-6.3/gdb/configure.tgt
++#define HAVE_NONSTEPPABLE_WATCHPOINT m68k_bdm_have_nonsteppable_watchpoint()
+diff -Nru gdb-6.3.orig/gdb/configure.tgt gdb-6.3/gdb/configure.tgt
 --- gdb-6.3.orig/gdb/configure.tgt	2004-10-01 09:29:34.000000000 +0200
-+++ gdb-6.3/gdb/configure.tgt	2004-12-04 08:23:53.000000000 +0100
-@@ -111,6 +111,7 @@ m32r*-*-*)		gdb_target=m32r ;;
++++ gdb-6.3/gdb/configure.tgt	2004-11-25 09:32:32.000000000 +0100
+@@ -110,6 +110,7 @@
+ m32r*-*-*)		gdb_target=m32r ;;
  
  m68hc11*-*-*|m6811*-*-*)	gdb_target=m68hc11 ;;
- 
 +m68*-bdm-*)		gdb_target=bdm ;;
+ 
  m68*-cisco*-*)		gdb_target=cisco ;;
  m68*-netx-*)		gdb_target=vxworks68 ;;
- m68*-tandem-*)		gdb_target=st2000 ;;
-diff -Nrup gdb-6.3.orig/gdb/doc/Makefile.in gdb-6.3/gdb/doc/Makefile.in
---- gdb-6.3.orig/gdb/doc/Makefile.in	2004-01-21 19:44:52.000000000 +0100
-+++ gdb-6.3/gdb/doc/Makefile.in	2004-12-05 08:42:24.000000000 +0100
-@@ -299,7 +299,7 @@ gdb.pdf: ${GDB_DOC_FILES}
- 
- # GDB MANUAL: info file
- gdb.info: ${GDB_DOC_FILES}
--	$(MAKEINFO) -I ${READLINE_DIR} -I ${GDBMI_DIR} -I $(srcdir) \
-+	-$(MAKEINFO) -I ${READLINE_DIR} -I ${GDBMI_DIR} -I $(srcdir) \
- 		-o gdb.info $(srcdir)/gdb.texinfo
- 
- # GDB MANUAL: roff translations
-diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
+diff -Nru gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
 --- gdb-6.3.orig/gdb/doc/gdb.texinfo	2004-10-08 21:19:03.000000000 +0200
-+++ gdb-6.3/gdb/doc/gdb.texinfo	2004-12-05 08:16:07.000000000 +0100
-@@ -6975,7 +6975,7 @@ experiment.
++++ gdb-6.3/gdb/doc/gdb.texinfo	2004-12-06 10:07:13.000000000 +0100
+@@ -6975,7 +6975,7 @@
  This command takes no arguments.  It ends the trace experiment, and
  stops collecting data.
  
@@ -202,7 +166,7 @@ diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
  automatically if any tracepoint's passcount is reached
  (@pxref{Tracepoint Passcounts}), or if the trace buffer becomes full.
  
-@@ -12371,6 +12371,7 @@ configurations.
+@@ -12371,6 +12371,7 @@
  * H8/500::                      Renesas H8/500
  * M32R/D::                      Renesas M32R/D
  * M68K::                        Motorola M68K
@@ -210,7 +174,7 @@ diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
  * MIPS Embedded::               MIPS Embedded
  * OpenRISC 1000::               OpenRisc 1000
  * PA::                          HP PA Embedded
-@@ -12649,6 +12650,10 @@ target command for the following ROM mon
+@@ -12649,6 +12650,10 @@
  @item target abug @var{dev}
  ABug ROM monitor for M68K.
  
@@ -221,7 +185,7 @@ diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
  @kindex target cpu32bug
  @item target cpu32bug @var{dev}
  CPU32BUG monitor, running on a CPU32 (M68K) board.
-@@ -12675,6 +12680,101 @@ ROMBUG ROM monitor for OS/9000.
+@@ -12675,6 +12680,101 @@
  
  @end table
  
@@ -323,10 +287,25 @@ diff -Nrup gdb-6.3.orig/gdb/doc/gdb.texinfo gdb-6.3/gdb/doc/gdb.texinfo
  @node MIPS Embedded
  @subsection MIPS Embedded
  
-diff -Nrup gdb-6.3.orig/gdb/infcmd.c gdb-6.3/gdb/infcmd.c
+diff -Nru gdb-6.3.orig/gdb/gdbserver/configure.srv gdb-6.3/gdb/gdbserver/configure.srv
+--- gdb-6.3.orig/gdb/gdbserver/configure.srv	2003-08-08 02:47:28.000000000 +0200
++++ gdb-6.3/gdb/gdbserver/configure.srv	2004-12-06 16:18:19.000000000 +0100
+@@ -37,6 +37,11 @@
+ 			srv_tgtobj="linux-low.o linux-m68k-low.o"
+ 			srv_linux_usrregs=yes
+ 			;;
++  m68*-*-elf*)		srv_regobj=reg-m68k.o
++			srv_tgtobj="linux-low.o linux-m68k-low.o"
++			srv_linux_usrregs=yes
++			;;
++  
+   mips*-*-linux*)	srv_regobj=reg-mips.o
+ 			srv_tgtobj="linux-low.o linux-mips-low.o"
+ 			srv_linux_usrregs=yes
+diff -Nru gdb-6.3.orig/gdb/infcmd.c gdb-6.3/gdb/infcmd.c
 --- gdb-6.3.orig/gdb/infcmd.c	2004-09-13 20:26:28.000000000 +0200
-+++ gdb-6.3/gdb/infcmd.c	2004-12-04 08:23:53.000000000 +0100
-@@ -1288,8 +1288,10 @@ finish_command (char *arg, int from_tty)
++++ gdb-6.3/gdb/infcmd.c	2004-11-25 09:32:32.000000000 +0100
+@@ -1288,8 +1288,10 @@
  			    "finish_command: function has no target type");
  
  	  /* FIXME: Shouldn't we do the cleanups before returning?  */
@@ -338,10 +317,9 @@ diff -Nrup gdb-6.3.orig/gdb/infcmd.c gdb-6.3/gdb/infcmd.c
  
  	  CHECK_TYPEDEF (value_type);
  	  gcc_compiled = BLOCK_GCC_COMPILED (SYMBOL_BLOCK_VALUE (function));
-diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 --- gdb-6.3.orig/gdb/remote-m68k-bdm.c	1970-01-01 01:00:00.000000000 +0100
-+++ gdb-6.3/gdb/remote-m68k-bdm.c	2004-12-05 08:02:11.000000000 +0100
-@@ -0,0 +1,1877 @@
++++ gdb-6.3/gdb/remote-m68k-bdm.c	2005-01-17 17:34:37.000000000 +0100
+@@ -0,0 +1,1923 @@
 +/*
 + * Motorola Background Debug Mode Target
 + * Copyright (C) 1995  W. Eric Norum
@@ -384,7 +362,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 + * 107 North Road
 + * Saskatoon, Saskatchewan, CANADA
 + * S7N 5C6
-+ * 
++ *
 + * eric@skatter.usask.ca
 + *
 + * Coldfire support by:
@@ -405,7 +383,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 + */
 +
 +/*
-+ * $Revision: 1.2 $    $Date: 2005/03/17 06:08:24 $   $Author: codewiz $
++ * $Revision: 1.3 $    $Date: 2005/03/17 06:11:38 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
@@ -429,6 +407,8 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +#include "regcache.h"
 +#include "BDMlib.h"
 +
++#define IS_BDM (!strcmp(target_shortname, "bdm"))
++
 +extern struct target_ops bdm_ops;  /* Forward declaration */
 +
 +/*
@@ -440,7 +420,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +/*
 + * The different register names for the processors.
 + */
-+static const char *cpu32plus_reg_names[] = {
++static const char *cpu32plus_reg_names[NUM_REGS_BDM] = {
 +  "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
 +  "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
 +  "ps", "pc",
@@ -452,7 +432,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 +};
 +
-+static const char *cpu32_reg_names[] = {
++static const char *cpu32_reg_names[NUM_REGS_BDM] = {
 +  "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
 +  "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
 +  "ps", "pc",
@@ -464,7 +444,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 +};
 +
-+static const char *cf_reg_names[] = {
++static const char *cf_reg_names[NUM_REGS_BDM] = {
 +  "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
 +  "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
 +  "ps", "pc",
@@ -476,7 +456,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  "csr", "aatr", "tdr", "pbr", "pbmr", "abhr", "ablr", "dbr", "dbmr",
 +};
 +
-+static const char *cf5272_reg_names[] = {
++static const char *cf5272_reg_names[NUM_REGS_BDM] = {
 +  "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
 +  "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
 +  "ps", "pc",
@@ -488,7 +468,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  "csr", "aatr", "tdr", "pbr", "pbmr", "abhr", "ablr", "dbr", "dbmr",
 +};
 +
-+static const char *cf5282_reg_names[] = {
++static const char *cf5282_reg_names[NUM_REGS_BDM] = {
 +  "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
 +  "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
 +  "ps", "pc",
@@ -502,11 +482,18 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +
 +static const char **bdm_reg_names = cpu32_reg_names;
 +
-+const char *bdm_register_name(int i)
++const char *m68k_bdm_register_name(int i)
 +{
-+  if ((i < 0) || (i >= NUM_REGS))
++  if(IS_BDM)
++  {
++    if ((i < 0) || (i >= NUM_REGS_BDM))
++      return NULL;
++    return bdm_reg_names[i];
++  }
++  else if (i < 29)
++    return gdbarch_register_name(current_gdbarch, i);
++  else
 +    return NULL;
-+  return bdm_reg_names[i];
 +}
 +
 +static int reg_to_dev_num[] = {
@@ -912,7 +899,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +}
 +
 +int
-+cf_stopped_data_address(void)
++cf_stopped_data_address(struct target_ops *target, CORE_ADDR *addr)
 +{
 +  unsigned long tdr;
 +  unsigned long ablr;
@@ -927,7 +914,8 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    bdm_report_error ();
 +
 +  if (tdr & TDR_L1_EAR)  {
-+    return(ablr);
++    *addr = ablr;
++    return 1;
 +  }
 +  return(0);
 +}
@@ -945,7 +933,10 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  unsigned int op;
 +  unsigned int eframe;
 +  int          sp;
-+  
++
++  if(!IS_BDM)
++    return gdbarch_saved_pc_after_call (current_gdbarch, frame);
++
 +  sp = read_register (SP_REGNUM);
 +  eframe = read_memory_integer (sp, 2);
 +  op = read_memory_integer (frame->pc, 4);
@@ -953,18 +944,44 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  /*
 +   * This test could break if some changes the syste call.
 +   */
-+  
++
 +  if (eframe == 0x4080 && op == 0x46fc2700)
 +    return read_memory_integer (sp + 4, 4);
 +  else
 +    return read_memory_integer (sp, 4);
 +}
 +#endif /* SYSCALL_TRAP */
-+  
-+unsigned char *m68k_bdm_breakpoint_from_pc (CORE_ADDR *pcptr, int *lenptr)
++
++int m68k_bdm_decr_pc_after_break()
 +{
-+  *lenptr = breakpointSize;
-+  return breakpointCode;
++  return IS_BDM ? 0 : gdbarch_decr_pc_after_break(current_gdbarch);
++}
++
++int m68k_bdm_num_regs()
++{
++  return IS_BDM ? NUM_REGS_BDM : gdbarch_num_regs(current_gdbarch);
++}
++
++int m68k_bdm_fp_reg()
++{
++  return IS_BDM ? NUM_REGS_BDM : gdbarch_fp0_regnum(current_gdbarch);
++}
++
++extern int m68k_bdm_have_nonsteppable_watchpoint()
++{
++  return IS_BDM ? 1 : gdbarch_have_nonsteppable_watchpoint(current_gdbarch);
++}
++
++
++const unsigned char *m68k_bdm_breakpoint_from_pc (CORE_ADDR *pcptr, int *lenptr)
++{
++  if(IS_BDM)
++  {
++    *lenptr = breakpointSize;
++    return breakpointCode;
++  }
++  else
++    return gdbarch_breakpoint_from_pc(current_gdbarch, pcptr, lenptr);
 +}
 +
 +/*
@@ -1209,7 +1226,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      if (bdmWriteSystemRegister (BDM_REG_SR, sr & immediate) < 0)
 +        bdm_report_error ();
 +      break;
-+    
++
 +    case op_EORIsr:
 +      if (bdmWriteSystemRegister (BDM_REG_SR, sr ^ immediate) < 0)
 +        bdm_report_error ();
@@ -1267,7 +1284,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    bdm_report_error ();
 +}
 +
-+static void 
++static void
 +bdm_setdelay_interactive (char *arg, int from_tty)
 +{
 +  char *dummy;
@@ -1275,7 +1292,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  if (!arg) {
 +    if (bdm_delay >= 0)
 +      printf_filtered("bdm_delay is %d", bdm_delay);
-+    else 
++    else
 +      printf_filtered("using default delay %d", BDM_DEFAULT_DELAY);
 +  }
 +  else {
@@ -1284,7 +1301,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  }
 +}
 +
-+static void 
++static void
 +bdm_setdebug_interactive (char *arg, int from_tty)
 +{
 +  char *dummy;
@@ -1296,7 +1313,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    error ("Argument missing");
 +}
 +
-+static void 
++static void
 +bdm_setdriverdebug_interactive (char *arg, int from_tty)
 +{
 +  char *dummy;
@@ -1306,13 +1323,13 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    error ("Argument missing");
 +}
 +
-+static void 
++static void
 +bdm_set_no_wait (char *arg, int from_tty)
 +{
 +  bdm_gdb_no_wait = 1;
 +}
 +
-+static void 
++static void
 +bdm_set_wait (char *arg, int from_tty)
 +{
 +  if (cpu_type == BDM_CPU32) {
@@ -1325,7 +1342,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    error ("The target is running, please stop first");
 +}
 +
-+static void 
++static void
 +bdm_issue_stop (char *arg, int from_tty)
 +{
 +  bdm_stop_chip ();
@@ -1345,7 +1362,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +
 +  if (bdm_debug_level)
 +    printf_filtered ("bdm open called\n");
-+  
++
 +  if (bdmIsOpen ())
 +    bdm_close (0);
 +  if (name == NULL)
@@ -1373,15 +1390,15 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +
 +  /*
 +   * Ask the driver for it's version.
-+   * We are only interested in the major number when checking the 
++   * We are only interested in the major number when checking the
 +   * driver version number.
 +   */
 +  if (bdmGetDrvVersion (&version) < 0)
 +    bdm_report_error ();
 +  if ((version & 0xff00) != (BDM_DRV_VERSION & 0xff00)) {
 +    printf_filtered ("Incorrect driver version, looking for %i.%i"\
-+                     " and found %i.%i\n", 
-+                     BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff, 
++                     " and found %i.%i\n",
++                     BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff,
 +                     version >> 8, version  & 0xff);
 +    bdmClose ();
 +    error ("Can't run with incorrect BDM driver version");
@@ -1412,7 +1429,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
 +        bdm_report_error ();
 +      cf_debug_ver = (csr >> 20) & 0x0f;
-+      
++
 +      /*
 +       * If the processor is a version 0 read the PC and VBR
 +       * an if they can be read read the mbar. If that fails
@@ -1492,7 +1509,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +#ifdef BDM_GDB_RELEASE_CPU_ON_EXIT
 +  if (bdm_get_status () & BDM_TARGETSTOPPED)
 +    bdm_go ();
-+#else  
++#else
 +  bdm_stop_chip ();
 +  bdm_reset ();
 +#endif
@@ -1559,7 +1576,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 + * We have fallen into an exception supported by the runtime system.
 + * by executing a `breakpoint' instruction.
 + */
-+static void 
++static void
 +analyze_exception (struct target_waitstatus *status)
 +{
 +  unsigned long pc, sp;
@@ -1596,7 +1613,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +}
 +
 +static int sigintFlag;
-+static void 
++static void
 +bdm_signal_handler (int s)
 +{
 +  sigintFlag++;
@@ -1649,7 +1666,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      /* N.B. The UI may destroy our world (for instance by calling
 +         remote_stop,) in which case we want to get out of here as
 +         quickly as possible.  It is not safe to touch scb, since
-+         someone else might have freed it.  The ui_loop_hook signals that 
++         someone else might have freed it.  The deprecated_ui_loop_hook signals that
 +         we should exit by returning 1. */
 +
 +      if (deprecated_ui_loop_hook)
@@ -1825,12 +1842,12 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  int ret;
 +
 +  if (regno < 0) {
-+    for (regno = 0 ; regno < NUM_REGS ; regno++)
++    for (regno = 0 ; regno < NUM_REGS_BDM ; regno++)
 +      bdm_fetch_register (regno);
 +  }
 +  else {
 +    /*
-+     * When the target is running the 
++     * When the target is running the
 +     * cpu registers can not be accessed.
 +     */
 +    if (bdm_gdb_no_wait && (bdm_get_status () == 0)) {
@@ -1857,7 +1874,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +            ret = bdmReadControlRegister (reg_to_dev_num[cfreg], &l);
 +        }
 +        else {
-+          error ("Bad register number (%d)", regno); 
++          error ("Bad register number (%d)", regno);
 +          return;
 +        }
 +      }
@@ -1889,9 +1906,9 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +
 +  if (bdm_gdb_no_wait && (bdm_get_status () == 0))
 +    return;
-+  
++
 +  if (regno == -1) {
-+    for (regno = 0 ; regno < NUM_REGS ; regno++)
++    for (regno = 0 ; regno < NUM_REGS_BDM ; regno++)
 +      bdm_store_register (regno);
 +  }
 +  else {
@@ -1915,7 +1932,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +          ret = bdmWriteControlRegister (reg_to_dev_num[cfreg], l);
 +      }
 +      else {
-+        error ("Bad register number (%d)", regno); 
++        error ("Bad register number (%d)", regno);
 +        return;
 +      }
 +    }
@@ -1988,7 +2005,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +bdm_cf_pst (char *args, int from_tty)
 +{
 +  int pst;
-+  
++
 +  if (!args)
 +  {
 +    if (bdmColdfireGetPST (&pst) < 0)
@@ -2003,7 +2020,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      pst = 1;
 +    if (bdmColdfireSetPST (pst) < 0)
 +      printf_filtered ("error setting the PST state: %d\n", errno);
-+  }  
++  }
 +}
 +
 +/*
@@ -2019,7 +2036,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  struct value* val;
 +  struct type type;
 +  unsigned long l;
-+  
++
 +  if (!exp) {
 +    if (reg < 0)
 +      error ("you need to supply a 16bit register value, eg VBR = 0x801\n");
@@ -2033,7 +2050,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +        error ("format specifiers are 'd' or 'x\n");
 +      exp++;
 +    }
-+  
++
 +    expr = parse_expression (exp);
 +    old_chain = make_cleanup (free_current_contents, &expr);
 +    val = evaluate_expression (expr);
@@ -2046,10 +2063,10 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +      do_cleanups (old_chain);
 +      error ("the register can be a literal or a gdb variable");
 +    }
-+    
++
 +    do_cleanups (old_chain);
 +  }
-+  
++
 +  if (bdmReadControlRegister (reg, &l) < 0)
 +    bdm_report_error ();
 +
@@ -2068,10 +2085,10 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  struct expression *expr;
 +  struct value* val;
 +  char* end;
-+  
++
 +  if (!exp && (reg < 0))
 +    error ("you need to supply a 16bit register value, eg VBR = 0x801\n");
-+  
++
 +  /*
 +   * Do a little token parsing to split the expression into 2 separate parts
 +   * and then parse each one. There may be a better way but it will do.
@@ -2086,7 +2103,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  }
 +
 +  *end = '\0';
-+  
++
 +  expr = parse_expression (exp);
 +  old_chain = make_cleanup (free_current_contents, &expr);
 +  val = evaluate_expression (expr);
@@ -2100,13 +2117,13 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    do_cleanups (old_chain);
 +    error ("the register can be a literal or a gdb variable");
 +  }
-+    
++
 +  do_cleanups (old_chain);
 +
 +  old_chain = 0;
-+  
++
 +  exp = end + 1;
-+  
++
 +  expr = parse_expression (exp);
 +  old_chain = make_cleanup (free_current_contents, &expr);
 +  val = evaluate_expression (expr);
@@ -2120,7 +2137,7 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +    do_cleanups (old_chain);
 +    error ("the data to write can be a literal or a gdb variable");
 +  }
-+  
++
 +  do_cleanups (old_chain);
 +
 +  if (bdmWriteControlRegister (reg, l) < 0)
@@ -2167,6 +2184,13 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  bdm_ops.to_has_registers = 1;
 +  bdm_ops.to_has_execution = 1;
 +  bdm_ops.to_magic = OPS_MAGIC;
++  bdm_ops.to_stopped_by_watchpoint = cf_stopped_by_watchpoint;
++  bdm_ops.to_can_use_hw_breakpoint = cf_can_use_watchpoint;
++  bdm_ops.to_stopped_data_address = cf_stopped_data_address;
++  bdm_ops.to_insert_hw_breakpoint = cf_insert_hw_breakpoint;
++  bdm_ops.to_remove_hw_breakpoint = cf_remove_hw_breakpoint;
++  bdm_ops.to_insert_watchpoint = cf_insert_watchpoint;
++  bdm_ops.to_remove_watchpoint = cf_remove_watchpoint;
 +};
 +
 +void
@@ -2216,6 +2240,6 @@ diff -Nrup gdb-6.3.orig/gdb/remote-m68k-bdm.c gdb-6.3/gdb/remote-m68k-bdm.c
 +  add_com ("bdm-write-creg", class_obscure,
 +     bdm_write_control_reg,
 +     "Write a control register from the processor.");
-+           
++
 +  add_target (&bdm_ops);
 +}
