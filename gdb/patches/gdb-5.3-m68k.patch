@@ -355,7 +355,7 @@ diff -Nru insight-5.3.orig/gdb/remote-m68k-bdm.c insight-5.3/gdb/remote-m68k-bdm
 + */
 +
 +/*
-+ * $Revision: 1.1 $    $Date: 2003/06/14 02:25:18 $   $Author: codewiz $
++ * $Revision: 1.1 $    $Date: 2003/07/11 12:26:13 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
