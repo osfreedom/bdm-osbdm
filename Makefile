@@ -1,10 +1,13 @@
 #
-# $Id: Makefile,v 1.1 2003/07/01 13:45:20 codewiz Exp $
+# $Id: Makefile,v 1.2 2003/07/04 22:21:50 codewiz Exp $
 #
 # Build distribution archives - crude but effective
 # Author: Bernardo Innocenti <bernie@develer.com>
 #
 # $Log: Makefile,v $
+# Revision 1.2  2003/07/04 22:21:50  codewiz
+# Add missing -o to find command line.
+#
 # Revision 1.1  2003/07/01 13:45:20  codewiz
 # Build distribution archives
 #
@@ -45,7 +48,7 @@ dist-m68k:
 			-name '*.o' -o \
 			-name '*.a' -o \
 			-name '*.ko*' -o \
-			-name '.*.cmd' \
+			-name '.*.cmd' -o \
 			-name '*.mod.c' \
 		| xargs $(RM_R)
 	tar -c -v $(M68K_DISTDIR) | $(GZIP) >"$(M68K_TARGZ)"
@@ -61,7 +64,7 @@ dist-m683xx:
 			-name '*.o' -o \
 			-name '*.a' -o \
 			-name '*.ko*' -o \
-			-name '.*.cmd' \
+			-name '.*.cmd' -o \
 			-name '*.mod.c' \
 		| xargs $(RM_R)
 	tar -c -v $(M683XX_DISTDIR) | $(GZIP) >"$(M683XX_TARGZ)"
