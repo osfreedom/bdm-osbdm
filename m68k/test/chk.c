@@ -403,7 +403,9 @@ checkRegisters (int cpu, int loops)
     reg_chk_loop_failed = 0;
     printf ("Register test, %4d of %4d : \n", loop, loops);
     for (reg = BDM_REG_D0; reg <= BDM_REG_A7; reg++) {
-      printf ("   %c%02d : ", reg < BDM_REG_A0 ? 'D' : 'A', reg);
+      printf ("   %c%02d : ",
+	      reg < BDM_REG_A0 ? 'D' : 'A',
+	      reg < BDM_REG_A0 ? reg : reg-BDM_REG_A0);
       for (i = 0; i < sizeof(test_pattern) / sizeof (test_pattern[0]); i++) {
         if (bdmWriteRegister (reg, test_pattern[i]) < 0) {
           reg_chk_failed = reg_chk_loop_failed = 1;
