@@ -56,7 +56,7 @@
 #include "bdmRemote.h"
 
 #define BDM_REMOTE_OPEN_WAIT (15)
-#define BDM_REMOTE_TIMEOUT   (5)
+#define BDM_REMOTE_TIMEOUT   (67)
 #define BDM_REMOTE_BUF_SIZE  (4096)
 
 /*
@@ -209,12 +209,13 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
       memset (buf, 0, buf_len);
 
 #if defined (__WIN32__)
-      cread = recv (fd, buf, buf_len, 0);
+      cread = recv (fd, buf, buf_len-1, 0);
 #else
-      cread = read (fd, buf, buf_len);
+      cread = read (fd, buf, buf_len-1);
 #endif
 
       if (cread > 0) {
+        buf[cread] = 0;
 #if BDM_REMOTE_TRACE
         printf ("bdm-remote:wait: [%d] %s\n", cread, buf);
 #endif
@@ -465,10 +466,7 @@ bdmRemoteOpen (const char *name)
    * Say hello. This will cause the server to open the port.
    */
 
-  strcpy (buf, "HELO ");
-  buf_len = sizeof "HELO " - 1;
-  buf_len += sprintf (buf + buf_len, "%s", device);
-  buf_len++;
+  buf_len = 1 + sprintf (buf, "HELO %s", device);
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len) {
      int save_errno = errno;
@@ -552,10 +550,7 @@ bdmRemoteIoctlInt (int fd, int code, int *var)
    * Pack the message and send.
    */
 
-  strcpy (buf, "IOINT ");
-  buf_len = sizeof "IOINT " - 1;
-  buf_len += sprintf (buf + buf_len, "0x%x,0x%x", id, *var);
-  buf_len++;
+  buf_len = 1 + sprintf (buf, "IOINT 0x%x,0x%x", id, *var);
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
@@ -614,10 +609,7 @@ bdmRemoteIoctlCommand (int fd, int code)
    * Pack the message and send.
    */
 
-  strcpy (buf, "IOCMD ");
-  buf_len = sizeof "IOCMD " - 1;
-  buf_len += sprintf (buf + buf_len, "0x%x", id);
-  buf_len++;
+  buf_len = 1 + sprintf (buf, "IOCMD 0x%x", id);
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
@@ -672,11 +664,8 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
    * Pack the message and send.
    */
 
-  strcpy (buf, "IOIO ");
-  buf_len = sizeof "IOIO " - 1;
-  buf_len += sprintf (buf + buf_len, "0x%x,0x%x,0x%x",
+  buf_len = 1 + sprintf (buf, "IOIO 0x%x,0x%x,0x%x",
                       id, ioc->address, ioc->value);
-  buf_len++;
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
@@ -733,10 +722,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
    * label, errno, the length then the data.
    */
 
-  strcpy (buf, "READ ");
-  buf_len  = sizeof "READ " - 1;
-  buf_len += sprintf (buf + buf_len, "%ld", nbytes);
-  buf_len++;
+  buf_len = 1 + sprintf (buf, "READ %ld", nbytes);
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;
@@ -814,7 +800,7 @@ bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
       }
 
       if (buf_index < buf_len) {
-        buf[0]  = buf[buf_index + 1];
+        buf[0]  = buf[buf_index];
         buf_len = 1;
       }
       else
@@ -847,13 +833,11 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
   if (nbytes == 0)
     return 0;
 
-  strcpy (buf, "WRITE ");
-  buf_len  = sizeof "WRITE " - 1;
-  buf_len += sprintf (buf + buf_len, "%ld,", nbytes);
+  buf_len = sprintf (buf, "WRITE %ld,", nbytes);
   bytes = 0;
 
   while (bytes < nbytes) {
-    while ((bytes < nbytes) && ((BDM_REMOTE_BUF_SIZE - buf_len) > 1)) {
+    while ((bytes < nbytes) && ((BDM_REMOTE_BUF_SIZE - buf_len) > 2)) {
       buf[buf_len] = hex[(*cbuf >> 4) & 0xf];
       buf_len++;
       buf[buf_len] = hex[*cbuf & 0xf];
@@ -862,6 +846,7 @@ bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
       bytes++;
     }
 
+    buf[buf_len] = 0;
     if (bdmSocketSend (fd, buf, buf_len) != buf_len)
       return -1;
 

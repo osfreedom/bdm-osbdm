@@ -234,7 +234,9 @@ get_message (char *buf, int buf_len)
     numfds = select (0 + 1, &readfds, 0, 0, 0);
 
     if (numfds > 0) {
-      return read (0, buf, buf_len);
+      int ret = read (0, buf, buf_len-1);
+      if (ret>=0) buf[ret]=0;
+      return ret;
     }
   }
 }
@@ -458,22 +460,26 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
   unsigned long msg_bytes;
   int           msg_index;
   unsigned char octet = 0;
+  char *msg;
 
-  message  += sizeof "WRITE";
-  nbytes    = strtoul (message, NULL, 0);
+  nbytes    = strtoul (message + sizeof "WRITE", &msg, 0);
+  if (*msg==',') msg++;
+
   buf       = xmalloc (nbytes);
   byte      = 0;
   msg_bytes = 0;
-  msg_index = strchr (message, ',') - message + 1;
-  msg_len  -= msg_index + 1;
+
+  msg_len  -= msg-message;
+  msg_buf_len -= msg-message;
   
   if (debug)
     syslog (LOG_INFO, "write: nbytes %ld (%ld)", nbytes, nbytes * 2);
       
   while (byte < nbytes) {
+    msg_index = 0;
     if (msg_len < 2) {
       int new_read;
-      new_read = get_message (message + msg_len, msg_buf_len - msg_len);
+      new_read = get_message (msg + msg_len, msg_buf_len - msg_len);
       if (new_read < 0) {
         syslog (LOG_INFO, "write error: client timeout");
         xfree (buf);
@@ -482,20 +488,26 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       msg_len += new_read;
     }
     
-    if (debug)
-      syslog (LOG_INFO, "write read: message len is %d (%ld/%ld)",
+    if (msg_len>0 && !msg[msg_len-1]) msg_len--;
+
+    if (debug) {
+      syslog (LOG_INFO, "write read: msg len is %d (%ld/%ld)",
               msg_len, msg_bytes,  msg_len + msg_bytes);
+      syslog (LOG_INFO, "write read msg: %s", msg+msg_index);
+      if (msg_len>900) syslog (LOG_INFO, "write read msg end: %s",
+			   msg+msg_len-100);
+    }
 
     while ((byte < nbytes) && ((msg_len - msg_index) > 1)) {
-      if ((message[msg_index] >= '0') && (message[msg_index] <= '9'))
-        octet = message[msg_index] - '0';
-      else if ((message[msg_index] >= 'a') && (message[msg_index] <= 'f')) {
-        message[msg_index] = tolower (message[msg_index]);
-        octet = message[msg_index] - 'a' + 10;
+      if ((msg[msg_index] >= '0') && (msg[msg_index] <= '9'))
+        octet = msg[msg_index] - '0';
+      else if ((msg[msg_index] >= 'a') && (msg[msg_index] <= 'f')) {
+        msg[msg_index] = tolower (msg[msg_index]);
+        octet = msg[msg_index] - 'a' + 10;
       }
       else {
-        syslog (LOG_INFO, "write read: msg bytes %ld, index %d, invalid data %#2x",
-                msg_bytes, msg_index, message[msg_index]);
+        syslog (LOG_INFO, "write read: hbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
+                byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
       
       msg_index++;
@@ -503,15 +515,15 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       
       octet <<= 4;
 
-      if ((message[msg_index] >= '0') && (message[msg_index] <= '9'))
-        octet |= message[msg_index] - '0';
-      else if ((message[msg_index] >= 'a') && (message[msg_index] <= 'f')) {
-        message[msg_index] = tolower (message[msg_index]);
-        octet |= message[msg_index] - 'a' + 10;
+      if ((msg[msg_index] >= '0') && (msg[msg_index] <= '9'))
+        octet |= msg[msg_index] - '0';
+      else if ((msg[msg_index] >= 'a') && (msg[msg_index] <= 'f')) {
+        msg[msg_index] = tolower (msg[msg_index]);
+        octet |= msg[msg_index] - 'a' + 10;
       }
       else {
-        syslog (LOG_INFO, "write read: msg bytes %ld, index %d, invalid data %#2x",
-                msg_bytes, msg_index, message[msg_index]);
+        syslog (LOG_INFO, "write read: lbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
+                byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
     
       msg_index++;
@@ -522,14 +534,8 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       byte++;
     }
 
-    if (msg_index < msg_len) {
-      message[0] = message[msg_index];
-      msg_len    = 1;
-    }
-    else
-      msg_len = 0;
-        
-    msg_index = 0;
+    memcpy (msg, msg+msg_index, msg_len-msg_index);
+    msg_len -= msg_index;
   }
 
   written_nbytes = bdmWrite (buf, nbytes);
@@ -551,7 +557,8 @@ void
 quit ()
 {
   bdmClose ();
-  syslog (LOG_INFO, "host finished: %s (%s)", current_host, current_addr);
+  if (debug)
+    syslog (LOG_INFO, "host finished: %s (%s)", current_host, current_addr);
   exit (0);
 }
 
@@ -683,6 +690,7 @@ main (int argc, char **argv)
              program_name);
     exit (1);
   }
+  myname[MAXHOSTNAMELEN-1] = 0;
 
   /*
    * Now see if we can get a FQDN for this host.
@@ -691,8 +699,10 @@ main (int argc, char **argv)
   hp = gethostbyname (myname);
   if (hp && (strlen (hp->h_name) > strlen (myname)))
     strncpy (myname, hp->h_name, MAXHOSTNAMELEN);
+  myname[MAXHOSTNAMELEN-1] = 0;
 
   bdmLogSyslog ();
+
   /*
    * Don't pay attention to SIGPIPE; read will give us the problem
    * if it happens.
@@ -711,7 +721,8 @@ main (int argc, char **argv)
       current_addr = myname;
   }
 
-  syslog (LOG_INFO, "host connected: %s (%s)", current_host, current_addr);
+  if (debug)
+    syslog (LOG_INFO, "host connected: %s (%s)", current_host, current_addr);
   
   /*
    * Say hello to the remote end. It will be waiting.
@@ -725,8 +736,11 @@ main (int argc, char **argv)
     }
 
     if (cread > 0) {
-      if (debug > 1)
-        syslog (LOG_INFO, "msg: %s", buf);
+      if (debug > 1) {
+	int len = strlen (buf);
+	syslog (LOG_INFO, "msg: %s", buf);
+	if (len>900) syslog (LOG_INFO, "msg end: %s", buf+len-100);
+      }
 
       process_message (buf, cread, BDM_SERVER_BUF_SIZE);
 
