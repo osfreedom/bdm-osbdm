@@ -25,15 +25,18 @@ LIBDIR := $(prefix)/lib
 
 LIB    := libBDM.a
 
-CFLAGS := -Wall -g -O -I. -I../driver $(BUILD)
+CFLAGS := -Wall -g -O4 -I. -I../driver $(BUILD)
 
 ifeq ($(OSTYPE),cygwin)
+# work around cygwin issue about the location of windows.h
 CFLAGS += -I /usr/include/w32api
+else
+CFLAGS += -DBDM_IOPERM
 endif
 
 all: $(LIB)
 
-$(LIB): $(LIB)(bdmIO.o)
+$(LIB): $(LIB)(bdmIO.o) $(LIB)(bdmRemote.o)
 	ranlib $(LIB)
 
 install: $(LIB)
@@ -43,8 +46,11 @@ install: $(LIB)
 	cp -f $(LIB) $(LIBDIR)/$(LIB)
 	ranlib $(LIBDIR)/$(LIB)
 
-bdmIO.o: bdmRemote.c BDMlib.h \
+bdmIO.o: bdmIO.c bdmRemote.h BDMlib.h \
+	../driver/ioperm/ioperm.c \
 	../driver/win/win-bdm.c ../driver/win/win-io.h
+
+bdmRemote.o: bdmRemote.c bdmRemote.h BDMlib.h
 
 clean:
 	rm -f *.o $(LIB)
