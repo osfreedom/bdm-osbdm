@@ -18,6 +18,7 @@ AM_INIT_AUTOMAKE
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_INSTALL
+AC_PROG_LEX
 
 CFLAGS=${CFLAGS-"-Wall -O2 -g"}
 AC_CHECK_TOOL(CC, gcc, gcc)
@@ -119,6 +120,27 @@ AC_ARG_ENABLE(flashlib,
 
 AM_CONDITIONAL(BDMFLASHLIB, test x$bdm_flashlib = xtrue)
 
+AC_ARG_ENABLE(bdmflash,
+ [  --enable-bdmflash Build the bdmflash utility (enabled)],
+ [case "${enableval}" in
+    yes) bdm_bdmflash=true ;;
+    no)  bdm_bdmflash=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmflash) ;;
+   esac],
+ [bdm_bdmflash=true])
+
+AC_ARG_ENABLE(bdmmon,
+ [  --enable-bdmflash Build the bdmmon utility (enabled)],
+ [case "${enableval}" in
+    yes) bdm_bdmmon=true ;;
+    no)  bdm_bdmmon=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmmon) ;;
+   esac],
+ [bdm_bdmmon=true])
+
+AM_CONDITIONAL(BDMFLASH, test x$bdm_bdmflash = xtrue)
+AM_CONDITIONAL(BDMMON, test x$bdm_bdmmon = xtrue)
+
 dnl
 dnl If on a Win32 target such as MinGW do not build
 dnl the server.
@@ -134,7 +156,8 @@ esac
 AM_CONDITIONAL(WIN32, test x$bdm_win32 = xtrue)
 
 AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
-AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
+AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="flashlib ${bdm_subdirs}")
+AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], bdm_subdirs="bdmabstraction ${bdm_subdirs}")
 AC_SUBST(BDM_SUBDIRS, ${bdm_subdirs})
 
 dnl
@@ -146,5 +169,6 @@ AC_CONFIG_FILES(Makefile \
                 lib/Makefile \
                 server/Makefile \
                 test/Makefile \
+                bdmabstraction/Makefile \
                 utils/Makefile)
 AC_OUTPUT

@@ -1,0 +1,5 @@
+.deps
+Makefile.in
+Makefile
+libbdmabstraction.a
+*.o

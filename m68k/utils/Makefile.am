@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.4 2003/12/29 23:02:28 joewolf Exp $
+## $Id: Makefile.am,v 1.5 2003/12/29 23:43:26 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -31,6 +31,14 @@ if BDMCTRL
 bin_PROGRAMS += bdmctrl
 endif
 
+if BDMFLASH
+bin_PROGRAMS += bdmflash
+endif
+
+if BDMMON
+bin_PROGRAMS += bdmmon
+endif
+
 bdmctrl_SOURCES = \
 	bdmctrl.c
 #bdmctrl_CFLAGS = \
@@ -46,3 +54,18 @@ bdmctrl_LDADD = ../lib/libBDM.a ../flashlib/libbdmflash.a \
 bdmreset_SOURCES = \
 	bdmreset.c
 bdmreset_LDADD = ../lib/libBDM.a
+
+
+bdmflash_SOURCES = bdmflash.c
+bdmflash_CFLAGS = @CFLAGS@ -I$(top_srcdir)/bdmabstraction
+bdmflash_LDADD = \
+	-L$(top_builddir)/bdmabstraction -lbdmabstraction \
+	-L$(top_builddir)/lib -lBDM
+
+
+bdmmon_SOURCES = bdmmon.l
+bdmmon_CFLAGS = @CFLAGS@ -I$(top_srcdir)/bdmabstraction
+bdmmon_LDADD = \
+	-L$(top_builddir)/bdmabstraction -lbdmabstraction \
+	-L$(top_builddir)/lib -lBDM
+
