@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.13 2004/01/21 22:17:09 joewolf Exp $
+/* $Id: bdmctrl.c,v 1.14 2004/03/24 23:44:03 joewolf Exp $
  *
  * A utility to control bdm targets.
  *
@@ -108,27 +108,6 @@ static arch_t arch[] = {
 
 
 
-static void usage(char *progname, char *fmt, ...)
-{
-    va_list args;
-
-    if (fmt) {
-	va_start (args, fmt);
-	vfprintf (stderr, fmt, args);
-	va_end (args);
-    }
-
-    fprintf(stderr,
-	    "Usage: %s [options] <device> [<command> [arguments [...]]]\n"
-	    " where options are one ore more of:\n"
-	    "   -d <level> (default=0) Choose driver debug level.\n"
-	    "   -v <level> (default=1) Choose verbosity level.\n"
-	    "   -D <delay> (default=0) Delay count for BDM clock generation.\n"
-	    "   -f                     turn warnings into fatal errors\n",
-	    progname);
-    exit(EXIT_FAILURE);
-}
-
 static void clean_exit (int exit_value)
 {
     int i;
@@ -198,7 +177,7 @@ static char *get_var (const char *name)
 	}
     }
 
-    fatal ("Variable %s note defined\n", name);
+    fatal ("Variable %s not defined\n", name);
 }
 
 /* Duplicate a string with (rudimentary) variable substitution.
@@ -696,15 +675,15 @@ static void check_alignment (unsigned long adr, char size)
    functions now
  */
 
-/* Generate random test patterns for register/memory checks. We use only
-   bits 3..18 of the generated numbers since the lower bits are less random
-   and bit 31 would always be zero on a typical host.
+/* Register test patterns for the "check-mem" and "check-register" commands.
+   if argv==NULL, argc random patterns are generated.
  */
 static void cmd_patterns (size_t argc, char *argv[])
 {
     unsigned int i;
 
-    if (argc==3 && STREQ (argv[1], "random")) {
+    if (argc==3 && argv && STREQ (argv[1], "random")) {
+	warn ("command \"patterns random CNT\" deprecated. Use \"random-patterns CNT\" instead.\n");
 	argc = strtoul (argv[2], NULL, 0);
 	argv = 0;
     }
@@ -733,9 +712,18 @@ static void cmd_patterns (size_t argc, char *argv[])
     }
 }
 
+/* Generate random test patterns for register/memory checks. We use only
+   bits 3..18 of the generated numbers since the lower bits are less random
+   and bit 31 would always be zero on a typical host.
+ */
+static void cmd_patterns_rnd (size_t argc, char *argv[])
+{
+    cmd_patterns (strtoul (argv[1], NULL, 0), NULL);
+}
+
 /* check registers
  */
-static void cmd_check_register (size_t argc, char **argv)
+static void cmd_check_reg (size_t argc, char **argv)
 {
     unsigned int i;
 
@@ -752,7 +740,7 @@ static void cmd_check_register (size_t argc, char **argv)
 
 /* dump register
  */
-static void cmd_dump_register (size_t argc, char **argv)
+static void cmd_dump_reg (size_t argc, char **argv)
 {
     unsigned int i;
     unsigned long reg_value;
@@ -1097,12 +1085,24 @@ static void cmd_erase (size_t argc, char **argv)
     unsigned long adr = strtoul (argv[1], NULL, 0);
 
     if (STREQ (argv[2], "wait")) {
+	warn ("command \"erase BASE wait\" deprecated. Use \"erase-wait BASE\" instead.\n");
 	ret = flash_erase_wait (adr);
     } else {
 	ret = flash_erase (adr, strtol (argv[2], NULL, 0));
     }
 
     if (ret) {
+	if (verbosity) printf ("OK\n");
+    } else {
+	warn ("FAIL\n");
+    }
+}
+
+/* wait for flash hardware to finish erase operation
+ */
+static void cmd_erase_wait (size_t argc, char **argv)
+{
+    if (flash_erase_wait (strtoul (argv[1], NULL, 0))) {
 	if (verbosity) printf ("OK\n");
     } else {
 	warn ("FAIL\n");
@@ -1143,30 +1143,33 @@ static void cmd_source (size_t argc, char **argv)
  */
 static struct command_s {
     char *name;
+    char *args;
     size_t min, max; /* number of arguments (inclusive command by itself) */
     void (*func)(size_t, char**);
 } command[] = {
-    { "reset",          1,       1, cmd_reset },
-    { "check-register", 2, INT_MAX, cmd_check_register },
-    { "dump-register",  2, INT_MAX, cmd_dump_register },
-    { "check-mem",      3,       3, cmd_check_mem },
-    { "dump-mem",       4,       5, cmd_dump_mem },
-    { "write",          4,       4, cmd_write },
-    { "load",           2, INT_MAX, cmd_load },
-    { "execute",        1,       2, cmd_execute },
-    { "step",           1,       2, cmd_step },
-    { "set",            3,       3, cmd_set },
-    { "read",           1, INT_MAX, cmd_read },
-    { "sleep",          2,       2, cmd_sleep },
-    { "wait",           1,       1, cmd_wait },
-    { "time",           1,       1, cmd_time },
-    { "echo",           1, INT_MAX, cmd_echo },
-    { "exit",           1,       1, cmd_exit },
-    { "source",         1, INT_MAX, cmd_source },
-    { "patterns",       2, INT_MAX, cmd_patterns },
-    { "flash-plugin",   3, INT_MAX, cmd_flashplug },
-    { "flash",          2,       2, cmd_flash },
-    { "erase",          2,       3, cmd_erase },
+    { "reset",           "",                    1,       1, cmd_reset },
+    { "check-register",  "REG [REG ...]",       2, INT_MAX, cmd_check_reg },
+    { "dump-register",   "REG [REG ...]",       2, INT_MAX, cmd_dump_reg },
+    { "check-mem",       "ADR SIZ",             3,       3, cmd_check_mem },
+    { "dump-mem",        "ADR SIZ WIDTH [FN]",  4,       5, cmd_dump_mem },
+    { "write",           "DST VAL WIDTH",       4,       4, cmd_write },
+    { "load",            "[-v] FN [SEC ...]",   2, INT_MAX, cmd_load },
+    { "execute",         "[ADR]",               1,       2, cmd_execute },
+    { "step",            "[ADR]",               1,       2, cmd_step },
+    { "set",             "VAR VAL",             3,       3, cmd_set },
+    { "read",            "[VAR ...]",           1, INT_MAX, cmd_read },
+    { "sleep",           "SEC",                 2,       2, cmd_sleep },
+    { "wait",            "",                    1,       1, cmd_wait },
+    { "time",            "",                    1,       1, cmd_time },
+    { "echo",            "[ARG ...]",           1, INT_MAX, cmd_echo },
+    { "exit",            "",                    1,       1, cmd_exit },
+    { "source",          "[FN [ARG ...]]",      1, INT_MAX, cmd_source },
+    { "patterns",        "PAT [PAT ...]",       2, INT_MAX, cmd_patterns },
+    { "random-patterns", "CNT",                 2,       2, cmd_patterns_rnd },
+    { "flash-plugin",    "ADR LEN FN [FN ...]", 3, INT_MAX, cmd_flashplug },
+    { "flash",           "ADR",                 2,       2, cmd_flash },
+    { "erase",           "BASE OFF",            2,       3, cmd_erase },
+    { "erase-wait",      "BASE",                2,       2, cmd_erase_wait },
 };
 
 /* search a command and execute it
@@ -1187,6 +1190,36 @@ static void do_command (size_t argc, char **argv)
     }
 
     fatal ("%s: unknwn command\n", argv[0]);
+}
+
+static void usage(char *progname, char *fmt, ...)
+{
+    unsigned int i;
+
+    va_list args;
+
+    if (fmt) {
+	va_start (args, fmt);
+	vfprintf (stderr, fmt, args);
+	va_end (args);
+    }
+
+    fprintf(stderr,
+	    "Usage: %s [options] <device> [<command> [arguments [...]]]\n"
+	    " where options are one ore more of:\n"
+	    "   -d <level> (default=0) Choose driver debug level.\n"
+	    "   -v <level> (default=1) Choose verbosity level.\n"
+	    "   -D <delay> (default=0) Delay count for BDM clock generation.\n"
+	    "   -f                     turn warnings into fatal errors\n"
+	    "\n"
+	    " available commands are:\n",
+	    progname);
+
+    for (i=0; i<NUMOF(command); i++) {
+	fprintf (stderr, "   %s %s\n", command[i].name, command[i].args);
+    }
+
+    exit(EXIT_FAILURE);
 }
 
 int main (int argc, char *argv[])

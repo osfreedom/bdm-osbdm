@@ -18,9 +18,11 @@ Bdmctrl is invoked like this:
       -D <delay> (default=0) Delay count for BDM clock generation.
       -f                     turn warnings into fatal errors
 
-If a command is specified, it is executed. Otherwise commands are read from
-stdin. The most common way of invocations is to give the "source" command on
-the command line (see below). So a typical invocation would be like this:
+If a command is specified on the command line, bdmctrl executs the command
+and exits. If no command is specified on the command line, commands are read
+and executed from stdin until EOF is encountered. The most common way of
+invocations is to give the "source" command on the command line (see below).
+So a typical invocation would be like this:
 
   bdmctrl /dev/bdmicd0 source /foo/bar/baz myfirmware.coff
 
@@ -29,7 +31,7 @@ or like this:
   echo source /foo/bar/baz myfirmware.coff | bdmctrl /dev/bdmicd0
 
 The two examples above are semantically almost identical. Please check the
-discussion about stdin in the description to the source command for the
+discussion about stdin in the description to the "source" command for the
 exception.
 
 For example, the bundeled test script can be executed with
@@ -57,10 +59,12 @@ No quoting is supported. After the split, variable substitution (see the
 Register names are prefixed by a '%' (for example %sp) and can be in mixed
 case. The '%' can be omitted in most cases, but this is not recommended.
 
-Some commands accept a <value>. If <value> begins with a digit, it will be
-parsed as a number. If it begins with a '%', it will be parsed as a register
-name. Otherwise it is assumed to be a symbol and its value will be looked
-up in the open symbol files.
+Some commands accept a VAL. If VAL begins with a digit, it will be
+parsed as a number. If it begins with "0x" it is parsed as a hex number.
+If it begins with "0" it is parsed as an octal number. If it begins
+with "%", it will be parsed as a register name and the contents of the named
+register will be taken. Otherwise it is assumed to be a symbol and its value
+will be looked up in the open symbol files.
 
 
 Supported commands and their parameters
@@ -75,61 +79,66 @@ time
 exit
   exit bdmctrl immediately.
 
-sleep <seconds>
-  sleep for <seconds>.
+sleep SEC
+  sleep for SEC seconds.
 
-echo [ <arguments> ... ]
+echo [ ARG ... ]
   print a line of text.
 
-set <name> <value>
-  define variable <name> and set its value to <value>
+set VAR VAL
+  define variable VAR and set its value to VAL
 
-read [ <var> ... ]
+read [ VAR ... ]
   read a line from stdin, split it into arguments and assign the arguments
   to specified variables.
 
 wait
   wait until target is halted/stopped.
 
-patterns <number> [ <number> ... ]
-patterns random <count>
-  In the first form, the provided numbers are taken as test patterns. In the
-  second form <count> random patterns are generated. On startup, bdmctrl
-  generates 37 random testpatterns. The patterns are 32 bits wide.
+patterns PAT [ PAT ... ]
+  The provided arguments numbers are taken as test patterns for the
+  "check-register" and "check-mem" commands. The patterns are 32 bits wide.
+  On startup, bdmctrl generates 37 random testpatterns.
   In general, a prime number of random patterns is best to _detect_ errors.
+  This is why 37 randoms are generated at startup, so you don't need to do
+  this yourself.
   Once an error is detected, you might want to define your own patterns in
-  order to locate/isolate/understand the problem.
+  order to locate/isolate/understand why the check-XXX command fails.
 
-check-register <register> [ <register> ... ]
+random-patterns CNT
+  Generate CNT random test patterns. See description of "patterns" command
+  for more information.
+
+check-register REG [ REG ... ]
   The specified registers are checked with random testpatterns. After the
   test, the original values of the registers are restored.
 
-dump-register <register> [ <register> ... ]
+dump-register REG [ REG ... ]
   The contents of the specified registers are dumped to stdout.
 
-check-mem <address> <size>
+check-mem ADR SIZ
   The specified memory region is checked with a random testpattern. In
   addition, an alingnment test is done. After the test the original memory
   contents are restored.
-  <address> and <size> can be a number, a register or a symbol.
+  ADR and SIZ can be a number, a register or a symbol.
 
-dump-mem <address> <size> <width> [<filename>]
-  Dump memory contents to stdout. The <width> argument speciefies whether
+dump-mem ADR SIZ WIDTH [ FN ]
+  Dump memory contents to stdout. The WIDTH argument speciefies whether
   bytes, words or longwords are dumped.
-  <address> and <size> can be a number, a register or a symbol.
-  <width> can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
-  if <filename> is specified, the contents are dumped to the named file.
+  ADR and SIZ can be a number, a register or a symbol.
+  WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
+  if FN is specified, the contents are dumped to the named file.
 
-write <destination> <value> <width>
-  Write a <value> with <width> to <destination>. <value> and <destination>
-  can be an absolute memory address, a register or a symbol.
-  <destination> and <value> can be a number, a register or a symbol.
-  <width> can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
+write DST VAL WIDTH
+  Write a VAL with WIDTH to destination DST. VAL and DST can be an absolute
+  memory address, a register or a symbol.
+  DST and VAL can be a number, a register or a symbol.
+  WIDTH can be '1', 'b', 'B', '2', 'w', 'W', '4', 'l' or 'L'.
 
-load [-v] <object-file> [ <section> ... ]
-  Load <object-file> into the target. Only the specified sections are loaded.
-  When no sections are specified, only sections with the LOAD flag are
-  loaded. If <object-file> has an entry address specified, %rpc is set to
+load [-v] FN [ SEC ... ]
+  Load object file FN into the target. Only the specified sections are
+  loaded. When no sections are specified, only sections with the SEC_LOAD flag
+  are loaded. If FN has an entry address specified, %rpc is set to
   this address. With the -v flag, the written contents are read back and
   verified.
   After the load, the symbols from the loaded file are known to the commands
@@ -137,45 +146,46 @@ load [-v] <object-file> [ <section> ... ]
   Please note that s-record and intel-hex don't have section names. In this
   cases BFD assigns ".sec1", ".sec2" and so forth as section names.
 
-execute [<address>]
-  Run the target at <address>. If <address> is omitted, the target will run
+execute [ADR]
+  Run the target at ADR. If ADR is omitted, the target will run
   from %rpc. In this case you probably want to make sure that you have
   loaded a file with an entry address definition.
-  <address> can be a number, a register or a symbol.
+  ADR can be a number, a register or a symbol.
 
-step [<address>]
-  Step the target at <address>. If <address> is omitted, the target will
+step [ADR]
+  Step the target at ADR. If ADR is omitted, the target will
   step on %rpc. In this case you probably want to make sure that you have
   loaded a file with an entry address definition.
-  <address> can be a number, a register or a symbol.
+  ADR can be a number, a register or a symbol.
 
-source [ <file> [ <arguments> ... ] ]
-  Execute commands from <file>. Withhin <file>, the variables $1, $2, $3 (and
+source [ FN [ ARG ... ] ]
+  Execute commands from FN. Withhin FN, the variables $1, $2, $3 (and
   so on) are replaced by the specified arguments. When all the commands from
-  <file> are executed, control returns to the original position, so recursive
-  execution is possible. When <file> is omitted, commands are read from
+  FN are executed, control returns to the original position, so recursive
+  execution is possible. When FN is omitted, commands are read from
   stdin. Please note that it doesn't make much sense to source stdin more
   than one time.
 
-flash-plugin <address> <length> <file> [ <file> ... ]
-  Load and register a target-assisted flash driver plugin(s) from <file>.
-  <address> and <length> define a memory region on the target that can be
-  used as temporary memory to download driver and flash contents.
+flash-plugin ADR LEN FN [ FN ... ]
+  Load and register a target-assisted flash driver plugin(s) from file FN.
+  ADR and LEN define a memory region on the target that can be used as
+  temporary memory to download driver and flash contents.
 
-flash <address>
-  Autodetect flash chip(s) on <address>. Currently only 29Fxxx and 49Fxxx
+flash ADR
+  Autodetect flash chip(s) on ADR. Currently only 29Fxxx and 49Fxxx
   types of chips are supported.
   Note that there is no dedicated command for the actual flash operation. The
   usual memory write command "load" will automatically call the correct driver
   for registered memory areas.
 
-erase <base> <sector_offset>
-  Submit erase command to sector with <sector_offset> on flash chip at <base>.
-  <sector_offset>==-1 indicates the whole chip. For 29Fxxx and 49Fxxx types of
-  chips multiple erase commands can be issued simultanously.
+erase BASE OFF
+  Submit erase command to sector with OFF on flash chip at BASE.
+  OFF==-1 indicates erase the whole chip. For 29Fxxx and 49Fxxx types of
+  chips multiple erase commands can be issued simultanously before the
+  erase-wait command is issued.
 
-erase <base> wait
-  Wait for the flash chip on <base> to finish the issued erase operation(s).
+erase-wait BASE
+  Wait for the flash chip on BASE to finish the issued erase operation(s).
 
 
 Plans for the future
