@@ -401,9 +401,9 @@ static struct {
   { "bdmcf0",    4, 0 },
   { "bdmcf1",    5, 0 },
   { "bdmcf2",    6, 0 },
-  { "bdmidc0",   8, 0 },
-  { "bdmidc1",   9, 0 },
-  { "bdmidc2",  10, 0 }
+  { "bdmicd0",   8, 0 },
+  { "bdmicd1",   9, 0 },
+  { "bdmicd2",  10, 0 }
 };
 #define NUMOF_DEVS (sizeof(bdm_devs)/sizeof(bdm_devs[0]))
   
@@ -444,7 +444,7 @@ bdm_load(void)
   int err;
 
   PRINTF("BDM init_module\n   %s\n   %s\n   %s\n",
-         "$RCSfile: freebsd-bdm.c,v $", "$Revision: 1.1 $", "$Date: 2003/06/02 15:15:54 $");
+         "$RCSfile: freebsd-bdm.c,v $", "$Revision: 1.2 $", "$Date: 2003/09/20 22:21:16 $");
   PRINTF("   Version %s\n   Compiled at %s %s\n",
          "PD-interface",
          __DATE__, __TIME__);
