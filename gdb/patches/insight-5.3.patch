@@ -54,3 +54,26 @@ diff -urN insight-5.3.orig/gdb/gdbtk/library/targetselection.itb insight-5.3/gdb
        gdb_cmd "set remotebaud $baud"
        if {[catch {gdb_cmd "show remotebaud"} res]} {
  	set newbaud 0
+diff -Nur insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c insight-5.3/gdb/gdbtk/generic/gdbtk-hooks.c
+--- insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c	2002-07-03 19:38:22.000000000 +0200
++++ insight-5.3/gdb/gdbtk/generic/gdbtk-hooks.c	2003-09-05 14:02:42.000000000 +0200
+@@ -518,6 +518,10 @@
+ gdbtk_call_command (struct cmd_list_element *cmdblk,
+ 		    char *arg, int from_tty)
+ {
++  struct cleanup *old_chain;
++
++  old_chain = make_cleanup (null_cleanup, 0);
++
+   running_now = 0;
+   if (cmdblk->class == class_run || cmdblk->class == class_trace)
+     {
+@@ -532,6 +536,8 @@
+     }
+   else
+     cmd_func (cmdblk, arg, from_tty);
++
++  do_cleanups (old_chain);
+ }
+ 
+ /* Called after a `set' command succeeds.  Runs the Tcl hook
