@@ -360,7 +360,7 @@ diff -Nru insight-5.3.92.orig/gdb/remote-m68k-bdm.c insight-5.3.92/gdb/remote-m6
 + */
 +
 +/*
-+ * $Revision: 1.1 $    $Date: 2003/09/21 11:15:34 $   $Author: codewiz $
++ * $Revision: 1.1 $    $Date: 2003/10/06 00:07:21 $   $Author: codewiz $
 + */
 +
 +#include "defs.h"
