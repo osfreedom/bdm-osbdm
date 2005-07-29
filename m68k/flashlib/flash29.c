@@ -1,11 +1,11 @@
-/* $Id: flash29.c,v 1.2 2004/01/21 22:17:09 joewolf Exp $
+/* $Id: flash29.c,v 1.3 2005/07/29 06:23:06 codewiz Exp $
  *
  * Driver for 29Fxxx and 49Fxxx flash chips.
  *
  * 2003-12-28 Josef Wolf (jw@raven.inka.de)
  *
  * Portions of this program which I authored may be used for any purpose
- * so long as this notice is left intact. 
+ * so long as this notice is left intact.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -166,6 +166,23 @@ static const chip_t chips[]= {
     {"Am29F800BB",  0x01, 0x2258, 0x100000, &alg_29_std }, /* AMD */
 
     {"Am29PL160C",  0x01, 0x2245, 0x200000, &alg_29_unl }, /* AMD */
+
+    {"Am29LV160B",  0x01, 0x2249, 0x200000, &alg_29_unl }, /* AMD */
+    {"HY29LV160B",  0xad, 0x2249, 0x200000, &alg_29_unl }, /* HYRIX */
+    {"MX29LV160B",  0xc2, 0x2245, 0x200000, &alg_29_unl }, /* MACRONIX */
+    {"TC58FVB160A", 0x98, 0x0043, 0x200000, &alg_29_unl }, /* TOSHIBA */
+
+    {"Am29LV320B",  0x01, 0x22f9, 0x400000, &alg_29_unl }, /* AMD */
+    {"HY29LV320B",  0xad, 0x227d, 0x400000, &alg_29_unl }, /* HYRIX */
+    {"MX29LV320B",  0xc2, 0x22a8, 0x400000, &alg_29_unl }, /* MACRONIX */
+    {"TC58FVM5B2A", 0x98, 0x0055, 0x400000, &alg_29_unl }, /* TOSHIBA */
+    {"TC58FVM5B3A", 0x98, 0x0050, 0x400000, &alg_29_unl }, /* TOSHIBA */
+
+    {"Am29LV640MB", 0x01, 0x227e, 0x800000, &alg_29_unl }, /* AMD */
+    {"M29W640DB",   0x20, 0x22df, 0x800000, &alg_29_unl }, /* ST */
+    {"MBM29DLV640E",0x04, 0x227e, 0x800000, &alg_29_std }, /* FUJITSU */
+    {"MX29LV640MB", 0xc2, 0x22cb, 0x800000, &alg_29_unl }, /* MACRONIX */
+    {"TC58FVM6B2A", 0x98, 0x0058, 0x800000, &alg_29_unl }, /* TOSHIBA */
 };
 
 /* define the actual access functions to the flash. There are three orthogonal
@@ -264,11 +281,11 @@ static int wait_chip (chiptype_t *ct, unsigned long adr, unsigned long expect)
 {
     unsigned long i;
     unsigned long rval;
-    unsigned long last_val = expect;
     unsigned long bus_mask = ct->bus_mask;
     unsigned long chip_mask = ct->chip_mask;
     unsigned long tout_mask = ct->alg_info->timeout_mask;
     unsigned long (*rd_func)(unsigned long) = ct->rd_func;
+    unsigned long last_val = (rd_func (adr) & bus_mask);
 
     while ((rval=(rd_func (adr) & bus_mask)) != (expect & bus_mask)) {
 
@@ -299,6 +316,7 @@ static int wait_chip (chiptype_t *ct, unsigned long adr, unsigned long expect)
 		bus_mask &= ~shifted_chip_mask;
 	    }
 	}
+	last_val = rval;
     }
 
     return 1;
@@ -343,7 +361,7 @@ static int flash29_prog (void *chip_descr,
 
     for (i=0; i<align; i++) {
 	val <<= 8;
-	val |= chip_rd_char (pos++);
+	val |= chip_rd_char (pos+i);
     }
 
     if (cmd_bypass) {
@@ -551,7 +569,7 @@ static int flash29_search_chip (void *chip_descr, char *description,
 		}
 
 		if ((d=read_id (ct, 1)) != exp) continue;
-		
+
 		if (m == ct->rd_func(pos) &&
 		    d == ct->rd_func(pos + (1<<ct->shift)))
 		    return 0;
