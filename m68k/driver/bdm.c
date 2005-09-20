@@ -1529,9 +1529,6 @@ cf_pe_init_hardware (struct BDM *self)
 /*
  * Clock a word to/from the target
  */
-/*
- * Clock a word to/from the target
- */
 static void
 cf_pe_serial_clocker (struct BDM *self, unsigned short wval, int holdback)
 {
