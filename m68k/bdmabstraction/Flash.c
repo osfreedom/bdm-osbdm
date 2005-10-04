@@ -49,6 +49,9 @@
  * 
  * HISTORY:
  * $Log: Flash.c,v $
+ * Revision 1.3  2005/10/04 01:00:35  codewiz
+ * Add M29F400BB. (Patch by Robert McPherson <robm@actarg.com>)
+ *
  * Revision 1.2  2004/03/21 01:52:51  codewiz
  * Add 39VF/LF160 chip.
  *
@@ -1521,6 +1524,7 @@ static FlashInfo_t const flash_table[]= {
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0x5B ), 0x100000, 0x10000, 0x100000, 0x10000, "M29W800AB"},
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0xC4 ), 0x200000, 0x00000, 0x1F0000, 0x10000, "M29W160AT"},
   {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0x49 ), 0x200000, 0x10000, 0x200000, 0x10000, "M29W160AB"},
+  {FlashIDMake_M( FlashManufacturerSGSThomson_c,       0xD6 ),  0x80000,  0x2000,  0x80000, 0x10000, "M29F400BB"},
   {FlashIDMake_M( FlashManufacturerHyundai_c,          0x40 ), 0x100000, 0x20000, 0x100000, 0x20000, "HY29F040"},
   {FlashIDMake_M( FlashManufacturerTexasInstruments_c, 0x94 ), 0x100000, 0x20000, 0x100000, 0x20000, "TMS29F040"},
   {FlashIDMake_M( FlashManufacturerMicron_c,           0x70 ),  0x80000, 0x00000,  0x60000, 0x20000, "MTF004B3/400B3xx-xxT"},
