@@ -194,7 +194,7 @@ coldfireExecute ()
   int code_len;
   int i, b;
   
-  unsigned char *code =
+  const char *code =
     "46fc 2700"
     "2e7c 2000 0000"
     "207c a0a0 a0a0"
@@ -350,14 +350,14 @@ coldfireSramVerify (int loops)
 
       sram_ok = 1;
       
-      if (bdmWriteMemory (SRAMBAR, (char*) buf, SRAM_BYTE_SIZE) < 0) {
+      if (bdmWriteMemory (SRAMBAR, (unsigned char*) buf, SRAM_BYTE_SIZE) < 0) {
         if (stop_quite)
           printf ("W");
         else
           showError ("Writing SRAM buffer");
       }
 
-      if (bdmReadMemory (SRAMBAR, (char*) buf, SRAM_BYTE_SIZE) < 0) {
+      if (bdmReadMemory (SRAMBAR, (unsigned char*) buf, SRAM_BYTE_SIZE) < 0) {
         if (stop_quite)
           printf ("R");
         else
@@ -678,7 +678,7 @@ checkAlignment (int cpu, int loops)
       }
     }
     printf ("\nBlock Write alignment verify, %4d of %4d : \n", loop, loops);
-    if (bdmWriteMemory (SRAMBAR, (char*) buf, ALIGN_MEM_SIZE) < 0) {
+    if (bdmWriteMemory (SRAMBAR, (unsigned char*) buf, ALIGN_MEM_SIZE) < 0) {
       if (stop_quite)
         printf ("K");
       else

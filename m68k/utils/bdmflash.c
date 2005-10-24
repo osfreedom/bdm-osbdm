@@ -28,6 +28,9 @@
  *
  * HISTORY:
  * $Log: bdmflash.c,v $
+ * Revision 1.2  2005/10/24 01:32:21  cjohns
+ * Removed warnings when built with gcc 4.x
+ *
  * Revision 1.1  2003/12/29 22:19:11  codewiz
  * Move bdmmon and bdmflash to m68k/utils.
  *
@@ -235,7 +238,7 @@ Write( int ArgC, char *ArgV[] )
       if (NumRead == 0)
 	break;
 
-      Error = BDMFlashWrite( Offset, Buffer, NumRead );
+      Error = BDMFlashWrite( Offset, (unsigned char*) Buffer, NumRead );
       if (Error != FlashErrorOkay_c)
 	{
 	  fprintf( stderr, 

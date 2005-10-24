@@ -1,4 +1,4 @@
-/* $Id: cpu32-check.c,v 1.4 2003/09/19 20:41:09 joewolf Exp $
+/* $Id: cpu32-check.c,v 1.5 2005/10/24 01:35:25 cjohns Exp $
 0        1         2         3         4         5         6         7
 123456789012345678901234567890123456789012345678901234567890123456789012345678
  * 
@@ -224,7 +224,7 @@ execute(int memory_type, int loops)
 	int i, b, loop = 0;
 	int verify_error = 0;
   
-	unsigned char *code =
+	const char *code =
 	"46FC 2700"
 	"2E7C 0E00 0000"
 	"207C A0A0 A0A0"
@@ -400,14 +400,14 @@ verify_internal_ram(int loops)
 
       sram_ok = 1;
       
-      if (bdmWriteMemory(DPRAM_BASE, (char*) buf, SRAM_BYTE_SIZE) < 0) {
+      if (bdmWriteMemory(DPRAM_BASE, (unsigned char*) buf, SRAM_BYTE_SIZE) < 0) {
         if (stop_quiet)
           printf("W");
         else
           show_error("Writing SRAM buffer");
       }
 
-      if (bdmReadMemory(DPRAM_BASE, (char*) buf, SRAM_BYTE_SIZE) < 0) {
+      if (bdmReadMemory(DPRAM_BASE, (unsigned char*) buf, SRAM_BYTE_SIZE) < 0) {
         if(stop_quiet)
           printf("R");
         else
@@ -731,7 +731,7 @@ check_alignment(int loops)
       }
     }
     printf("\nBlock write alignment verify, %4d of %4d : \n", loop, loops);
-    if (bdmWriteMemory(DPRAM_BASE, (char*) buf, ALIGN_MEM_SIZE) < 0) {
+    if (bdmWriteMemory(DPRAM_BASE, (unsigned char*) buf, ALIGN_MEM_SIZE) < 0) {
       if(stop_quiet)
         printf("K\n");
       else

@@ -191,7 +191,7 @@ void
 start_connection ()
 {
   struct sockaddr_in s;
-  int                len;
+  unsigned int       len;
 
   len = sizeof (s);
 
@@ -430,7 +430,7 @@ bdm_read (char *message)
 
   message += sizeof "READ";
   nbytes   = strtoul (message, NULL, 0);
-  buf      = xmalloc (nbytes);
+  buf      = (unsigned char*) xmalloc ((unsigned) nbytes);
 
   read_nbytes = bdmRead (buf, nbytes);
 
@@ -449,7 +449,7 @@ bdm_read (char *message)
       printf ("%02x", buf[byte]);
   }
 
-  xfree (buf);
+  xfree ((char*) buf);
 }
 
 /*
@@ -472,7 +472,7 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
   if (*msg == ',')
     msg++;
 
-  buf       = xmalloc (nbytes);
+  buf       = (unsigned char*) xmalloc ((unsigned) nbytes);
   byte      = 0;
   msg_bytes = 0;
 
@@ -489,7 +489,7 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
       new_read = get_message (msg + msg_len, msg_buf_len - msg_len);
       if (new_read < 0) {
         syslog (LOG_INFO, "write error: client timeout");
-        xfree (buf);
+        xfree ((char*) buf);
         return;
       }
       msg_len += new_read;
@@ -555,7 +555,7 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
 
   printf ("WRITE %d,%ld", errno, written_nbytes);
 
-  xfree (buf);
+  xfree ((char*) buf);
 }
 
 /*

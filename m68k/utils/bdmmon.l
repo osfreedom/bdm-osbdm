@@ -32,6 +32,9 @@
  *
  * HISTORY:
  * $Log: bdmmon.l,v $
+ * Revision 1.3  2005/10/24 01:32:21  cjohns
+ * Removed warnings when built with gcc 4.x
+ *
  * Revision 1.2  2004/01/08 14:16:17  codewiz
  * Avoid duplicate definition of TRUE/FALSE. Remove trailing whitespace.
  *
@@ -176,7 +179,7 @@ int mem_dump(unsigned long from, int count)
 	};
 	for(i=0; i<read; i++) {
 	    if(i%16==0) {
-	        strcpy(line, "                ");
+        strcpy((char*)line, "                ");
 	        printf("%08x: ", from);
 	    }
 	    printf("%02x ", buffer[i]);
@@ -234,7 +237,7 @@ static unsigned char buffer[1024];
 
 void store_line(void)
 {
-    strcpy(buffer, yytext);
+  strcpy((char*) buffer, yytext);
 /*    printf("last line was: %s\n", buffer); */
 }
 
@@ -451,7 +454,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     for(i=0; i<1024/4; i++)
 	buf[i]=val;
     while(len>=1024) {
-	if(bdm_write_mem(addr, (char*)buf, 1024)<0) {
+	if(bdm_write_mem(addr, (unsigned char*)buf, 1024)<0) {
 	    error=1;
 	    printf("Bus error or target disconnected.\n");
 	    len=0;
@@ -461,7 +464,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	addr+=1024;
     }
     if(len) {
-        if(bdm_write_mem(addr, (char*)buf, len)<0) {
+        if(bdm_write_mem(addr, (unsigned char*)buf, len)<0) {
             error=1;
 	    printf("Bus error or target disconnected.\n");
 	}
@@ -562,7 +565,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 }
 
 {SRECORD}(\r)?\n {
-    char buffer[1024];
+    unsigned char buffer[1024];
     int slen = 0, doff, i, rpc = 0;
     unsigned long addr = 0xDEADBEEF;
     int error = 0;
@@ -682,7 +685,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 }
 
 {WS}*{UP}{WS}+{VALUE}{WS}+{FILENAME}{WS}*\n {
-    char buffer[1024];
+    unsigned char buffer[1024];
     FILE *file;
     char *args[20];
     int error, i;
@@ -839,7 +842,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 }
 
 {WS}*{FLASH}{WS}+{VALUE}{WS}+{FILENAME}{WS}*\n {
-    char buffer[1024];
+    unsigned char buffer[1024];
     FILE *file;
     char *args[20];
     int error, i;
@@ -1067,7 +1070,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 \n {
     int i;
 /*    printf("Empty line, last line was: %s\n", buffer); */
-    for(i=strlen(buffer)-1; i>=0; i--) {
+    for(i=strlen((char*)buffer)-1; i>=0; i--) {
         unput(buffer[i]);
     }
     buffer[0]=0;
