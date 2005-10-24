@@ -36,6 +36,9 @@
  *
  * HISTORY:
  * $Log: bdmops.c,v $
+ * Revision 1.2  2005/10/24 01:37:25  cjohns
+ * Fixed includes for building in Windows with MinGW.
+ *
  * Revision 1.1  2003/12/29 22:18:49  codewiz
  * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
  *
@@ -70,13 +73,17 @@
 #include "BDMDriver.h"
 #include "Debug.h"
 #include <fcntl.h>
-#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#if defined (__WIN32__) && !defined (__CYGWIN__)
+#include <winsock.h>
+#else
+#include <netinet/in.h>
+#endif
 
 /*
  * query status

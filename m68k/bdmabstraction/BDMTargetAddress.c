@@ -31,6 +31,9 @@
  *
  * HISTORY:
  * $Log: BDMTargetAddress.c,v $
+ * Revision 1.2  2005/10/24 01:37:25  cjohns
+ * Fixed includes for building in Windows with MinGW.
+ *
  * Revision 1.1  2003/12/29 22:18:49  codewiz
  * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
  *
@@ -59,10 +62,8 @@
 #include <BDMDriver.h>
 #include <Debug.h>
 #include <stdio.h>
-#include <sys/ioctl.h>
 
 #define PRINTDTRACE()	PRINTD( __FILE__ "(%d)\n", __LINE__ )
-
 
 /* Write byte into target address space through BDM */
 int /* 0 if success, or error code */

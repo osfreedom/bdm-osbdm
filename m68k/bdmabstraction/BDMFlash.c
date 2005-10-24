@@ -31,6 +31,9 @@
  *
  * HISTORY:
  * $Log: BDMFlash.c,v $
+ * Revision 1.2  2005/10/24 01:37:25  cjohns
+ * Fixed includes for building in Windows with MinGW.
+ *
  * Revision 1.1  2003/12/29 22:18:49  codewiz
  * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
  *
@@ -65,9 +68,14 @@
 #include <BDMTargetAddress.h> 
 #include <Debug.h>
 #include <Flash.h>
-#include <netinet/in.h> /* ntohl, ntohl */
 #include <stdio.h>
 #include <stdlib.h> /* size_t */
+
+#if defined (__WIN32__) && !defined (__CYGWIN__)
+#include <winsock.h>
+#else
+#include <netinet/in.h> /* ntohl, ntohl */
+#endif
 
 typedef struct BDMFlash_s
 {
