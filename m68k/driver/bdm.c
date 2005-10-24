@@ -159,6 +159,12 @@ struct BDM {
    */
   int           cf_running;
   unsigned long cf_csr;
+  /*
+   * Revision D BDM hardware does not have a bit to mask interrupts so
+   * we must save the SR when we step and then restore when we go.
+   */
+  unsigned long cf_sr_mask_cache;
+  int           cf_sr_masked;
 
 #ifdef BDM_BIT_BASH_PORT
   
@@ -487,6 +493,7 @@ static int bdmDrvWriteByte (struct BDM *self, struct BDMioctl *ioc);
 #define BDM_WCREG_CMD       0x2880  /* Coldfire */
 #define BDM_RDMREG_CMD      0x2d80  /* Coldfire */
 #define BDM_WDMREG_CMD      0x2c80  /* Coldfire */
+#define BDM_FORCED_TA_CMD   0x0002  /* Coldfire version D and higher */
 
 /*
  * Operand size for BDM_READ_CMD/BDM_WRITE_CMD
@@ -902,12 +909,12 @@ cpu32_icd_stop_chip (struct BDM *self)
      */
     for (check = 0 ; check < (1000 + ((pass+1)%2) * 9000) ; check++) {
       if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
-	/* if freeze line is high we're OK
-	 * XXX let reset go too?
-	 */
-	if (self->debugFlag)
-	  PRINTF("stopped after %d bdm_delays\n", check);
-	outb (CPU32_ICD_RST_OUT, self->dataPort);
+        /* if freeze line is high we're OK
+         * XXX let reset go too?
+         */
+        if (self->debugFlag)
+          PRINTF("stopped after %d bdm_delays\n", check);
+        outb (CPU32_ICD_RST_OUT, self->dataPort);
         return 0;
       }
       bdm_delay (10);
@@ -1291,6 +1298,11 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
 static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw);
 static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw);
 
+#define CF_REVISION_A (0)
+#define CF_REVISION_B (1)
+#define CF_REVISION_C (2)
+#define CF_REVISION_D (3)
+
 /*
  * Get direct target status, that is from the parallel port.
  */
@@ -1385,7 +1397,10 @@ cf_pe_invalidate_cache (struct BDM *self)
    */
 
   if (cacr_ioc.value) {
-    cacr_ioc.value |= 0x01000000;
+    if (self->cf_debug_ver == CF_REVISION_D)
+      cacr_ioc.value |= 0x01040100;
+    else
+      cacr_ioc.value |= 0x01000100;
 
     if (self->debugFlag > 2)
       PRINTF (" cf_pe_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
@@ -1503,15 +1518,21 @@ cf_pe_init_hardware (struct BDM *self)
    * default to 0 and do not use PST signals. This will cause the
    * CSR register to be read.
    */
-   
+
   self->cf_running   = 1;
   self->cf_debug_ver = 0;
-  self->cf_use_pst   = 1;
-  
+  self->cf_use_pst   = 0;
+
   status = cf_pe_get_status (self);
-  
+
   if (self->debugFlag)
     PRINTF (" cf_pe_init_hardware: status:%d\n", status);
+
+  /*
+   * By default we want to use PST lines.
+   */
+  
+  self->cf_use_pst = 1;
 
   /*
    * Process the result of the CSR read.
@@ -1575,7 +1596,7 @@ cf_pe_serial_clocker (struct BDM *self, unsigned short wval, int holdback)
 static int
 cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
 {
-  unsigned int  status = cf_pe_get_direct_status (self);
+  unsigned int status = cf_pe_get_direct_status (self);
 
   if (status & BDM_TARGETRESET)
     return BDM_FAULT_RESET;
@@ -1598,6 +1619,18 @@ cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
       if (self->debugFlag > 1)
         PRINTF (" cf_pe_serial_clock -- failure NVC, send 0x%x receive 0x%x\n",
                 wval, self->readValue);
+      /*
+       * Force TA on a Coldfire if supported. We cannot do much else if
+       * the Coldfire does not support the Forced TA command.
+       */
+      if (self->cf_debug_ver >= CF_REVISION_D) {
+        if (self->debugFlag)
+          PRINTF (" cf_pe_serial_clock --  forced ta\n");
+        cf_pe_serial_clocker (self, BDM_FORCED_TA_CMD, holdback);
+        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
+        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
+        return BDM_FAULT_FORCED_TA;
+      }
       return BDM_FAULT_NVC;
       for (i = 0; i < 4; i++)
         cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
@@ -1778,14 +1811,24 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int raw)
 static int 
 cf_pe_gen_bus_error (struct BDM *self)
 {
-  if (self->debugFlag)
-    PRINTF (" cf_pe_gen_bus_error\n");
+  if (self->cf_debug_ver < CF_REVISION_D) {
+    if (self->debugFlag)
+      PRINTF (" cf_pe_gen_bus_error\n");
   
-  outb (CF_PE_MAKE_DR (CF_PE_DR_TEA), self->dataPort);
-  udelay (400);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+    outb (CF_PE_MAKE_DR (CF_PE_DR_TEA), self->dataPort);
+    udelay (400);
+    outb (CF_PE_MAKE_DR (0), self->dataPort);
   
-  return BDM_FAULT_BERR;
+    return BDM_FAULT_BERR;
+  } else {
+    int err;
+    if (self->debugFlag)
+      PRINTF (" cf_pe_gen_bus_error - forced ta\n");
+    if (((err = cf_pe_serial_clock (self, BDM_FORCED_TA_CMD, 0)) != 0) ||
+        ((err = cf_pe_serial_clock (self, BDM_NOP_CMD, 0)) != 0))
+      return err;
+    return BDM_FAULT_FORCED_TA;
+  }
 }
 
 /*
@@ -1895,7 +1938,8 @@ cf_pe_stop_chip (struct BDM *self)
 static int
 cf_pe_run_chip (struct BDM *self)
 {
-  struct BDMioctl csr_ioc;
+  struct BDMioctl sreg_ioc;
+  struct BDMioctl pc_ioc;
   int err;
 
   if (self->debugFlag)
@@ -1910,11 +1954,43 @@ cf_pe_run_chip (struct BDM *self)
   /*
    * Change the CSR:4 or the SSM bit to off then issue a go.
    */
-  csr_ioc.address = BDM_REG_CSR;
-  csr_ioc.value   = 0x00000000;
-
-  if ((err = cf_pe_write_sysreg (self, &csr_ioc, 0)) < 0)
+  sreg_ioc.address = BDM_REG_CSR;
+  sreg_ioc.value   = 0x00000000;
+  if ((err = cf_pe_write_sysreg (self, &sreg_ioc, 0)) < 0)
     return err;
+
+  /*
+   * Revision D hardware does not have a bit to mask interrupts so
+   * we save the SR if we step and need to restore it now.
+   *
+   * The SR needs to be read back and the mask bits set as the
+   * other SR bits may have changed.
+   *   
+   * It appears that the V4 core has some pipelining in effect that
+   * causes instruction fetches to already be cached.  This could be
+   * problem in certain instances for stepping.  To resolve this,
+   * we read the PC value, and then write it right back out.
+   */
+
+  if ((self->cf_debug_ver == CF_REVISION_D) && self->cf_sr_masked) {
+    sreg_ioc.address = BDM_REG_SR;
+    if ((err = cf_pe_read_sysreg (self, &sreg_ioc, 0)) < 0)
+      return err;
+    sreg_ioc.value &= ~0x0700;
+    sreg_ioc.value |= self->cf_sr_mask_cache;
+    if ((err = cf_pe_write_sysreg (self, &sreg_ioc, 0)) < 0)
+      return err;
+    self->cf_sr_masked = 0;
+
+    /*
+     * Read the PC value and write it back out
+     */
+    pc_ioc.address = BDM_REG_RPC;
+    if ((err=cf_pe_read_sysreg (self, &pc_ioc, 0)) < 0)
+      return err;
+    if ((err=cf_pe_write_sysreg (self, &pc_ioc, 0)) < 0)
+      return err;
+  }
 
   /*
    * Now issue a GO command.
@@ -1937,27 +2013,61 @@ cf_pe_run_chip (struct BDM *self)
 static int
 cf_pe_step_chip (struct BDM *self)
 {
+  struct BDMioctl sreg_ioc;
   struct BDMioctl csr_ioc;
+  struct BDMioctl pc_ioc;
   int err;
 
   if (self->debugFlag)
     PRINTF (" cf_pe_step_chip\n");
+
 
   /*
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
   cf_pe_invalidate_cache (self);
-  
   /*
    * Change the CSR:4 or the SSM bit to on then issue a go.
    * Mask pending interrupt to stop stepping into an interrupt.
    */
   csr_ioc.address = BDM_REG_CSR;
-  csr_ioc.value   = 0x00000030;
+  csr_ioc.value   = 0x00000030;  
 
   if ((err = cf_pe_write_sysreg (self, &csr_ioc, 0)) < 0)
     return err;
+
+  /*
+   * Revision D hardware does not have a bit to mask interrupts so
+   * we save the SR when we step and then restore when we go
+   *
+   * The SR needs to be read back and the mask bits set as the
+   * other SR bits may have changed.
+   *
+   * It appears that the V4 core has some pipelining in effect that
+   * causes instruction fetches to already be cached. This could be
+   * problem in certain instances for stepping. To resolve this,
+   * we read the PC value, and then write it right back out.
+   */
+  if ((self->cf_debug_ver == CF_REVISION_D) && !self->cf_sr_masked) {
+    sreg_ioc.address = BDM_REG_SR;
+    if ((err = cf_pe_read_sysreg (self, &sreg_ioc, 0)) < 0)
+      return err;
+    self->cf_sr_mask_cache = sreg_ioc.value & 0x0700;
+    sreg_ioc.value |= 0x0700;
+    if ((err = cf_pe_write_sysreg (self, &sreg_ioc, 0)) < 0)
+      return err;
+    self->cf_sr_masked = 1;
+
+    /*
+     * Read the PC value and write it back out
+     */
+    pc_ioc.address = BDM_REG_RPC;
+    if ((err=cf_pe_read_sysreg (self, &pc_ioc, 0)) < 0)
+      return err;
+    if ((err=cf_pe_write_sysreg (self, &pc_ioc, 0)) < 0)
+      return err;
+  }
 
   /*
    * Now issue a GO command.
@@ -2049,9 +2159,11 @@ cf_pe_init_self (struct BDM *self)
 #endif
 
   self->cf_debug_ver = 0;
-  self->cf_use_pst   = 0;
+  self->cf_use_pst   = 1;
   self->cf_running   = 1;
   self->cf_csr       = 0;
+  
+  self->cf_sr_masked = 0;
   
   return 0;
 }
