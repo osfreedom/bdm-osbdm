@@ -3,6 +3,29 @@
 
 #include <sys/types.h>
 
+/* Windows does not have these types defined so we add it here. */
+#if defined (__WIN32__) || !defined (__CYGWIN__)
+#ifndef _BSDTYPES_DEFINED
+typedef unsigned char   u_char;
+typedef unsigned short  u_short;
+typedef unsigned int    u_int;
+typedef unsigned long   u_long;
+#define _BSDTYPES_DEFINED
+#endif
+#ifndef __BIT_TYPES_DEFINED__
+#define __BIT_TYPES_DEFINED__
+typedef char int8_t;
+typedef unsigned char u_int8_t;
+typedef short int16_t;
+typedef unsigned short u_int16_t;
+typedef int int32_t;
+typedef unsigned int u_int32_t;
+typedef long long int64_t;
+typedef unsigned long long u_int64_t;
+typedef int32_t register_t;
+#endif
+#endif
+
 #define FLASH_ALG_BITS_x8    0
 #define FLASH_ALG_BITS_x16   2
 #define FLASH_ALG_BITS_x8x2  3

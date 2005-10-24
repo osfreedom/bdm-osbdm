@@ -1,5 +1,5 @@
 /*
- * $Id: bdmfilt.h,v 1.1 2003/11/10 23:25:00 ppisa Exp $
+ * $Id: bdmfilt.h,v 1.2 2005/10/24 01:33:53 cjohns Exp $
  */
 
 #ifndef BDMFILT_H
@@ -8,10 +8,22 @@
 #include <sys/types.h>
 #include <bfd.h>
 
+/* Windows does not have caddr_t so we add it here. */
+#if defined (__WIN32__) || !defined (__CYGWIN__)
+typedef char* caddr_t;
+#ifndef _BSDTYPES_DEFINED
+typedef unsigned char   u_char;
+typedef unsigned short  u_short;
+typedef unsigned int    u_int;
+typedef unsigned long   u_long;
+#define _BSDTYPES_DEFINED
+#endif
+#endif
+
 /* support of filtered write for flash programming */
 
 typedef struct bdmlib_bfilt{
-	struct bdmlib_bfilt *next;	
+	struct bdmlib_bfilt *next;
 	caddr_t begin_adr;
 	caddr_t end_adr;
 	int filt_id;
