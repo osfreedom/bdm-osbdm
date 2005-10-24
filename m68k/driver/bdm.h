@@ -55,7 +55,7 @@
  * Version of the driver. 
  */
 
-#define BDM_DRV_VERSION   0x020b
+#define BDM_DRV_VERSION   0x020d
 
 /*
  * Hook for Linux kernel
@@ -102,6 +102,7 @@
 #define BDM_FAULT_BERR       216
 #define BDM_FAULT_NVC        217
 #define BDM_FAULT_TIMEOUT    218
+#define BDM_FAULT_FORCED_TA  219
 
 /*
  * Structure for I/O requests
