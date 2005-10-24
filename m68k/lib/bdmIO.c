@@ -206,13 +206,14 @@ static const char *
 bdmStrerror (int error_no)
 {
   switch (error_no) {
-    case BDM_FAULT_UNKNOWN:  return "Unknown BDM error";
-    case BDM_FAULT_POWER:    return "No power to BDM adapter";
-    case BDM_FAULT_CABLE:    return "BDM cable problem";
-    case BDM_FAULT_RESPONSE: return "No response to BDM request";
-    case BDM_FAULT_RESET:    return "Target is in RESET state";
-    case BDM_FAULT_BERR:     return "Target Bus Error";
-    case BDM_FAULT_NVC:      return "Invalid target command";
+    case BDM_FAULT_UNKNOWN:   return "Unknown BDM error";
+    case BDM_FAULT_POWER:     return "No power to BDM adapter";
+    case BDM_FAULT_CABLE:     return "BDM cable problem";
+    case BDM_FAULT_RESPONSE:  return "No response to BDM request";
+    case BDM_FAULT_RESET:     return "Target is in RESET state";
+    case BDM_FAULT_BERR:      return "Target Bus Error";
+    case BDM_FAULT_NVC:       return "Invalid target command";
+    case BDM_FAULT_FORCED_TA: return "Invalid target command - Forced TA";
   }
 #if defined (BDM_DEVICE_REMOTE)
   return bdmRemoteStrerror (error_no);
@@ -326,7 +327,7 @@ bdmRead (unsigned char *cbuf, unsigned long nbytes)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (read (bdm_fd, cbuf, nbytes) != nbytes) {
+    if (read (bdm_fd, (char*) cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -355,7 +356,7 @@ bdmWrite (unsigned char *cbuf, unsigned long nbytes)
   else {
 #endif
 #if defined (BDM_DEVICE_LOCAL)
-    if (write (bdm_fd, cbuf, nbytes) != nbytes) {
+    if (write (bdm_fd, (char*) cbuf, nbytes) != nbytes) {
       bdmIO_lastErrorString = bdmStrerror (errno);
       return -1;
     }
@@ -1022,7 +1023,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
 int
 bdmGetDrvVersion (unsigned int *ver)
 {
-  if (bdmIoctlInt (BDM_GET_DRV_VER, ver) < 0)
+  if (bdmIoctlInt (BDM_GET_DRV_VER, (int*) ver) < 0)
     return -1;
   PRINTF ("Driver version: %x.%x\n", *ver >> 8, *ver & 0xff);
   return 0;
