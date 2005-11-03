@@ -58,8 +58,12 @@ char kernel_version[] = UTS_RELEASE;
 /* I do not know exactly all dates of changes */
 
 #if (LINUX_VERSION_CODE < VERSION(2,1,5))
-  #define kc_copy_from_user memcpy_fromfs
-  #define kc_copy_to_user   memcpy_tofs
+  #define kc_copy_from_user(dst,src,len) ({ \
+    if(!(verify_area(VERIFY_READ, src, len))) \
+      {memcpy_fromfs(dst,src,len);0;} else len; })
+  #define kc_copy_to_user(dst,src,len) ({ \
+    if(!(verify_area(VERIFY_WRITE, dst, len))) \
+      {memcpy_tofs(dst,src,len);0;} else len; })
   #define kc_get_user_long  get_fs_long
   #define kc_get_user_word  get_fs_word
   #define kc_get_user_byte  get_fs_byte
@@ -94,6 +98,21 @@ char kernel_version[] = UTS_RELEASE;
   #define kc_put_user_word(x,ptr) (kc_put_user((x),(unsigned short*)(ptr)))
   #define kc_put_user_byte(x,ptr) (kc_put_user((x),(unsigned char*)(ptr)))
 #endif /* >= 2.1.5 */
+
+/*** resource manipulation changes ***/
+
+#if (LINUX_VERSION_CODE >= VERSION(2,4,0))
+  #define kc_request_region request_region
+  #define kc_release_region release_region
+#else /* < 2.6.0 */
+  #define kc_request_region(start,len,name) \
+    ({ unsigned long kc_t_start=(start), kc_t_len=(len); \
+       int kc_t_res=!check_region(kc_t_start,kc_t_len); \
+       if(kc_t_res) request_region(kc_t_start,kc_t_len,name); \
+       kc_t_res; \
+    })
+  #define kc_release_region release_region
+#endif /* < 2.6.0 */
 
 /*** bitops changes ***/
 
@@ -286,6 +305,31 @@ char kernel_version[] = UTS_RELEASE;
 
 #endif /* 2.5.60 */
 
+#if (LINUX_VERSION_CODE <= VERSION(2,6,0))
+ typedef struct {int dummy;} kc_class;
+ #define kc_class_create(...) (NULL)
+ #define kc_class_device_create(...)
+ #define kc_class_device_destroy(...)
+ #define kc_class_destroy(...)
+#else /* 2.6.0 */
+ #define KC_WITH
+ #include <linux/device.h>
+ #if LINUX_VERSION_CODE >= VERSION(2,6,13)
+  #define kc_class class
+  #define kc_class_create class_create
+  #define kc_class_device_create class_device_create
+  #define kc_class_device_destroy class_device_destroy
+  #define kc_class_destroy class_destroy
+ #else /* 2.6.0 ... 2.6.12 */
+  #define kc_class class_simple
+  #define kc_class_create class_simple_create
+  #define kc_class_device_create class_simple_device_add
+  #define kc_class_device_destroy(a,b) class_simple_device_remove(b)
+  #define kc_class_destroy class_simple_destroy
+ #endif
+#endif
+
+
 /*** tasklet declaration and processing ***/
 
 #if (LINUX_VERSION_CODE < VERSION(2,5,0)) /* may need correction */
@@ -336,6 +380,14 @@ char kernel_version[] = UTS_RELEASE;
 #else /* 2.3.0 */
   #define kc_yield yield
 #endif /* 2.3.0 */
+
+/*** PCI changes ***/
+
+#if (LINUX_VERSION_CODE < VERSION(2,6,11)) /* may need correction */
+  #define kc_pci_name(pdev) (pdev->slot_name)
+#else /* 2.6.11 */
+  #define kc_pci_name pci_name
+#endif /* 2.6.11 */
 
 /*** wait queues changes ***/
 

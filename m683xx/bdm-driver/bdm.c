@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.3 2004/05/21 21:43:45 ppisa Exp $
+ * $Id: bdm.c,v 1.4 2005/11/03 02:25:06 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1815,6 +1815,8 @@ KC_CHRDEV_FOPS_BEG(bdm_fops)
 	NULL,				/* revalidate          */
 KC_CHRDEV_FOPS_END;
 
+struct kc_class *bdm_class;
+
 #ifdef WITH_PARPORT_SUPPORT
 static int 
 bdm_preempt(void *handle)
@@ -1835,8 +1837,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.3 $", "$Date: 2004/05/21 21:43:45 $");
-		   /*"$Id: bdm.c,v 1.3 2004/05/21 21:43:45 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.4 $", "$Date: 2005/11/03 02:25:06 $");
+		   /*"$Id: bdm.c,v 1.4 2005/11/03 02:25:06 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1884,6 +1886,7 @@ init_module(void)
      latest changes to devfs done by Adam J. Richter <adam@yggdrasil.com>. */
   #if (LINUX_VERSION_CODE >= VERSION(2,5,60)) 
 	devfs_mk_dir (BDM_DEVFS_DIR_NAME);
+	bdm_class = kc_class_create(THIS_MODULE, BDM_DEVFS_DIR_NAME);
 	for(i=0;i<bdm_minor_index_size;i++){
           /*char dev_name[32];*/
 	  if(bdm_minor_index[i]<0) continue;
@@ -1891,6 +1894,7 @@ init_module(void)
 	  /*sprintf(dev_name, "%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);*/
 	  devfs_mk_cdev(MKDEV(BDM_MAJOR_NUMBER, i), S_IFCHR | S_IRUGO | S_IWUGO, 
 	  	"%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
+	  kc_class_device_create(bdm_class, MKDEV(BDM_MAJOR_NUMBER, i), NULL, minor2descriptor(i)->name);
 	}
   #else /* < 2.5.60 */
 	bdm_devfs_handle = devfs_mk_dir (NULL, BDM_DEVFS_DIR_NAME, NULL);
@@ -1933,10 +1937,12 @@ cleanup_module(void)
 	  for(i=0;i<bdm_minor_index_size;i++){
 	    if(bdm_minor_index[i]<0) continue;
 	    if(!minor2descriptor(i)->name) continue;
+	    kc_class_device_destroy(bdm_class, MKDEV(BDM_MAJOR_NUMBER, i));
 	    devfs_remove("%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
           }
 	}
 	devfs_remove(BDM_DEVFS_DIR_NAME);
+	kc_class_destroy(bdm_class);
   #else /* < 2.5.60 */
 	if(bdm_devfs_handle)
 		devfs_unregister (bdm_devfs_handle);
