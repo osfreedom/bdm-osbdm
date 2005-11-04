@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.c,v 1.4 2004/12/05 13:20:09 ppisa Exp $
+ * $Id: bdmlib.c,v 1.5 2005/11/04 14:33:54 ppisa Exp $
  *
  * Remote debugging interface for 683xx via Background Debug Mode
  * needs a driver, which controls the BDM interface.
@@ -1423,8 +1423,8 @@ bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
 
 	dbprintf("bdmlib_load_section:\n\tsection %s index %d\n",
 			sec->name, sec->index);
-	dbprintf("\tflags %#x raw_size 0x%08x cooked_size 0x%08x\n",
-			sec->flags, sec->_raw_size, sec->_cooked_size);
+	dbprintf("\tflags %#x raw_size 0x%08lx cooked_size 0x%08lx\n",
+			sec->flags, (long)bfd_get_section_limit(abfd, sec), (long)bfd_get_section_size(sec));
 	dbprintf("\tvma %#x lma %#x output_offset %#x\n",
 			sec->vma, sec->lma, sec->output_offset);
 	if ((load_section_error < 0) ||
