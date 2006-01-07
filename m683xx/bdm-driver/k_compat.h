@@ -299,7 +299,7 @@ char kernel_version[] = UTS_RELEASE;
 
   #define kc_devfs_mk_dir(dirname...) ({ \
   	  char kc_buf[64]; int kc_n; \
-	  kc_n = snprintf(buf, 64, dirname...); \
+	  kc_n = snprintf(buf, 64, ##dirname); \
   	  (kc_n >= 64 || !buf[0])? NULL: devfs_mk_dir(NULL, kc_buf, NULL); \
 	})
 
@@ -314,19 +314,29 @@ char kernel_version[] = UTS_RELEASE;
 #else /* 2.6.0 */
  #define KC_WITH
  #include <linux/device.h>
- #if LINUX_VERSION_CODE >= VERSION(2,6,13)
+ #if LINUX_VERSION_CODE >= VERSION(2,6,15)
   #define kc_class class
   #define kc_class_create class_create
   #define kc_class_device_create class_device_create
   #define kc_class_device_destroy class_device_destroy
   #define kc_class_destroy class_destroy
+ #elif LINUX_VERSION_CODE >= VERSION(2,6,13)
+  #define kc_class class
+  #define kc_class_create class_create
+  #define kc_class_device_create(cls, parent, devt, device, fmt...) \
+		class_device_create(cls, devt, device, ##fmt)
+  #define kc_class_device_destroy class_device_destroy
+  #define kc_class_destroy class_destroy
  #else /* 2.6.0 ... 2.6.12 */
   #define kc_class class_simple
   #define kc_class_create class_simple_create
-  #define kc_class_device_create class_simple_device_add
+  #define kc_class_device_create(cls, parent, devt, device, fmt...) \
+		class_simple_device_add(cls, devt, device, ##fmt)
   #define kc_class_device_destroy(a,b) class_simple_device_remove(b)
   #define kc_class_destroy class_simple_destroy
  #endif
+ #define kc_pci_dev_to_dev(pdev) (&(pdev)->dev)
+ #define kc_usb_dev_to_dev(pdev) (&(pdev)->dev)
 #endif
 
 

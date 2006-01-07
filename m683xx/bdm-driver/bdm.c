@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.4 2005/11/03 02:25:06 ppisa Exp $
+ * $Id: bdm.c,v 1.5 2006/01/07 22:47:50 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1837,8 +1837,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.4 $", "$Date: 2005/11/03 02:25:06 $");
-		   /*"$Id: bdm.c,v 1.4 2005/11/03 02:25:06 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.5 $", "$Date: 2006/01/07 22:47:50 $");
+		   /*"$Id: bdm.c,v 1.5 2006/01/07 22:47:50 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1894,7 +1894,7 @@ init_module(void)
 	  /*sprintf(dev_name, "%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);*/
 	  devfs_mk_cdev(MKDEV(BDM_MAJOR_NUMBER, i), S_IFCHR | S_IRUGO | S_IWUGO, 
 	  	"%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
-	  kc_class_device_create(bdm_class, MKDEV(BDM_MAJOR_NUMBER, i), NULL, minor2descriptor(i)->name);
+	  kc_class_device_create(bdm_class, NULL, MKDEV(BDM_MAJOR_NUMBER, i), NULL, minor2descriptor(i)->name);
 	}
   #else /* < 2.5.60 */
 	bdm_devfs_handle = devfs_mk_dir (NULL, BDM_DEVFS_DIR_NAME, NULL);
