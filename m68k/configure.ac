@@ -10,7 +10,7 @@ dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 dnl GNU General Public License for more details.
 
 AC_PREREQ(2.59)
-AC_INIT([m68k-bdm],[1.3.1],[bdm-devel@lists.sourceforge.net])
+AC_INIT([m68k-bdm],[1.3.2],[bdm-devel@lists.sourceforge.net])
 AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_TARGET([])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 dist-zip])
@@ -104,25 +104,62 @@ AC_ARG_ENABLE(remote,
 
 AM_CONDITIONAL(BDM_REMOTE, test x$bdm_remote = xtrue)
 
+AC_CHECK_FUNCS(ioperm)
+
+AC_MSG_CHECKING([direct ioperm hardware access])
 AC_ARG_ENABLE(ioperm,
- [  --enable-ioperm Turn on direct ioperm hardware access (enabled)],
+ [  --enable-ioperm Turn on direct ioperm hardware access (autodetected)],
  [case "${enableval}" in
-    yes) bdm_ioperm=true ;;
-    no)  bdm_ioperm=false ;;
-    *) AC_MSG_ERROR(bad value ${enableval} for --enable-ioperm) ;;
+    yes)
+      AC_MSG_RESULT([yes (enabled by user)])
+      bdm_ioperm=true
+      ;;
+    no)
+      AC_MSG_RESULT([no (disabled by user)])
+      bdm_ioperm=false
+      ;;
+    *)
+      AC_MSG_ERROR(bad value ${enableval} for --enable-ioperm)
+      ;;
    esac],
- [bdm_ioperm=true])
+ [
+   if test "$ac_cv_func_ioperm" = yes; then
+     AC_MSG_RESULT([yes (autodetected)])
+     bdm_ioperm=true
+   else
+     AC_MSG_RESULT([no (autodetected)])
+     bdm_ioperm=false
+   fi
+ ])
 
 AM_CONDITIONAL(BDM_IOPERM, test x$bdm_ioperm = xtrue)
 
+AC_MSG_CHECKING([for kernel driver support])
 AC_ARG_ENABLE(driver,
- [  --enable-driver Turn on driver support (enabled)],
+ [  --enable-driver Turn on driver support (autodetected)],
  [case "${enableval}" in
-    yes) bdm_driver=true ;;
-    no)  bdm_driver=false ;;
+    yes)
+      AC_MSG_RESULT([yes (enabled by user)])
+      bdm_driver=true
+      ;;
+    no)
+      AC_MSG_RESULT([no (disabled by user)])
+      bdm_driver=false
+      ;;
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-driver) ;;
    esac],
- [bdm_driver=true])
+ [
+   case "$target_os" in
+   darwin*)
+     AC_MSG_RESULT([no (autodetected)])
+     bdm_driver=false
+     ;;
+   *)
+     AC_MSG_RESULT([yes (autodetected)])
+     bdm_driver=true
+     ;;
+   esac
+ ])
 
 AM_CONDITIONAL(BDM_DRIVER, test x$bdm_driver = xtrue)
 
@@ -206,7 +243,7 @@ bdm_subdirs="${bdm_subdirs} test utils"
 AC_SUBST(BDM_SUBDIRS, ${bdm_subdirs})
 
 dnl
-dnl Output the Makefiles.
+dnl Output the Makefiles and config.h.
 dnl
 
 AC_CONFIG_FILES(Makefile \
@@ -216,4 +253,6 @@ AC_CONFIG_FILES(Makefile \
                 test/Makefile \
                 bdmabstraction/Makefile \
                 utils/Makefile)
+AC_CONFIG_HEADERS(config.h)
+
 AC_OUTPUT

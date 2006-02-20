@@ -247,11 +247,11 @@ Step 2 -- Compile and install the library and user programs
     --enable-remote:   Turn on the remote protocol and build it into
                        the library. On by default.
 
-    --enable-ioperm:   Turn on direct IOPERM hardware access. On by
-                       default.
+    --enable-ioperm:   Turn on direct IOPERM hardware access. Enabled
+                       if the OS provides the ioperm() system call.
 
-    --enable-driver:   Turn on driver access from the library. On by
-                       default.
+    --enable-driver:   Turn on driver access from the library. Enabled
+                       by default on systems that support it.
 
     --enable-server:   Turn on building the BDM server. On by default.
 
