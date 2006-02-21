@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.5 2006/01/07 22:47:50 ppisa Exp $
+ * $Id: bdm.c,v 1.6 2006/02/21 13:20:15 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1585,11 +1585,8 @@ bdm_ioctl(struct inode *inode, struct file *file,
 		break;
 	  case BDM_GET_VERSION:
 		/* read counter and return it to *arg */
-		if (verify_area(VERIFY_WRITE, (int *) arg, sizeof(int))) {
+		if(kc_put_user_long(bdm_version, arg))
 			retval = -EINVAL;
-		} else {
-			kc_put_user_long(bdm_version, arg);
-		}
 		break;
 	  case BDM_SENSECABLE:
 		bdm_sense = arg;
@@ -1708,11 +1705,12 @@ bdm_write(WRITE_PARAMETERS)
 	if (bdm_debug_level >= BDM_DEBUG_SOME) {
 		printk("bdm_write minor %d len %d\n", descr->minor, (int)count);	 
 	}
-	if (verify_area(VERIFY_READ, buf, count))
+	if (!access_ok(VERIFY_READ, buf, count))
 		return -EINVAL;
 
 	while (count > 0) {
-		bdm_word = kc_get_user_word(buf);
+		bdm_word = 0;
+		kc_get_user_word(bdm_word, buf);
 		ret = descr->ser_clk(descr, bdm_word, 0);
 		if (bdm_debug_level >= BDM_DEBUG_ALL) {
 			printk("bdm_write sent:  %x received: %x\n",
@@ -1752,7 +1750,7 @@ bdm_read(READ_PARAMETERS)
 	if (bdm_debug_level >= BDM_DEBUG_SOME) {
 		printk("bdm_read minor=%d len=%d\n", descr->minor, (int)count);	 
 	}
-	if (verify_area(VERIFY_WRITE, buf, count))
+	if (!access_ok(VERIFY_WRITE, buf, count))
 		return -EINVAL;
 
 	while (count > 0) {
@@ -1837,8 +1835,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.5 $", "$Date: 2006/01/07 22:47:50 $");
-		   /*"$Id: bdm.c,v 1.5 2006/01/07 22:47:50 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.6 $", "$Date: 2006/02/21 13:20:15 $");
+		   /*"$Id: bdm.c,v 1.6 2006/02/21 13:20:15 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "

@@ -64,36 +64,40 @@ char kernel_version[] = UTS_RELEASE;
   #define kc_copy_to_user(dst,src,len) ({ \
     if(!(verify_area(VERIFY_WRITE, dst, len))) \
       {memcpy_tofs(dst,src,len);0;} else len; })
-  #define kc_get_user_long  get_fs_long
-  #define kc_get_user_word  get_fs_word
-  #define kc_get_user_byte  get_fs_byte
-  #define kc_put_user_long  put_fs_long
-  #define kc_put_user_word  put_fs_word
-  #define kc_put_user_byte  put_fs_byte
+  #define kc_get_user_long(x,ptr) \
+    (if(!verify_area(VERIFY_READ, (ptr), sizeof(long)))  {(x)=get_fs_long((ptr));0;} else 1; })
+  #define kc_get_user_word(x,ptr) \
+    (if(!verify_area(VERIFY_READ, (ptr), sizeof(short))) {(x)=get_fs_word((ptr));0;} else 1; })
+  #define kc_get_user_byte(x,ptr) \
+    (if(!verify_area(VERIFY_READ, (ptr), sizeof(char)))  {(x)=get_fs_byte((ptr));0;} else 1; })
+  #define kc_put_user_long(x,ptr) \
+    (if(!verify_area(VERIFY_WRITE, (ptr), sizeof(long))) {put_fs_long((x),(ptr));0;} else 1; })
+  #define kc_put_user_word(x,ptr) \
+    (if(!verify_area(VERIFY_WRITE, (ptr), sizeof(short))){put_fs_word((x),(ptr));0;} else 1; })
+  #define kc_put_user_byte(x,ptr) \
+    (if(!verify_area(VERIFY_WRITE, (ptr), sizeof(char))) {put_fs_byte((x),(ptr));0;} else 1; })
 #elif (LINUX_VERSION_CODE < VERSION(2,1,100)) /* may need correction */
   #include  <asm/uaccess.h>
   #define kc_copy_from_user copy_from_user
   #define kc_copy_to_user   copy_to_user
-  #define kc_get_user(ptr) \
-    ({ __typeof__(*(ptr)) x; \
-       __get_user_check(x,(ptr),sizeof(*(ptr))); x; })
+  #define kc_get_user(x,ptr) \
+    (__get_user_check((x),(ptr),sizeof(*(ptr))))
   #define kc_put_user(x,ptr) \
-    (__put_user_check((x),ptr,sizeof(*(ptr))))
+    (__put_user_check((x),(ptr),sizeof(*(ptr))))
 #else /* >= 2.1.100 */
   #include  <asm/uaccess.h>
   #define kc_copy_from_user copy_from_user
   #define kc_copy_to_user   copy_to_user
-  #define kc_get_user(ptr) \
-    ({ __typeof__(*(ptr)) x; \
-       get_user(x,(ptr)); x; })
+  #define kc_get_user(x,ptr) \
+    (get_user((x),(ptr)))
   #define kc_put_user(x,ptr) \
     (put_user((x),(ptr)))
 #endif /* < 2.1.100 */
 
 #if (LINUX_VERSION_CODE >= VERSION(2,1,5))
-  #define kc_get_user_long(ptr)   (kc_get_user((long*)(ptr)))
-  #define kc_get_user_word(ptr)   (kc_get_user((unsigned short*)(ptr)))
-  #define kc_get_user_byte(ptr)   (kc_get_user((unsigned char*)(ptr)))
+  #define kc_get_user_long(x,ptr) (kc_get_user((x),(long*)(ptr)))
+  #define kc_get_user_word(x,ptr) (kc_get_user((x),(unsigned short*)(ptr)))
+  #define kc_get_user_byte(x,ptr) (kc_get_user((x),(unsigned char*)(ptr)))
   #define kc_put_user_long(x,ptr) (kc_put_user((x),(long *)(ptr)))
   #define kc_put_user_word(x,ptr) (kc_put_user((x),(unsigned short*)(ptr)))
   #define kc_put_user_byte(x,ptr) (kc_put_user((x),(unsigned char*)(ptr)))
