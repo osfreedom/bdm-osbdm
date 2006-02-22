@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.9 2004/03/28 23:43:16 codewiz Exp $
+## $Id: Makefile.am,v 1.10 2006/02/22 01:07:44 codewiz Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -41,7 +41,6 @@ bdmctrl_SOURCES = \
 bdmctrl_CPPFLAGS = \
 	-I$(srcdir)/../flashlib \
 	@BFD_INCLUDE@ @CFLAGS@ $(AM_CPPFLAGS)
-bdmctrl_LDFLAGS = -static
 bdmctrl_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
 	$(top_builddir)/flashlib/libbdmflash.a \
