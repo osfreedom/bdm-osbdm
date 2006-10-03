@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.6 2006/02/21 13:20:15 ppisa Exp $
+ * $Id: bdm.c,v 1.7 2006/10/03 16:58:29 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -42,7 +42,9 @@ Boston, MA 02111-1307, USA.
 #include <linux/module.h>
 #include <linux/version.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,60)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
 #include <linux/devfs_fs_kernel.h>
+#endif
 #else /* 2.5.60 */
 #ifdef MODVERSIONS
 #include <linux/modversions.h>
@@ -1835,8 +1837,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.6 $", "$Date: 2006/02/21 13:20:15 $");
-		   /*"$Id: bdm.c,v 1.6 2006/02/21 13:20:15 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.7 $", "$Date: 2006/10/03 16:58:29 $");
+		   /*"$Id: bdm.c,v 1.7 2006/10/03 16:58:29 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1883,15 +1885,19 @@ init_module(void)
   /* I hate next conditional compilation, but k_compat.h can not handle
      latest changes to devfs done by Adam J. Richter <adam@yggdrasil.com>. */
   #if (LINUX_VERSION_CODE >= VERSION(2,5,60)) 
+    #if (LINUX_VERSION_CODE < VERSION(2,6,17)) 
 	devfs_mk_dir (BDM_DEVFS_DIR_NAME);
+    #endif /* < 2.6.17 */
 	bdm_class = kc_class_create(THIS_MODULE, BDM_DEVFS_DIR_NAME);
 	for(i=0;i<bdm_minor_index_size;i++){
           /*char dev_name[32];*/
 	  if(bdm_minor_index[i]<0) continue;
 	  if(!minor2descriptor(i)->name) continue;
 	  /*sprintf(dev_name, "%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);*/
+    #if (LINUX_VERSION_CODE < VERSION(2,6,17)) 
 	  devfs_mk_cdev(MKDEV(BDM_MAJOR_NUMBER, i), S_IFCHR | S_IRUGO | S_IWUGO, 
 	  	"%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
+    #endif /* < 2.6.17 */
 	  kc_class_device_create(bdm_class, NULL, MKDEV(BDM_MAJOR_NUMBER, i), NULL, minor2descriptor(i)->name);
 	}
   #else /* < 2.5.60 */
@@ -1936,10 +1942,14 @@ cleanup_module(void)
 	    if(bdm_minor_index[i]<0) continue;
 	    if(!minor2descriptor(i)->name) continue;
 	    kc_class_device_destroy(bdm_class, MKDEV(BDM_MAJOR_NUMBER, i));
+    #if (LINUX_VERSION_CODE < VERSION(2,6,17)) 
 	    devfs_remove("%s/%s", BDM_DEVFS_DIR_NAME, minor2descriptor(i)->name);
+    #endif /* < 2.6.17 */
           }
 	}
+    #if (LINUX_VERSION_CODE < VERSION(2,6,17)) 
 	devfs_remove(BDM_DEVFS_DIR_NAME);
+    #endif /* < 2.6.17 */
 	kc_class_destroy(bdm_class);
   #else /* < 2.5.60 */
 	if(bdm_devfs_handle)
