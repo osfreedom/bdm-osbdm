@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.18 2004/12/05 06:34:08 codewiz Exp $
+/* $Id: bdmctrl.c,v 1.19 2006/11/20 11:58:22 ppisa Exp $
  *
  * A utility to control bdm targets.
  *
@@ -90,7 +90,16 @@ static const unsigned long mach_m68k[] = {
     bfd_mach_m68030, bfd_mach_m68040, bfd_mach_m68060, bfd_mach_cpu32,
 };
 static const unsigned long mach_cf[] = {
+#ifdef bfd_mach_mcf5200
     bfd_mach_mcf5200, bfd_mach_mcf5206e, bfd_mach_mcf5307, bfd_mach_mcf5407,
+#else
+    bfd_mach_mcf_isa_a_nodiv, bfd_mach_mcf_isa_a, bfd_mach_mcf_isa_a_mac,
+    bfd_mach_mcf_isa_a_emac, bfd_mach_mcf_isa_aplus, bfd_mach_mcf_isa_aplus_mac,
+    bfd_mach_mcf_isa_aplus_emac, bfd_mach_mcf_isa_b_nousp, bfd_mach_mcf_isa_b_nousp_mac,
+    bfd_mach_mcf_isa_b_nousp_emac, bfd_mach_mcf_isa_b, bfd_mach_mcf_isa_b_mac,
+    bfd_mach_mcf_isa_b_emac, bfd_mach_mcf_isa_b_float, bfd_mach_mcf_isa_b_float_mac,
+    bfd_mach_mcf_isa_b_float_emac,
+#endif
 };
 
 static const machlist_t machlist_cpu32[] = {
