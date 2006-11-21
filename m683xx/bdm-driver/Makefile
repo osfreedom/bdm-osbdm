@@ -43,6 +43,11 @@ endif
 KERNEL_VERSION := $(shell awk -F\" '/REL/ {print $$2}' \
 	$(KERNEL_LOCATION)/include/linux/version.h | awk -F\- '{print $$1}')
 
+ifeq ($(KERNEL_VERSION),)
+KERNEL_VERSION=$(shell grep UTS_RELEASE ${KERNEL_LOCATION}/include/linux/utsrelease.h | \
+                 sed 's/[^"]*"\(.*\)\{1\}"/\1/')
+endif
+
 KERNEL_MODULE_V26 := $(shell echo $(KERNEL_VERSION) \
 	| sed -n 's/^.*2\.[5-9]\..*$$/yes/p')
 
