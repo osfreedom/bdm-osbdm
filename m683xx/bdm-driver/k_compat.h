@@ -141,6 +141,14 @@ char kernel_version[] = UTS_RELEASE;
    #define IRQ_RETVAL(x)
 #endif /* <=2.5.67 */
 
+#if (LINUX_VERSION_CODE <= VERSION(2,6,18))
+   #define KC_IRQ_HANDLER_ARGS(intno, dev_id) \
+       int intno, void *dev_id, struct pt_regs *regs
+#else /* <=2.6.18 */
+   #define KC_IRQ_HANDLER_ARGS(intno, dev_id) \
+       int intno, void *dev_id
+#endif /* <=2.6.18 */
+
 /*** timming related stuff ***/
 
 #if (LINUX_VERSION_CODE < VERSION(2,1,100)) /* needs correction */
