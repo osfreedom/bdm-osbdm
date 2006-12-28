@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.7 2006/10/03 16:58:29 ppisa Exp $
+ * $Id: bdm.c,v 1.8 2006/12/28 13:04:58 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -38,9 +38,11 @@ Boston, MA 02111-1307, USA.
 
 #undef REALLY_SLOW_IO
 
-#include <linux/config.h>
 #include <linux/module.h>
 #include <linux/version.h>
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,17)
+#include <linux/config.h>
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,5,60)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,17)
 #include <linux/devfs_fs_kernel.h>
@@ -1837,8 +1839,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.7 $", "$Date: 2006/10/03 16:58:29 $");
-		   /*"$Id: bdm.c,v 1.7 2006/10/03 16:58:29 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.8 $", "$Date: 2006/12/28 13:04:58 $");
+		   /*"$Id: bdm.c,v 1.8 2006/12/28 13:04:58 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
