@@ -4,7 +4,7 @@ will change short-term.
 
 In order to avoid confusion in discussions, I want to define some terms:
 
-filter: The filter is the main interace to the application. The application
+filter: The filter is the main interface to the application. The application
 	don't really need to know about the flashing details. Filter's
 	write_memory() function is the flashing aequivalent of the memcpy()
 	function.
@@ -16,14 +16,14 @@ chip description: The chip description describes details of a flash chip. What
 		  the driver. Most drivers will probably want to store at
 		  least chip-type and bus-interface.
 
-flash region: A flash region describes a specific flash chip. The most
-	      important information herein is the base-address, the length,
-	      the driver and the chip description.
+flash region: A flash region describes specific flash chips (depending on the
+	      bus interface). The most important information herein is the
+	      base-address, the length, the driver and the chip description.
 
 plugin: A driver that can be downloaded and executed on the target.
 
 host-only mode: All operations are piped through the BDM interface. This is
-		extremely slow but very usefull for bootstrapping/debugging.
+		extremely slow but very useful for bootstrapping/debugging.
 
 host-assisted mode: Host downloads plugin. The actual flashing operation is
 		    executed by the plugin. This is the preferred operation

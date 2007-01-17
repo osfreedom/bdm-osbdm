@@ -1,11 +1,11 @@
-/* $Id: flash29.c,v 1.3 2005/07/29 06:23:06 codewiz Exp $
+/* $Id: flash29.c,v 1.4 2007/01/17 22:47:39 joewolf Exp $
  *
  * Driver for 29Fxxx and 49Fxxx flash chips.
  *
  * 2003-12-28 Josef Wolf (jw@raven.inka.de)
  *
  * Portions of this program which I authored may be used for any purpose
- * so long as this notice is left intact.
+ * so long as this notice is left intact. 
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -130,7 +130,7 @@ static const alg_info_t alg_29_unl = { /* 29fxx with unlock bypass mode */
     0x555,      /* register 1 */
     0x2aa,      /* register 5 */
 };
-static const alg_info_t alg_49 = { /* 49fxx chips */
+static const alg_info_t alg_49 = { /* 49fxx and 39fxx chips */
     0xaaaaaaaa, /* unlock 1 command */
     0x55555555, /* unlock 2 command */
     0xf0f0f0f0, /* res */
@@ -138,11 +138,11 @@ static const alg_info_t alg_49 = { /* 49fxx chips */
     0xa0a0a0a0, /* prog */
     0x80808080, /* erase */
     0x10101010, /* chiperase */
-    0x30303030, /* secterase */
+    0x30303030, /* secterase */             /* Block erase ? */
     0x00000000, /* no unlock bypass */
     0x90909090, /* unlock bypass res1 */
     0x00000000, /* unlock bypass res2 */
-    0x20,       /* timeout bitmask */
+    0x00,       /* no timeout support */
     0x5555,     /* register 1 */
     0x2aaa,     /* register 5 */
 };
@@ -150,9 +150,20 @@ static const alg_info_t alg_49 = { /* 49fxx chips */
 /* Here come the known chips.
  */
 static const chip_t chips[]= {
+    {"Am29LV001BT", 0x01,   0xed,  0x20000, &alg_29_unl }, /* AMD */
+    {"Am29LV001BB", 0x01,   0x6d,  0x20000, &alg_29_unl }, /* AMD */
+    {"Am29LV002T",  0x01,   0x40,  0x40000, &alg_29_std }, /* AMD */
+    {"Am29LV002B",  0x01,   0xc2,  0x40000, &alg_29_std }, /* AMD */
+    {"Am29LV004T",  0x01,   0xb5,  0x80000, &alg_29_std }, /* AMD */
+    {"Am29LV004B",  0x01,   0xb6,  0x80000, &alg_29_std }, /* AMD */
+    {"Am29LV008BT", 0x01,   0x3e, 0x100000, &alg_29_unl }, /* AMD */
+    {"Am29LV008BB", 0x01,   0x37, 0x100000, &alg_29_unl }, /* AMD */
+    {"Am29LV017B",  0x01,   0xc8, 0x200000, &alg_29_unl }, /* AMD */
+
     {"Am29F010B",   0x01,   0x20,  0x20000, &alg_29_std }, /* AMD */
 
     {"At49F040",    0x1f,   0x13,  0x80000, &alg_49     }, /* Atmel */
+
     {"Am29F040B",   0x01,   0xa4,  0x80000, &alg_29_std }, /* AMD */
     {"Am29F400BT",  0x01, 0x2223,  0x80000, &alg_29_std }, /* AMD */
     {"Am29F400BB",  0x01, 0x22ab,  0x80000, &alg_29_std }, /* AMD */
@@ -166,7 +177,6 @@ static const chip_t chips[]= {
     {"Am29F800BB",  0x01, 0x2258, 0x100000, &alg_29_std }, /* AMD */
 
     {"Am29PL160C",  0x01, 0x2245, 0x200000, &alg_29_unl }, /* AMD */
-
     {"Am29LV160B",  0x01, 0x2249, 0x200000, &alg_29_unl }, /* AMD */
     {"HY29LV160B",  0xad, 0x2249, 0x200000, &alg_29_unl }, /* HYRIX */
     {"MX29LV160B",  0xc2, 0x2245, 0x200000, &alg_29_unl }, /* MACRONIX */
@@ -183,6 +193,13 @@ static const chip_t chips[]= {
     {"MBM29DLV640E",0x04, 0x227e, 0x800000, &alg_29_std }, /* FUJITSU */
     {"MX29LV640MB", 0xc2, 0x22cb, 0x800000, &alg_29_unl }, /* MACRONIX */
     {"TC58FVM6B2A", 0x98, 0x0058, 0x800000, &alg_29_unl }, /* TOSHIBA */
+
+    {"Sst39VF1601", 0xbf, 0x234b, 0x200000, &alg_49     }, /* SST */
+    {"Sst39VF1602", 0xbf, 0x234a, 0x200000, &alg_49     }, /* SST */
+    {"Sst39VF3201", 0xbf, 0x235b, 0x400000, &alg_49     }, /* SST */
+    {"Sst39VF3202", 0xbf, 0x235a, 0x400000, &alg_49     }, /* SST */
+    {"Sst39VF6401", 0xbf, 0x236b, 0x800000, &alg_49     }, /* SST */
+    {"Sst39VF6402", 0xbf, 0x236a, 0x800000, &alg_49     }, /* SST */
 };
 
 /* define the actual access functions to the flash. There are three orthogonal
@@ -190,11 +207,12 @@ static const chip_t chips[]= {
 
    1. Every bus_width needs its own set of functions because we need to access
    the chips with bus_width width. This is to avoid the access be split up
-   into several accesses, which chould abort a started command.
+   into several accesses, which could abort a started command.
 
    2. Bus accesses need two functions: one for reading and one for writing.
 
    3. In addition, we need a second set of functions for host-assisted access.
+
    Since we're lazy, we use CPP for this boring thing.
 */
 
@@ -316,7 +334,7 @@ static int wait_chip (chiptype_t *ct, unsigned long adr, unsigned long expect)
 		bus_mask &= ~shifted_chip_mask;
 	    }
 	}
-	last_val = rval;
+        last_val = rval;
     }
 
     return 1;
