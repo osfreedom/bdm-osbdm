@@ -11,8 +11,8 @@ gdb-patches from the m68k branch to work).
 
 Bdmctrl is invoked like this:
 
-    Usage: %s [options] [<script> [arguments [...]]]
-     where options are one ore more of:
+    Usage: bdmctrl [options] [<script> [arguments [...]]]
+     where options are one or more of:
        -h <cmd>   Get additional description for command <cmd>.
        -d <level> Choose driver debug level (default=0).
        -v <level> Choose verbosity level (default=1).
@@ -85,7 +85,7 @@ Supported commands and their parameters
 =======================================
 
 Please use "bdmctrl -h" to get a list of available commands.
-Please use "bdmctrl -h COMMAND" to get information on the command.
+Please use "bdmctrl -h COMMAND" to get information on specific command.
 
 
 Plans for the future
