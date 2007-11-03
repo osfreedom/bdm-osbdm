@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: bootstrap,v 1.4 2006/02/20 21:21:07 codewiz Exp $
+# $Id: bootstrap,v 1.5 2007/11/03 05:31:21 cjohns Exp $
 #
 # Copyright (c) 2002, Cybertec Pty Ltd.
 # All rights reserved.
@@ -17,7 +17,8 @@ if [ ! -d config ]; then
 fi
 
 
-if test -z "`automake --version 2>&1|head -n 1|egrep '1.[7-9]'`";
+am_version=$(automake --version 2>&1 | head -n 1 | awk '{ print $4 }' | sed -e 's/\.//')
+if test $am_version -lt 17;
 then
   echo "Automake 1.7 or higher is required! Aborting...";
   exit 1;

@@ -10,7 +10,7 @@
 #include <BDMlib.h>
 
 #if defined (__WIN32__)
-#define sleep _sleep
+#define sleep(_s) Sleep((_s) * 1000000)
 #endif
 
 static const char *const sysreg_name[BDM_MAX_SYSREG] = {

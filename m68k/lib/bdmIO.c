@@ -87,7 +87,7 @@
  * in a server, ie bdmd.
  */
 
-#define PRINTF bdmDebug
+#define PRINTF bdmPrint
 
 /*
  * If on Cygwin assume Windows.
@@ -159,7 +159,7 @@ bdmLogSyslog (void)
 }
 
 void
-bdmDebug (const char *format, ...)
+bdmPrint (const char *format, ...)
 {
   va_list ap;
 
@@ -174,6 +174,7 @@ bdmDebug (const char *format, ...)
     {
       fprintf (stderr, "BDM: ");
       vfprintf (stderr, format, ap);
+      fflush (stderr);
     }
   }
 
@@ -374,8 +375,8 @@ static int
 readTarget (int command, unsigned long address, unsigned long *lp)
 {
   struct BDMioctl ioc;
-
   ioc.address = address;
+  ioc.value = 0;
   if (bdmIoctlIo (command, &ioc) < 0)
     return -1;
   *lp = ioc.value;
@@ -389,7 +390,6 @@ static int
 writeTarget (int command, unsigned long address, unsigned long l)
 {
   struct BDMioctl ioc;
-
   ioc.address = address;
   ioc.value = l;
   if (bdmIoctlIo (command, &ioc) < 0)
@@ -586,8 +586,7 @@ bdmIsOpen (void)
 int
 bdmStatus (void)
 {
-  int status;
-
+  int status = 0;
   if (bdmIoctlInt (BDM_GET_STATUS, &status) < 0)
     return -1;
   PRINTF ("Status %#x\n", status);
@@ -648,11 +647,24 @@ bdmColdfireSetPST (int pst)
 int
 bdmReadControlRegister (int code, unsigned long *lp)
 {
-  unsigned long ltmp;
-
+  unsigned long ltmp = 0;
   if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
     return -1;
   PRINTF ("Read control register 0x%04x: %#8lx\n", code, ltmp);
+  *lp = ltmp;
+  return 0;
+}
+
+/*
+ * Read a debug register
+ */
+int
+bdmReadDebugRegister (int code, unsigned long *lp)
+{
+  unsigned long ltmp = 0;
+  if (readTarget (BDM_READ_DBREG, code, &ltmp) < 0)
+    return -1;
+  PRINTF ("Read debug register 0x%04x: %#8lx\n", code, ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -663,8 +675,7 @@ bdmReadControlRegister (int code, unsigned long *lp)
 int
 bdmReadSystemRegister (int code, unsigned long *lp)
 {
-  unsigned long ltmp;
-
+  unsigned long ltmp = 0;
   if (readTarget (BDM_READ_SYSREG, code, &ltmp) < 0)
     return -1;
   PRINTF ("Read system register %s: %#8lx\n", sysregName[code], ltmp);
@@ -678,8 +689,7 @@ bdmReadSystemRegister (int code, unsigned long *lp)
 int
 bdmReadRegister (int code, unsigned long *lp)
 {
-  unsigned long ltmp;
-
+  unsigned long ltmp = 0;
   code &= 0xF;
   if (readTarget (BDM_READ_REG, code, &ltmp) < 0)
     return -1;
@@ -697,6 +707,18 @@ bdmWriteControlRegister (int code, unsigned long l)
   if (writeTarget (BDM_WRITE_CTLREG, code, l) < 0)
     return -1;
   PRINTF ("Write control register 0x%04x: %#8lx\n", code, l);
+  return 0;
+}
+
+/*
+ * Write a debug register
+ */
+int
+bdmWriteDebugRegister (int code, unsigned long l)
+{
+  if (writeTarget (BDM_WRITE_DBREG, code, l) < 0)
+    return -1;
+  PRINTF ("Write debug register 0x%04x: %#8lx\n", code, l);
   return 0;
 }
 
@@ -1025,7 +1047,7 @@ bdmGetDrvVersion (unsigned int *ver)
 {
   if (bdmIoctlInt (BDM_GET_DRV_VER, (int*) ver) < 0)
     return -1;
-  PRINTF ("Driver version: %x.%x\n", *ver >> 8, *ver & 0xff);
+  PRINTF ("Driver version: %d.%d\n", *ver >> 8, *ver & 0xff);
   return 0;
 }
 

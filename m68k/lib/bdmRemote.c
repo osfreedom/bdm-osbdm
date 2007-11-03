@@ -169,7 +169,7 @@ bdmSocketSend (int fd, char *buf, int buf_len)
   int wrote;
 
 #if BDM_REMOTE_TRACE
-  printf ("bdm-remote:send: [%d] %s\n", buf_len, buf);
+  bdmPrint ("bdm-remote:send: [%d] %s\n", buf_len, buf);
 #endif
 
 #if defined (__WIN32__)
@@ -178,8 +178,8 @@ bdmSocketSend (int fd, char *buf, int buf_len)
   wrote = write (fd, buf, buf_len);
 #endif
   if (wrote < 0)
-    printf ("bdm-remote:send: socket write failed: %s\n",
-            strerror (errno));
+    bdmPrint ("bdm-remote:send: socket write failed: %s\n",
+              strerror (errno));
   return wrote;
 }
 
@@ -223,7 +223,7 @@ bdmRemoteWait (int fd, char *buf, int buf_len)
       if (cread > 0) {
         buf[cread] = 0;
 #if BDM_REMOTE_TRACE
-        printf ("bdm-remote:wait: [%d] %s\n", cread, buf);
+        bdmPrint ("bdm-remote:wait: [%d] %s\n", cread, buf);
 #endif
         return cread;
       }
@@ -271,7 +271,7 @@ bdmRemoteName (const char *name)
   hostent = gethostbyname (lname);
 
   if (!hostent) {
-    printf ("bdm-remote:name: host look falied: %s\n", lname);
+    bdmPrint ("bdm-remote:name: host look falied: %s\n", lname);
     errno = ENOENT;
     return 0;
   }
@@ -374,7 +374,7 @@ bdmRemoteOpen (const char *name)
   hostent = gethostbyname (lname);
 
   if (!hostent) {
-    printf ("bdm-remote:open: gethostbyname (%s) failed\n", lname);
+    bdmPrint ("bdm-remote:open: gethostbyname (%s) failed\n", lname);
     errno = ENOENT;
     return -1;
   }
@@ -445,14 +445,14 @@ bdmRemoteOpen (const char *name)
   }
 
   if (reties == BDM_REMOTE_OPEN_WAIT) {
-    printf ("bdm-remote:open: %s:%d:%s failed\n", lname, port, device);
+    bdmPrint ("bdm-remote:open: %s:%d:%s failed\n", lname, port, device);
     errno = ENXIO;
     return -1;
   }
 
   protoent = getprotobyname ("tcp");
   if (!protoent) {
-    printf ("bdm-remote:open: getprotobyname failed\n");
+    bdmPrint ("bdm-remote:open: getprotobyname failed\n");
     close (fd);
     return -1;
   }
@@ -461,7 +461,7 @@ bdmRemoteOpen (const char *name)
   if (setsockopt (fd, protoent->p_proto,
                   TCP_NODELAY, (char *) &optarg, sizeof (optarg))) {
     int save_errno = errno;
-    printf ("bdm-remote:open: setsockopt failed\n");
+    bdmPrint ("bdm-remote:open: setsockopt failed\n");
     close (fd);
     fd = -1;
     errno = save_errno;
@@ -492,7 +492,7 @@ bdmRemoteOpen (const char *name)
 
   if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0) {
     int save_errno = errno;
-    printf ("bdm-remote:open: wait failed\n");
+    bdmPrint ("bdm-remote:open: wait failed\n");
     close (fd);
     fd = -1;
     errno = save_errno;
@@ -539,7 +539,7 @@ bdmRemoteClose (int fd)
 }
 
 /*
- * Do an int-argument  BDM ioctl
+ * Do an int-argument BDM ioctl
  */
 int
 bdmRemoteIoctlInt (int fd, int code, int *var)
@@ -679,7 +679,7 @@ bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
    */
 
   buf_len = 1 + sprintf (buf, "IOIO 0x%x,0x%x,0x%x",
-                      id, ioc->address, ioc->value);
+                         id, ioc->address, ioc->value);
 
   if (bdmSocketSend (fd, buf, buf_len) != buf_len)
     return -1;

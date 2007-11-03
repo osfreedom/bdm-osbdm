@@ -59,11 +59,13 @@ const char *bdmErrorString (void);
  *       devices data sheet.
  */
 int bdmReadControlRegister (int code, unsigned long *lp);
+int bdmReadDebugRegister (int code, unsigned long *lp);
 int bdmReadSystemRegister (int code, unsigned long *lp);
 int bdmReadRegister (int code, unsigned long *lp);
 int bdmReadMBAR (unsigned long *lp);
 
 int bdmWriteControlRegister (int code, unsigned long l);
+int bdmWriteDebugRegister (int code, unsigned long l);
 int bdmWriteSystemRegister (int code, unsigned long l);
 int bdmWriteRegister (int code, unsigned long l);
 int bdmWriteMBAR (unsigned long l);
@@ -122,7 +124,7 @@ int bdmWrite (unsigned char *cbuf, unsigned long nbytes);
  * BDM debug channel. Applications may use this to have a common
  * debug trace environment.
  */
-void bdmDebug (const char *format, ...);
+void bdmPrint (const char *format, ...);
 
 #if __cplusplus
 }

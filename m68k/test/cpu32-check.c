@@ -1,4 +1,4 @@
-/* $Id: cpu32-check.c,v 1.5 2005/10/24 01:35:25 cjohns Exp $
+/* $Id: cpu32-check.c,v 1.6 2007/11/03 05:31:22 cjohns Exp $
 0        1         2         3         4         5         6         7
 123456789012345678901234567890123456789012345678901234567890123456789012345678
  * 
@@ -41,7 +41,7 @@
 #include <string.h>
 
 #if defined (__WIN32__)
-#define sleep _sleep
+#define sleep(_s) Sleep((_s) * 1000000)
 #endif
 
 static int stop_on_error = 1;

@@ -15,9 +15,10 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
+#include <config.h> 
 #include <syslog.h> 
 #include <stdio.h>
-#ifdef STDC_HEADERS
+#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
 #else
 char *malloc ();

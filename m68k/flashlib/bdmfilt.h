@@ -1,12 +1,12 @@
 /*
- * $Id: bdmfilt.h,v 1.2 2005/10/24 01:33:53 cjohns Exp $
+ * $Id: bdmfilt.h,v 1.3 2007/11/03 05:31:21 cjohns Exp $
  */
 
 #ifndef BDMFILT_H
 #define BDMFILT_H
 
 #include <sys/types.h>
-#include <bfd.h>
+//#include <bfd.h>
 
 /* Windows does not have caddr_t so we add it here. */
 #if defined (__WIN32__) || !defined (__CYGWIN__)

@@ -1,6 +1,6 @@
 /*
  * Motorola Background Debug Mode Driver
- * Copyright (C) 1998  Chris Johns
+ * Copyright (C) 1998-2007  Chris Johns
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,22 +18,19 @@
  *
  * Windows support by:
  * Chris Johns
- * Cybertec Pty Ltd.
- *
- * ccj@acm.org, cjohns@cybertec.com.au
+ * Contemporary Software
+ * chris@contemporary.net.au
  *
  * Michael Cooper
  * Integrated Chipware
  * 1861 Wiehle Ave.
  * Reston, Virginia  20190, USA
- *
  * mikec@chipware.com
  *
  * Rick Haubenstricker
  * Perceptron, Inc
  * 47827 Halyard Dr
  * Plymouth, Michigan 48170, USA
- *
  * rickh@perceptron.com
  *
  */
@@ -60,19 +57,19 @@ static int debugLevel = BDM_DEFAULT_DEBUG;
  */
 
 int
-remote_close (int fd)
+win32_remote_close (int fd)
 {
   return close (fd);
 }
 
 int
-remote_read (int fd, char *buf, size_t count)
+win32_remote_read (int fd, char *buf, size_t count)
 {
   return read (fd, buf, count);
 }
 
 int
-remote_write (int fd, char *buf, size_t count)
+win32_remote_write (int fd, char *buf, size_t count)
 {
   return write (fd, buf, count);
 }
@@ -290,7 +287,7 @@ static void bdm_cleanup_module (void)
 {
   if (bdm_dev_registered) {
     bdm_dev_registered = 0;
-    printf ("BDM driver unregistered.\n");
+    fprintf (stderr, "BDM driver unregistered.\n");
   }
 }
 
@@ -328,15 +325,15 @@ win_bdm_init ()
     h = CreateFile ("\\\\.\\giveio", GENERIC_READ, 0, NULL,
                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
-      printf ("error: could not access the GiveIO device.\n");
+      fprintf (stderr, "error: could not access the GiveIO device.\n");
       return -1;
     }
     CloseHandle (h);
   }
 
 #ifdef BDM_VER_MESSAGE
-  printf ("bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
-          BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
+  fprintf (stderr, "bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
+           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
 #endif
 
   bdm_dev_registered = 1;
@@ -365,8 +362,8 @@ win_bdm_init ()
       case 2:  port = 0x3bc;  break;  /* LPT3 */
       case 3:  port = 0x2bc;  break;  /* LPT4, ccj - made this up :-) */
       default:
-        printf ("BDM driver has no address for LPT%d.\n",
-                               BDM_IFACE_MINOR (minor) + 1);
+        fprintf (stderr, "BDM driver has no address for LPT%d.\n",
+                 BDM_IFACE_MINOR (minor) + 1);
         bdm_cleanup_module();
         return -EIO;
     }
@@ -382,8 +379,8 @@ win_bdm_init ()
     if (inb (port) != 0x00) {
       self->exists = 0;
       if (self->debugFlag)
-        printf ("BDM driver cannot detect LPT%d.\n",
-                               BDM_IFACE_MINOR (minor) + 1);
+        fprintf (stderr, "BDM driver cannot detect LPT%d.\n",
+                 BDM_IFACE_MINOR (minor) + 1);
       continue;
     }
 
@@ -398,7 +395,7 @@ win_bdm_init ()
       case BDM_CPU32_ICD:    cpu32_icd_init_self (self); break;
       case BDM_COLDFIRE_PE:  cf_pe_init_self (self); break;
       default:
-        printf ("BDM driver has no interface for minor number\n");
+        fprintf (stderr, "BDM driver has no interface for minor number\n");
         bdm_cleanup_module();
         return -EIO;
     }
@@ -512,7 +509,7 @@ win_bdm_ioctl (int fd, unsigned int cmd, ...)
       return err;
 
     if (debugLevel > 3)
-      printf ("win_bdm_ioctl cmd:0x%08x\n", cmd);
+      fprintf (stderr, "win_bdm_ioctl cmd:0x%08x\n", cmd);
 
     switch (cmd) {
       case BDM_DEBUG:
