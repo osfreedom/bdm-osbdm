@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.1 2007/11/03 05:31:21 cjohns Exp $
+## $Id: Makefile.am,v 1.2 2007/11/03 08:02:43 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -11,7 +11,10 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../driver \
 	      -I$(srcdir)/../lib \
-	      -DGDBSERVER=1
+	      -DGDBSERVER=1 \
+	      -DNO_REMOTE_ASYNC=1 \
+	      -DNO_PASS_SIGNALS=1 \
+	      -DNO_LIBRARIES=1
 AM_CFLAGS = -Wall
 
 ##

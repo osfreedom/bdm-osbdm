@@ -7,7 +7,7 @@ INTRODUCTION
 
 This package contains everything you need to know to be able to run GDB on
 Linux, FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
-Coldfire (5206/5307) target through a standard PC parallel port.
+Coldfire (5206/5307/V4e) target through a standard PC parallel port.
 
  o The CPU32 interfaces supported are PD and the IDC interface. GDB 
    should now operate with the CPU32 processor without error.
@@ -53,6 +53,9 @@ The subdirectories contain:
   gdbScripts
     Example GDB command scripts that show how to initialize and run
     a Motorola 68360 system using standard GDB commands.
+
+  gdbserver
+    A GDB Remote protocol server. Needs GDB 6.7 or later.
 
   lib
     User-level library routines for accessing the BDM device driver.
@@ -426,52 +429,13 @@ Step 4 -- (Optional) Testing the driver.
   something very different.
 
 Step 5 -- Patch your GDB distribution
-
-    $ cd /where/you/keep/gdb-5.3
-    $ patch -p1 < /where/you/unpacked/this/BDM/gdbPatches/gdb-5.3-patch
-
-  Don't worry about complaints like:
-  mkdir: Failed to make directory "gdb"; File exists
-
-  (Please adjust the patch file name if you are using a snapshot 
-  release which is dated.)
-
 Step 6 -- Compile and install the cross-GDB with BDM support
 
-  There is an example script I use to configure, build, and install
-  the cross-GDB on my Linux machine in local_scripts/makegdb68kbdm.
-  Note that although the target is `m68k-bdm-elf', the debugger 
-  should work just fine with COFF executables.
-   
-  GDB asks the driver which processor being used. The driver uses 
-  the minor numbers to select the processor and interface type.
-  This means the single configure target will do both the CPU32 and
-  Coldfire.
+  These step have been removed. We do not need to patch GDB any more. Use the
+  bdmgdbserver executable with GDB built from the FSF sources.
 
-    $ ../gdb-5.3-bdm/configure --target=m68k-bdm-elf --prefix=???
-
-  where ??? is your local prefix path. A prefix path is where
-  gdb and the other files it needs are installed too. Providing
-  a prefix stops gdb being installed into the default location. 
-  This is usually a system location. If you are testing a new gdb
-  release it is sometime a good idea to configure and build with
-  a test path in the prefix so an installed and working gdb is
-  not over written until you have tested the new version.
-
-  Once you have configured GDB you can build it. If you decided not
-  to install the BDM library above you will need to do more than
-  just enter make as shown here:
-
-    $ make
-
-  For users who have not installed the BDM library you need to:
-
-    $ make \
-       CFLAGS="-I/fix-this-path/m68k/lib \
-               -I/fix-this-path/m68k/driver" \
-       LDFLAGS="-L/fix-this-path/m68k/lib"
-
-  where 'fix-this-path' is the path to your built BDM library.
+  Please refer to README.bdmgdbserver for instructions on using the BDM GDB
+  Server.
 
 Step 7 -- (Optional) Install the GDB scripts
 
@@ -672,6 +636,8 @@ NT and GiveIO support to Rick Haubenstricker <rickh@perceptron.com>.
 
 Thanks to Sue Cozart and Joe Circello for answering question about
 the Coldfire's BDM hardware.
+
+Additional thanks to Freescale for their continued support.
 
 WHERE TO GET HELP
 =================

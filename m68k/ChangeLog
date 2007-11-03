@@ -1,3 +1,23 @@
+2007-11-03 Chris Johns  <cjohns@users.sourceforge.net>
+
+	* .cvsignore:
+	Add config.h.in. A generated file.
+
+	* config/.cvsignore:
+	Add ylwrap. A generated file.
+	
+	* README:
+	Updated with the GDB server status and remove the patching GDB
+	steps.
+	
+	* README.bdmgdbserver:
+	Added some documentation.
+
+	* gdbserver/Makefile.am, gdbserver/remote-utils.c,
+	gdbserver/server.c:
+	Remove the CR in the Makefile.am. Clean up some standard GDB
+	server code so aid getting this code back into GDB.
+
 2007-11-03 Chris Johns <cjohns@users.sourceforge.net>
 
 	* configure.ac:

@@ -535,13 +535,14 @@ handle_query (char *own_buf, int packet_len, int *new_packet_len_p)
   if (strncmp ("qSupported", own_buf, 10) == 0
       && (own_buf[10] == ':' || own_buf[10] == '\0'))
     {
-//      sprintf (own_buf, "PacketSize=%x;QPassSignals+", PBUFSIZ - 1);
-      sprintf (own_buf, "PacketSize=%x", PBUFSIZ - 1);
-
-#if 0
+	sprintf (own_buf, "PacketSize=%x", PBUFSIZ - 1);
+#if !defined (NO_PASS_SIGNALS)
+	strcat (own_buf, ";QPassSignals+", PBUFSIZ - 1);
+#endif
+#if !defined (NO_LIBRARIES)
       /* We do not have any hook to indicate whether the target backend
 	 supports qXfer:libraries:read, so always report it.  */
-      strcat (own_buf, ";qXfer:libraries:read+");
+	strcat (own_buf, ";qXfer:libraries:read+");
 #endif
       strcat (own_buf, ";qXfer:memory map:read+");
       

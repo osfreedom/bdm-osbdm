@@ -114,8 +114,10 @@ extern int debug_threads;
 void
 remote_open (char *name)
 {
+#if !defined (NO_REMOTE_ASYNC)
 #if defined(F_SETFL) && defined (FASYNC)
   int save_fcntl_flags;
+#endif
 #endif
   char *port_str;
   
@@ -156,8 +158,6 @@ remote_open (char *name)
            termios.c_iflag = 0;
            termios.c_oflag = 0;
            termios.c_lflag = 0;
-//           termios.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-//           termios.c_lflag |= ICANON;
            termios.c_cflag &= ~(CSIZE | PARENB);
            termios.c_cflag |= CLOCAL | CS8;
            termios.c_cc[VMIN] = 1;
@@ -283,17 +283,16 @@ remote_open (char *name)
          inet_ntoa (sockaddr.sin_addr));
     }
 
-  if (!remote_piping && 0)
-    {
+#if !defined (NO_REMOTE_ASYNC)
 #if defined(F_SETFL) && defined (FASYNC)
-      save_fcntl_flags = fcntl (remote_desc, F_GETFL, 0);
-      fcntl (remote_desc, F_SETFL, save_fcntl_flags | FASYNC);
+    save_fcntl_flags = fcntl (remote_desc, F_GETFL, 0);
+    fcntl (remote_desc, F_SETFL, save_fcntl_flags | FASYNC);
 #if defined (F_SETOWN)
-      fcntl (remote_desc, F_SETOWN, getpid ());
+    fcntl (remote_desc, F_SETOWN, getpid ());
 #endif
 #endif
-      disable_async_io ();
-    }
+    disable_async_io ();
+#endif
 }
 
 void
