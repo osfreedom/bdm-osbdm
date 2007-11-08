@@ -4,8 +4,8 @@ M68K BDM GDB Server
 
  The 'gdbserver' directory contains a GDB Remote protocol server which provides
  BDM support for GDB for a range of Coldfire and CPU32 processors. The server
- called 'bdmgdbserver' will have been installed when you installed the M68K BDM
- package. Make sure the installed server executable's path is in your
+ called 'm68k-bdm-gdbserver' will have been installed when you installed the
+ M68K BDM package. Make sure the installed server executable's path is in your
  environment's path variable.
 
  The BDM GDB server support Linux and Windows using GDB's socket or pipe
@@ -158,8 +158,8 @@ Connecting with GDB
 
  Connect to the target:
 
-  (gdb) target remote | bdmgdbserver pipe /dev/bdmcf0
-  Remote debugging using | bdmgdbserver pipe /dev/bdmcf0
+  (gdb) target remote | m68k-bdm-gdbserver pipe /dev/bdmcf0
+  Remote debugging using | m68k-bdm-gdbserver pipe /dev/bdmcf0
   trying kernel driver: /dev/bdmcf0
   trying bdm server: localhost:/dev/bdmcf0
   m68k-bdm: detected MCF5235
@@ -175,16 +175,16 @@ Connecting with GDB
  the BDM GDB Server. The command line used is the simplest one that can be
  used. It is:
 
-    bdmgdbserver pipe /dev/bdmcf0
+    m68k-bdm-gdbserver pipe /dev/bdmcf0
 
- The 'bdmgdbserver' is required to be in your environment's path. You can also
+ The 'm68k-bdm-gdbserver' is required to be in your environment's path. You can also
  use a full path. The first parameter is the type of communications the GDB
  server is to use. In this case if the 'pipe' interface. It could be a
  socket and we will cover this later.
 
  The BDM GDB Server can accept other command line options. They are:
 
-   bdmgdbserver -vVhDd -t <time> <device>
+   m68k-bdm-gdbserver -vVhDd -t <time> <device>
         -v      Verbose. More than one the more verbose.
         -V      Version.
         -h      This help.

@@ -134,68 +134,68 @@ remote_open (char *name)
       else
         {
 #ifdef USE_WIN32API
-          error ("Only <host>:<port> is supported on this platform.");
+            error ("Only <host>:<port> and 'pipe' is supported on this platform.");
 #else
-          struct stat statbuf;
+            struct stat statbuf;
 
-          if (stat (name, &statbuf) == 0
-	       && (S_ISCHR (statbuf.st_mode) || S_ISFIFO (statbuf.st_mode)))
-            remote_desc = open (name, O_RDWR);
-          else
-	    {
-               errno = EINVAL;
-               remote_desc = -1;
-            }
+            if (stat (name, &statbuf) == 0
+	        && (S_ISCHR (statbuf.st_mode) || S_ISFIFO (statbuf.st_mode)))
+              remote_desc = open (name, O_RDWR);
+            else
+	      {
+                 errno = EINVAL;
+                 remote_desc = -1;
+              }
 
-          if (remote_desc < 0)
-            perror_with_name ("Could not open remote device");
-        }
+            if (remote_desc < 0)
+              perror_with_name ("Could not open remote device");
+
 #ifdef HAVE_TERMIOS
-        {
-	   struct termios termios;
-           tcgetattr (remote_desc, &termios);
+          {
+	     struct termios termios;
+             tcgetattr (remote_desc, &termios);
 
-           termios.c_iflag = 0;
-           termios.c_oflag = 0;
-           termios.c_lflag = 0;
-           termios.c_cflag &= ~(CSIZE | PARENB);
-           termios.c_cflag |= CLOCAL | CS8;
-           termios.c_cc[VMIN] = 1;
-           termios.c_cc[VTIME] = 0;
+             termios.c_iflag = 0;
+             termios.c_oflag = 0;
+             termios.c_lflag = 0;
+             termios.c_cflag &= ~(CSIZE | PARENB);
+             termios.c_cflag |= CLOCAL | CS8;
+             termios.c_cc[VMIN] = 1;
+             termios.c_cc[VTIME] = 0;
 
-           tcsetattr (remote_desc, TCSANOW, &termios);
-        }
+             tcsetattr (remote_desc, TCSANOW, &termios);
+          }
 #endif
 
 #ifdef HAVE_TERMIO
-        {
-           struct termio termio;
-           ioctl (remote_desc, TCGETA, &termio);
+          {
+             struct termio termio;
+             ioctl (remote_desc, TCGETA, &termio);
 
-           termio.c_iflag = 0;
-           termio.c_oflag = 0;
-           termio.c_lflag = 0;
-           termio.c_cflag &= ~(CSIZE | PARENB);
-           termio.c_cflag |= CLOCAL | CS8;
-           termio.c_cc[VMIN] = 1;
-           termio.c_cc[VTIME] = 0;
+             termio.c_iflag = 0;
+             termio.c_oflag = 0;
+             termio.c_lflag = 0;
+             termio.c_cflag &= ~(CSIZE | PARENB);
+             termio.c_cflag |= CLOCAL | CS8;
+             termio.c_cc[VMIN] = 1;
+             termio.c_cc[VTIME] = 0;
 
-           ioctl (remote_desc, TCSETA, &termio);
-        }
+             ioctl (remote_desc, TCSETA, &termio);
+          }
 #endif
 
 #ifdef HAVE_SGTTY
-        {
-	   struct sgttyb sg;
+          {
+	     struct sgttyb sg;
 
-           ioctl (remote_desc, TIOCGETP, &sg);
-           sg.sg_flags = RAW;
-           ioctl (remote_desc, TIOCSETP, &sg);
-        }
+             ioctl (remote_desc, TIOCGETP, &sg);
+             sg.sg_flags = RAW;
+             ioctl (remote_desc, TIOCSETP, &sg);
+          }
 #endif
-
         printf_filtered ("Remote debugging using %s\n", name);
 #endif /* USE_WIN32API */
+        }
     }
   else
     {

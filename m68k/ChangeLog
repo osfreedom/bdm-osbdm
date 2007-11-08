@@ -1,3 +1,14 @@
+2007-11-08 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README, README.bdmgdbserver, gdbserver/Makefile.am: Change
+	bdmgdbserver to m68k-bdm-gdbserver as this is a better name when
+	this package is part of another package.
+
+	* gdbserver/remote-utils.c: Formatting fixes.
+
+	* lib/bdmRemote.c: Add prints if WinSock fails or no device is
+	located in the path.
+
 2007-11-06 Chris Johns  <cjohns@users.sourceforge.net>
 
 	* COPYING: The GPL license should be Version 2 not Version 3.

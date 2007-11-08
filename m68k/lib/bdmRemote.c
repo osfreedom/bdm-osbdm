@@ -106,7 +106,7 @@ static const int ioctl_code_table[] = {
 #if defined (__WIN32__)
 #define MAXHOSTNAMELEN 64
 #define ECONNREFUSED WSAECONNREFUSED
-#define sleep _sleep
+#define sleep(_s) Sleep((_s) * 1000000)
 
 static int ws_started;
 int
@@ -303,6 +303,7 @@ bdmRemoteOpen (const char *name)
 
 #if defined (__WIN32__)
   if (!bdmInitWinSock ()) {
+    bdmPrint ("bdm-remote:open: failed to initialise WinSock\n");
     errno = ENOENT;
     return -1;
   }
@@ -363,6 +364,7 @@ bdmRemoteOpen (const char *name)
     device = strchr (name, '/');
 
   if (!device) {
+    bdmPrint ("bdm-remote:open: no device found\n");
     errno = ENOENT;
     return -1;
   }

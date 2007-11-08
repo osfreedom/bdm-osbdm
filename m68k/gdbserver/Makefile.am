@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.2 2007/11/03 08:02:43 cjohns Exp $
+## $Id: Makefile.am,v 1.3 2007/11/08 03:13:06 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -41,18 +41,18 @@ endif
 endif
 
 if GDBSERVER
-bin_PROGRAMS = bdmgdbserver
+bin_PROGRAMS = m68k-bdm-gdbserver
 endif
 
-bdmgdbserver_SOURCES = \
+m68k_bdm_gdbserver_SOURCES = \
 	inferiors.c m68k-bdm-low.c mem-break.c \
 	regcache.c remote-utils.c \
 	server.c signals.c target.c utils.c version.c \
 	xml-builtin.c
 
-bdmgdbserver_CPPFLAGS = \
+m68k_bdm_gdbserver_CPPFLAGS = \
 	@CFLAGS@ $(AM_CPPFLAGS)
-bdmgdbserver_LDADD = \
+m68k_bdm_gdbserver_LDADD = \
 	$(top_builddir)/lib/libBDM.a
 
 version.c: Makefile $(srcdir)/version.in

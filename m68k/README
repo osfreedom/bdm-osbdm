@@ -432,7 +432,7 @@ Step 5 -- Patch your GDB distribution
 Step 6 -- Compile and install the cross-GDB with BDM support
 
   These step have been removed. We do not need to patch GDB any more. Use the
-  bdmgdbserver executable with GDB built from the FSF sources.
+  m68k-bdm-gdbserver executable with GDB built from the FSF sources.
 
   Please refer to README.bdmgdbserver for instructions on using the BDM GDB
   Server.
