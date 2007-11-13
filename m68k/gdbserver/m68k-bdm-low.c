@@ -1851,7 +1851,8 @@ m68k_bdm_fetch_registers (int regno)
         ret = m68k_bdm_read_sys_ctl_reg (M68K_BDM_REG_NAME (regno),
                                          M68K_BDM_REG_CODE (regno),
                                          &lu);
-        if (M68K_BDM_REG_TYPE (regno) == M68K_BDM_REG_TYPE_M68881_EXT)
+        if ((ret == 0) &&
+            (M68K_BDM_REG_TYPE (regno) == M68K_BDM_REG_TYPE_M68881_EXT))
           ret = m68k_bdm_read_sys_ctl_reg (M68K_BDM_REG_NAME (regno),
                                            M68K_BDM_REG_CODE (regno) + 1,
                                            &ll);
@@ -1861,8 +1862,10 @@ m68k_bdm_fetch_registers (int regno)
         return;
       }
     }
+
     if (ret < 0)
       m68k_bdm_report_error ();
+    
     cbuf[0] = lu >> 24;
     cbuf[1] = lu >> 16;
     cbuf[2] = lu >> 8;
@@ -1904,23 +1907,39 @@ m68k_bdm_store_registers (int regno)
      */
     regno--;
     
-    unsigned long l;
-    if (collect_register (regno, &l)) {
+    char cbuf[8];
+
+    if (collect_register (regno, &cbuf)) {
       int ret;
 
+      unsigned long lu = 0;
+      unsigned long ll = 0;
+      
+      lu = (cbuf[0] << 24) | (cbuf[1] << 16) | (cbuf[2] << 8) | cbuf[3];
+      ll = (cbuf[4] << 24) | (cbuf[5] << 16) | (cbuf[6] << 8) | cbuf[7];
+    
       if (m68k_bdm_debug_level) {
+      if (M68K_BDM_REG_TYPE (regno) == M68K_BDM_REG_TYPE_M68881_EXT)
+        printf_filtered ("m68k-bdm: store reg:%s(%i) = 0x%08lx%08lx\n",
+                         M68K_BDM_REG_NAME (regno), regno, lu, ll);
+      else
         printf_filtered ("m68k-bdm: store reg:%s(%i) = 0x%08lx\n",
-                         M68K_BDM_REG_NAME (regno), regno, l);
+                         M68K_BDM_REG_NAME (regno), regno, lu);
       }
 
       if (regno < 16) {
-        ret = bdmWriteRegister (regno, l);
+        ret = bdmWriteRegister (regno, lu);
       }
       else {
         if (regno < M68K_BDM_NUM_REGS_BDM) {
           ret = m68k_bdm_write_sys_ctl_reg (M68K_BDM_REG_NAME (regno),
                                             M68K_BDM_REG_CODE (regno),
-                                            l);
+                                            lu);
+          if ((ret == 0) ||
+              (M68K_BDM_REG_TYPE (regno) == M68K_BDM_REG_TYPE_M68881_EXT))
+            ret = m68k_bdm_write_sys_ctl_reg (M68K_BDM_REG_NAME (regno),
+                                              M68K_BDM_REG_CODE (regno) + 1,
+                                              ll);
         }
         else {
           error ("m68k-bdm: bad register number (%d)", regno);

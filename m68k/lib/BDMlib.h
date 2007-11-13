@@ -51,6 +51,12 @@ int         bdmStatus (void);
 const char *bdmErrorString (void);
 
 /*
+ * Return a value in the host byte order. Useful for printing on
+ * the host.
+ */
+unsigned long bdmHostByteOrder (unsigned long value);
+
+/*
  * The following routines return, or are passed, data with byte
  * order (big-endian or little-endian) of the machine on which
  * the routines are running.

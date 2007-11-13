@@ -1,3 +1,23 @@
+2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
+
+	* m68k/gdbserver/m68k-bdm-low.c (m68k_bdm_fetch_registers): Check
+	the result code for the first of the double long transfers and
+	only proceed with the next one if the first is ok.
+	(m68k_bdm_store_registers): Reverse the byte order for the host to
+	the correct order for the target. Also handle the 64bit register
+	transfers.
+	* gdbserver/remote-utils.c (remote_open): Ignore the various
+	signals we could get when in pipe mode.
+
+	* m68k/lib/BDMlib.h: Add bdmHostByteOrder.
+
+	* m68k/lib/bdmIO.c (bdmHostByteOrder): New.
+	(bdmReadControlRegister, bdmReadDebugRegister,
+	bdmReadSystemRegister, bdmReadRegister, bdmWriteControlRegister,
+	bdmWriteControlRegister, bdmWriteSystemRegister, bdmWriteRegister,
+	bdmReadLongWord, bdmReadWord, bdmReadByte): Print in host byte
+	order.
+
 2007-11-08 Chris Johns <cjohns@users.sourceforge.net>
 
 	* README, README.bdmgdbserver, gdbserver/Makefile.am: Change

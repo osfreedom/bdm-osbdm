@@ -130,6 +130,9 @@ remote_open (char *name)
           my_stdout = stderr;
           remote_desc = STDOUT_FILENO;
           remote_piping = 1;
+          signal (SIGIO, SIG_IGN);
+          signal (SIGINT, SIG_IGN);
+          signal (SIGCHLD, SIG_IGN);
         }
       else
         {

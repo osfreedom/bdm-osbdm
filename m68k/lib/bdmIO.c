@@ -423,6 +423,30 @@ bdmErrorString (void)
 }
 
 /*
+ * Return a long in the correct order for the host.
+ */
+unsigned long
+bdmHostByteOrder (unsigned long value)
+{
+  union {
+    char  c[4];
+    long  l;
+  } un;
+  
+  un.l = value;
+  
+  if (mustSwap) {
+    un.c[0] = value >> 24; 
+    un.c[1] = value >> 16; 
+    un.c[2] = value >> 8; 
+    un.c[3] = value >> 0; 
+  }
+  else
+    un.l = value;
+  return un.l;
+}
+
+/*
  * Open the specified BDM device
  */
 int
@@ -650,7 +674,8 @@ bdmReadControlRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read control register 0x%04x: %#8lx\n", code, ltmp);
+  PRINTF ("Read control register 0x%04x: %#8lx\n",
+          code, bdmHostByteOrder (ltmp));
   *lp = ltmp;
   return 0;
 }
@@ -664,7 +689,8 @@ bdmReadDebugRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_DBREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read debug register 0x%04x: %#8lx\n", code, ltmp);
+  PRINTF ("Read debug register 0x%04x: %#8lx\n",
+          code, bdmHostByteOrder (ltmp));
   *lp = ltmp;
   return 0;
 }
@@ -678,7 +704,8 @@ bdmReadSystemRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_SYSREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read system register %s: %#8lx\n", sysregName[code], ltmp);
+  PRINTF ("Read system register %s: %#8lx\n",
+          sysregName[code], bdmHostByteOrder (ltmp));
   *lp = ltmp;
   return 0;
 }
@@ -693,7 +720,8 @@ bdmReadRegister (int code, unsigned long *lp)
   code &= 0xF;
   if (readTarget (BDM_READ_REG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read register %s: %#8lx\n", regName[code], ltmp);
+  PRINTF ("Read register %s: %#8lx\n",
+          regName[code], bdmHostByteOrder (ltmp));
   *lp = ltmp;
   return 0;
 }
@@ -706,7 +734,8 @@ bdmWriteControlRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_CTLREG, code, l) < 0)
     return -1;
-  PRINTF ("Write control register 0x%04x: %#8lx\n", code, l);
+  PRINTF ("Write control register 0x%04x: %#8lx\n",
+          code, bdmHostByteOrder (l));
   return 0;
 }
 
@@ -716,9 +745,10 @@ bdmWriteControlRegister (int code, unsigned long l)
 int
 bdmWriteDebugRegister (int code, unsigned long l)
 {
-  if (writeTarget (BDM_WRITE_DBREG, code, l) < 0)
+  if (writeTarget (BDM_WRITE_DBREG, code, bdmHostByteOrder (l)) < 0)
     return -1;
-  PRINTF ("Write debug register 0x%04x: %#8lx\n", code, l);
+  PRINTF ("Write debug register 0x%04x: %#8lx\n",
+          code, bdmHostByteOrder (l));
   return 0;
 }
 
@@ -730,7 +760,8 @@ bdmWriteSystemRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_SYSREG, code, l) < 0)
     return -1;
-  PRINTF ("Write system register %s: %#8lx\n", sysregName[code], l);
+  PRINTF ("Write system register %s: %#8lx\n",
+          sysregName[code], l);
   return 0;
 }
 
@@ -742,7 +773,7 @@ bdmWriteRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_REG, code, l) < 0)
     return -1;
-  PRINTF ("Write register %s: %#8lx\n", regName[code], l);
+  PRINTF ("Write register %s: %#8lx\n", regName[code], bdmHostByteOrder (l));
   return 0;
 }
 
@@ -756,7 +787,7 @@ bdmReadLongWord (unsigned long address, unsigned long *lp)
 
   if (readTarget (BDM_READ_LONGWORD, address, &ltmp) < 0)
     return -1;
-  PRINTF ("Read %#8.8lx @ %#8lx\n", ltmp, address);
+  PRINTF ("Read %#8.8lx @ %#8lx\n", bdmHostByteOrder (ltmp), address);
   *lp = ltmp;
   return 0;
 }
@@ -772,7 +803,7 @@ bdmReadWord (unsigned long address, unsigned short *sp)
   if (readTarget (BDM_READ_WORD, address, &ltmp) < 0)
     return -1;
   *sp = ltmp;
-  PRINTF ("Read %#4.4x @ %#8lx\n", (unsigned short)ltmp, address);
+  PRINTF ("Read %#4.4x @ %#8lx\n", (unsigned short) ltmp, address);
   return 0;
 }
 
@@ -797,7 +828,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
 int
 bdmWriteLongWord (unsigned long address, unsigned long l)
 {
-  PRINTF ("Write %#8.8lx @ %#8lx\n", l, address);
+  PRINTF ("Write %#8.8lx @ %#8lx\n", bdmHostByteOrder (l), address);
   return writeTarget (BDM_WRITE_LONGWORD, address, l);
 }
 
