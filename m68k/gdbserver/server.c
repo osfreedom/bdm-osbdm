@@ -1146,7 +1146,7 @@ main (int argc, char *argv[])
 
 		if (the_target->insert_watchpoint == NULL
 		    || the_target->remove_watchpoint == NULL
-		    || (type < '1' || type > '4'))
+		    || (type < '0' || type > '4'))
 		  {
 		    /* No watchpoint support or not a watchpoint command;
 		       unrecognized either way.  */

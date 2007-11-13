@@ -570,6 +570,7 @@ unsigned long m68k_bdm_ptid;
 /*
  * The breakpoint codes for the different processors
  */
+#define M68K_BDM_BREAKPOINT_SIZE_MAX (2)
 static unsigned char  m68k_bdm_cpu32_breakpoint[] = {0x4a, 0xfa};
 static unsigned char  m68k_bdm_cf_breakpoint[] = {0x4a, 0xc8};
 static unsigned char* m68k_bdm_breakpoint_code = (unsigned char*) "\x4e\x41";
@@ -768,10 +769,13 @@ m68k_bdm_write_sys_ctl_reg (const char* name, int cregno, unsigned long l)
 
 /*
  * The type is coded as follows:
+ *    0 = software breakpoint
+ *    1 = hardware breakpoint
  *    2 = write watchpoint
  *    3 = read watchpoint
  *    4 = access watchpoint
  */
+#define M68K_BDM_WP_TYPE_BREAK  ('0')
 #define M68K_BDM_WP_TYPE_HBREAK ('1')
 #define M68K_BDM_WP_TYPE_WRITE  ('2')
 #define M68K_BDM_WP_TYPE_READ   ('3')
@@ -784,11 +788,25 @@ struct m68k_bdm_watch  {
   int       len;
 };
 
+struct m68k_bdm_break  {
+  CORE_ADDR     addr;
+  int           len;
+  unsigned char code[M68K_BDM_BREAKPOINT_SIZE_MAX];
+};
+
 #define M68K_BDM_WATCHPOINT_MAX 1
 
 static struct m68k_bdm_watch m68k_bdm_watchpoints[M68K_BDM_WATCHPOINT_MAX];
 static int m68k_bdm_watchpoint_count;
 static int m68k_bdm_hit_watchpoint;
+
+/*
+ * An array that increases in size as more break points are added. It
+ * does not decrease in size.
+ */
+#define M68K_BDM_BREAKPOINT_BLOCK_SIZE (50)
+static struct m68k_bdm_break *m68k_bdm_breakpoints;
+static int m68k_bdm_num_breakpoints;
 
 static int
 m68k_bdm_init_watchpoints(void)
@@ -820,11 +838,87 @@ m68k_bdm_check_watchpoint (char type, CORE_ADDR addr, int len)
   return 0;
 }
 
+static void
+m68k_bdm_grow_breakpoints (int count)
+{
+  struct m68k_bdm_break *new_breakpoints;
+  new_breakpoints = calloc(m68k_bdm_num_breakpoints + count,
+                           sizeof (struct m68k_bdm_break));
+  if (!new_breakpoints)
+    fatal("no memory for breakpoints");
+  if (m68k_bdm_breakpoints) {
+    memcpy (new_breakpoints, m68k_bdm_breakpoints,
+            m68k_bdm_num_breakpoints * sizeof (struct m68k_bdm_break));
+    free (m68k_bdm_breakpoints);
+  }
+  m68k_bdm_breakpoints = new_breakpoints;
+  m68k_bdm_num_breakpoints += count;
+}
+
 static int
 m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
 {
   unsigned long tdr;
 
+  if (type == M68K_BDM_WP_TYPE_BREAK) {
+    int next_free = -1;
+
+    if (len != m68k_bdm_breakpoint_size) {
+      warning ("m68k-bdm: invalid breakpoint size");
+    }
+
+    if (m68k_bdm_debug_level)
+      printf_filtered ("m68k-bdm: insert breakpoint @0x%08lx\n",
+                       (unsigned long) addr);
+
+    if (m68k_bdm_breakpoints) {
+      /*
+       * Do we already have a breakpoint set at this address ?
+       * Which is the next free bp slot ?
+       */
+
+      int bp;
+      for (bp = 0; bp < m68k_bdm_num_breakpoints; bp++) {
+        if (m68k_bdm_breakpoints[bp].len) {
+          if (m68k_bdm_breakpoints[bp].addr == addr)
+            return 0;
+        }
+        else if (next_free < 0)
+          next_free = bp;
+      }
+    }
+    
+    /*
+     * Are all the slots free ?
+     */
+    if (next_free < 0) {
+      next_free = m68k_bdm_num_breakpoints;
+      m68k_bdm_grow_breakpoints (M68K_BDM_BREAKPOINT_BLOCK_SIZE);
+    }
+
+    m68k_bdm_breakpoints[next_free].addr = addr;
+    m68k_bdm_breakpoints[next_free].len = len;
+
+    if (bdmReadMemory (addr,
+                       m68k_bdm_breakpoints[next_free].code,
+                       m68k_bdm_breakpoint_size) < 0) {
+      m68k_bdm_report_error ();
+      return 1;
+    }
+
+    if (bdmWriteMemory (addr,
+                        m68k_bdm_breakpoint_code,
+                        m68k_bdm_breakpoint_size) < 0) {
+      m68k_bdm_report_error ();
+      return 1;
+    }
+    return 0;
+  }
+
+  /*
+   * Hardware breakpoints.
+   */
+  
   if (m68k_bdm_cpu_family != BDM_COLDFIRE)  {
     return 1;
   }
@@ -844,7 +938,7 @@ m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
     if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
       m68k_bdm_report_error ();
     if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: insert breakpoint @0x%08lx\n",
+      printf_filtered ("m68k-bdm: insert hbreakpoint @0x%08lx\n",
                   (unsigned long) addr);
   }
   else  {
@@ -858,6 +952,33 @@ m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
 {
   unsigned long tdr;
 
+  if (type == M68K_BDM_WP_TYPE_BREAK) {
+    int bp;
+    for (bp = 0; bp < m68k_bdm_num_breakpoints; bp++) {
+      if (m68k_bdm_breakpoints[bp].len) {
+        if (m68k_bdm_breakpoints[bp].addr == addr) {
+          if (m68k_bdm_debug_level)
+            printf_filtered ("m68k-bdm: remove breakpoint @0x%08lx\n",
+                             (unsigned long) addr);
+          m68k_bdm_breakpoints[bp].addr = 0;
+          m68k_bdm_breakpoints[bp].len = 0;
+          if (bdmWriteMemory (addr,
+                              m68k_bdm_breakpoints[bp].code,
+                              m68k_bdm_breakpoint_size) < 0) {
+            m68k_bdm_report_error ();
+            return 1;
+          }
+          break;
+        }
+      }
+    }
+    return 0;
+  }
+  
+  /*
+   * Hardware breakpoints.
+   */
+  
   if (m68k_bdm_cpu_family != BDM_COLDFIRE)
     return 1;
 
@@ -967,19 +1088,21 @@ m68k_bdm_remove_watchpoint (char type, CORE_ADDR addr, int len)
 }
 
 static int
-m68k_bdm_insert_hardware_point (char type, CORE_ADDR addr, int len)
+m68k_bdm_insert_point (char type, CORE_ADDR addr, int len)
 {
   if (m68k_bdm_debug_level)
     printf_filtered ("m68k-bdm: inserting type:%c\n", type);
-  if (type == M68K_BDM_WP_TYPE_HBREAK)
+  if ((type == M68K_BDM_WP_TYPE_BREAK) || (type == M68K_BDM_WP_TYPE_HBREAK))
     return m68k_bdm_insert_breakpoint (type, addr, len);
   return m68k_bdm_insert_watchpoint (type, addr, len);
 }
 
 static int
-m68k_bdm_remove_hardware_point (char type, CORE_ADDR addr, int len)
+m68k_bdm_remove_point (char type, CORE_ADDR addr, int len)
 {
-  if (type == M68K_BDM_WP_TYPE_HBREAK)
+  if (m68k_bdm_debug_level)
+    printf_filtered ("m68k-bdm: removing type:%c\n", type);
+  if ((type == M68K_BDM_WP_TYPE_BREAK) || (type == M68K_BDM_WP_TYPE_HBREAK))
     return m68k_bdm_remove_breakpoint (type, addr, len);
   return m68k_bdm_remove_watchpoint (type, addr, len);
 }
@@ -2173,8 +2296,8 @@ static struct target_ops m68k_bdm_target_ops = {
   m68k_bdm_look_up_symbols,
   m68k_bdm_request_interrupt,
   NULL,
-  m68k_bdm_insert_hardware_point,
-  m68k_bdm_remove_hardware_point,
+  m68k_bdm_insert_point,
+  m68k_bdm_remove_point,
   m68k_bdm_stopped_by_watchpoint,
   m68k_bdm_stopped_data_address,
   NULL,

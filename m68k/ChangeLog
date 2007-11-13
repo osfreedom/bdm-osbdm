@@ -1,5 +1,19 @@
 2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
 
+	* gdbserver/server.c (main): Allow software breakpoints to the
+	backend.
+
+	* gdbserver/m68k-bdm-low.c (M68K_BDM_BREAKPOINT_SIZE_MAX,
+	M68K_BDM_WP_TYPE_BREAK, struct m68k_bdm_break,
+	M68K_BDM_BREAKPOINT_BLOCK_SIZE, m68k_bdm_breakpoints,
+	m68k_bdm_num_breakpoints, m68k_bdm_grow_breakpoints): New.
+	(m68k_bdm_insert_breakpoint, m68k_bdm_remove_breakpoint): Add
+	software breakpoint support.
+	(m68k_bdm_insert_point, m68k_bdm_remove_point): Renamed from
+	m68k_bdm_insert_hardware_point and m68k_bdm_remove_hardware_point.
+	
+2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
+
 	* m68k/gdbserver/m68k-bdm-low.c (m68k_bdm_fetch_registers): Check
 	the result code for the first of the double long transfers and
 	only proceed with the next one if the first is ok.
