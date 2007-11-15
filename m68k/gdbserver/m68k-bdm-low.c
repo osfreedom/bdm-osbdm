@@ -1472,6 +1472,8 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   int           driver_debug_level = 0;
   int           debug_level = 0;
 
+  warning_prefix = "m68k-bdm-gdbserver";
+
   while (argv[arg]) {
     if (argv[arg][0] == '-') {
       switch (argv[arg][1])

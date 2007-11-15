@@ -165,6 +165,9 @@ extern FILE *my_stdout;
 
 extern int remote_debug;
 extern int all_symbols_looked_up;
+/* From utils.c. Set in the backend to have a prefix other than gdb. The gdb
+   prefix can be confusing when running inside gdb as a remote pipe. */
+extern const char* warning_prefix;
 
 int putpkt (char *buf);
 int putpkt_binary (char *buf, int len);

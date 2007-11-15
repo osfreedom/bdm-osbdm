@@ -101,11 +101,15 @@ extern int using_threads;
 extern int debug_threads;
 
 #ifdef USE_WIN32API
-# define read(fd, buf, len) recv (fd, (char *) buf, len, 0)
-# define write(fd, buf, len) send (fd, (char *) buf, len, 0)
+# define socket_read(fd, buf, len) recv (fd, (char *) buf, len, 0)
+# define socket_write(fd, buf, len) send (fd, (char *) buf, len, 0)
 # define WRITE_FD SOCKET
+# define READ_FD  SOCKET
 #else
+# define socket_read(fd, buf, len) read (fd, buf, len)
+# define socket_write(fd, buf, len) write (fd, buf, len)
 # define WRITE_FD int
+# define READ_FD  int
 #endif
 
 /* Open a connection to a remote debugger.
@@ -130,9 +134,16 @@ remote_open (char *name)
           my_stdout = stderr;
           remote_desc = STDOUT_FILENO;
           remote_piping = 1;
-          signal (SIGIO, SIG_IGN);
           signal (SIGINT, SIG_IGN);
+#ifdef USE_WIN32API
+          if (_setmode (_fileno( stdout ), _O_BINARY) < 0)
+              warning("cannot change stdout mode to binary");
+          if (_setmode (_fileno( stdin ), _O_BINARY) < 0)
+              warning("cannot change stdin mode to binary");
+#else
+          signal (SIGIO, SIG_IGN);
           signal (SIGCHLD, SIG_IGN);
+#endif
         }
       else
         {
@@ -301,20 +312,39 @@ remote_open (char *name)
 void
 remote_close (void)
 {
+    if (!remote_piping)
+	{
 #ifdef USE_WIN32API
-  closesocket (remote_desc);
+		closesocket (remote_desc);
 #else
-  close (remote_desc);
+		close (remote_desc);
 #endif
+	}
 }
 
-ssize_t
+size_t
 remote_write (WRITE_FD fd, const void *buf, size_t count)
 {
-  ssize_t written = write (fd, buf, count);
+  ssize_t written;
   if (remote_piping)
-    fflush (stdout);
+    {
+      written = write (fd, buf, count);
+      fflush (stdout);
+    }
+  else
+    written = socket_write (fd, buf, count);
   return written;
+}
+
+size_t
+remote_read (READ_FD fd, void *buf, size_t count)
+{
+  if (remote_piping)
+    {
+      *((char*)buf) = getchar ();
+      return 1;
+    }
+  return socket_read (remote_desc, buf, count);
 }
 
 /* Convert hex digit A to a number.  */
@@ -572,28 +602,29 @@ putpkt_binary (char *buf, int cnt)
   do
     {
       int cc;
-
-      if (remote_write (remote_desc, buf2, p - buf2) != p - buf2)
+      size_t wrote = remote_write (remote_desc, buf2, p - buf2);
+      
+      if (wrote != p - buf2)
 	{
-	  perror ("putpkt(write)");
+	  warning("putpkt(write): count:%d, wrote:%d", p - buf2, wrote);
 	  free (buf2);
 	  return -1;
 	}
       
       if (remote_debug)
 	{
-	  printf_filtered ("gdbserver: putpkt (\"%s\"); [looking for ack]\n", buf2);
+	  printf_filtered ("putpkt (\"%s\"); [looking for ack]\n", buf2);
 	}
-      cc = read (remote_desc, buf3, 1);
+      cc = remote_read (remote_desc, buf3, 1);
       if (remote_debug)
 	{
-          printf_filtered ("gdbserver: putpkt [received '%c' (0x%x)]\n", buf3[0], buf3[0]);
+          printf_filtered ("putpkt [received '%c' (0x%x)]\n", buf3[0], buf3[0]);
 	}
 
       if (cc <= 0)
 	{
 	  if (cc == 0)
-	    printf_filtered ("gdbserver: putpkt(read): Got EOF\n");
+	    printf_filtered ("putpkt(read): Got EOF\n");
 	  else
 	    perror ("gdbserver: putpkt putpkt(read)");
 
@@ -624,7 +655,10 @@ putpkt (char *buf)
 /* Come here when we get an input interrupt from the remote side.  This
    interrupt should only be active while we are waiting for the child to do
    something.  About the only thing that should come through is a ^C, which
-   will cause us to request child interruption.  */
+   will cause us to request child interruption.
+
+   The is not used on Windows when in pipe mode because select only works
+   on sockets in Windows. */
 
 static void
 input_interrupt (int unused)
@@ -642,11 +676,11 @@ input_interrupt (int unused)
       int cc;
       char c = 0;
 
-      cc = read (remote_desc, &c, 1);
+      cc = remote_read (remote_desc, &c, 1);
 
       if (cc != 1 || c != '\003')
 	{
-	  warning ("gdbserver: input_interrupt, count = %d c = %d ('%c')\n",
+	  warning ("input_interrupt, count = %d c = %d ('%c')\n",
 		   cc, c, c);
 	  return;
 	}
@@ -735,15 +769,14 @@ readchar (void)
   if (bufcnt-- > 0)
     return *bufp++;
 
-  bufcnt = read (remote_desc, buf, sizeof (buf));
+  bufcnt = remote_read (remote_desc, buf, sizeof (buf));
 
   if (bufcnt <= 0)
     {
       if (bufcnt == 0)
-	warning ("gdbserver: readchar: Got EOF\n");
+        warning ("readchar: Got EOF\n");
       else
-	perror ("readchar");
-
+        perror ("readchar");
       return -1;
     }
 
@@ -799,7 +832,7 @@ getpkt (char *buf)
       if (csum == (c1 << 4) + c2)
 	break;
 
-      warning ("gdbserver: Bad checksum, sentsum=0x%x, csum=0x%x, buf=%s\n",
+      warning ("Bad checksum, sentsum=0x%x, csum=0x%x, buf=%s\n",
 	       (c1 << 4) + c2, csum, buf);
       remote_write (remote_desc, "-", 1);
     }

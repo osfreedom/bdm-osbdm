@@ -1,3 +1,27 @@
+2007-11-15 Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_create_inferior): Set
+	warning_prefix to show the errors in the debugger better when in
+	pipe mode.
+
+	* gdbserver/server.h (warning_prefix): New.
+
+	* gdbserver/remote-utils.c (socket_read, socket_write): Change the
+	read and write macros on Windows to have a specific read and write
+	to the real read and write on Windows is not hidden. This allows
+	the pipe mode to get at stdout.
+	(remote_open): On Windows set stdin and stdout to binary mode.
+	(remote_close): Only close if not piping.
+	(remote_write): Use write when piping and socket_write if using
+	TCP.
+	(remote_read): New.
+	(putpkt_binary): Provide a better error message. Use remote_read
+	rather than read. Remove the 'gdbserver' and let the warning
+	prefix be used.
+	(input_interrupt): Add the Windows warning to the comment.
+	(readchar): Use remote_read. Remove the 'gdbserver' and let the
+	warning prefix be used.
+
 2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
 
 	* gdbserver/server.c (main): Allow software breakpoints to the
