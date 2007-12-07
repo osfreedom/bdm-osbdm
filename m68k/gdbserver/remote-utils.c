@@ -782,18 +782,19 @@ readchar (void)
 
   bufp = buf;
   bufcnt--;
-  return *bufp++ & 0x7f;
+  return *bufp++;
 }
 
 /* Read a packet from the remote machine, with error checking,
    and store it in BUF.  Returns length of packet, or negative if error. */
 
 int
-getpkt (char *buf)
+getpkt (char *buf, int buflen)
 {
   char *bp;
   unsigned char csum, c1, c2;
   int c;
+  int len;
 
   while (1)
     {
@@ -814,6 +815,7 @@ getpkt (char *buf)
 	}
 
       bp = buf;
+      len = 0;
       while (1)
 	{
 	  c = readchar ();
@@ -821,8 +823,14 @@ getpkt (char *buf)
 	    return -1;
 	  if (c == '#')
 	    break;
-	  *bp++ = c;
-	  csum += c;
+     if (len == buflen)
+     {
+        warning ("Packet overrun, max allowed %u\n", buflen);
+        return -1;
+     }
+ 	  *bp++ = c;
+ 	  csum += c;
+     len++;
 	}
       *bp = 0;
 
@@ -1168,8 +1176,7 @@ look_up_one_symbol (const char *name, CORE_ADDR *addrp)
   if (putpkt (own_buf) < 0)
     return -1;
 
-  /* FIXME:  Eventually add buffer overflow checking (to getpkt?)  */
-  len = getpkt (own_buf);
+  len = getpkt (own_buf, sizeof(own_buf));
   if (len < 0)
     return -1;
 
@@ -1193,7 +1200,7 @@ look_up_one_symbol (const char *name, CORE_ADDR *addrp)
       free (mem_buf);
       if (putpkt (own_buf) < 0)
 	return -1;
-      len = getpkt (own_buf);
+      len = getpkt (own_buf, sizeof(own_buf));
       if (len < 0)
 	return -1;
     }

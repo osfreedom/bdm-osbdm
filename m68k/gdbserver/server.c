@@ -986,7 +986,7 @@ main (int argc, char *argv[])
 	  int packet_len;
 	  int new_packet_len = -1;
 
-	  packet_len = getpkt (own_buf);
+	  packet_len = getpkt (own_buf, PBUFSIZ);
 	  if (packet_len <= 0)
 	    break;
 

@@ -1,3 +1,18 @@
+2007-12-07 Mick Davis <mickd@goanna.iinet.net.au>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_parse_reg_value): Fix the
+	parsing of arguments from the bdm-ctl-set command.
+	(m68k_bdm_cmd_help): Add bdm-reset help.
+	(m68k_bdm_commands): Add bdm-reset.
+
+	* gdbserver/remote-utils.c, gdbserver/server.c,
+	gdbserver/server.h: Fix any remote protocol message which includes
+	a binary data part, such as when a value is written into target
+	memory.  Previously, the top bit of any byte received was cleared
+	by a readchar function which enforced ASCII encoding.  This fix
+	has been applied to gdb cvs, from where the code originated.  I've
+	also included a buffer overflow check for the received message.
+	
 2007-11-15 Chris Johns <cjohns@users.sourceforge.net>
 
 	* gdbserver/m68k-bdm-low.c (m68k_bdm_create_inferior): Set

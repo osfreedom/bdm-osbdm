@@ -171,7 +171,7 @@ extern const char* warning_prefix;
 
 int putpkt (char *buf);
 int putpkt_binary (char *buf, int len);
-int getpkt (char *buf);
+int getpkt (char *buf, int buflen);
 void remote_open (char *name);
 void remote_close (void);
 void write_ok (char *buf);

@@ -2160,9 +2160,8 @@ m68k_bdm_parse_reg_value (const char* command,
     monitor_output ("m68k-bdm: invalid command format: no reg found\n");
     return 0;
   }
-  *reg = strtoul (s, 0, 0);
+  *reg = strtoul (s, &s, 0);
   if (value) {
-    s = strchr (s, ' ');
     if (!s) {
       monitor_output ("m68k-bdm: invalid command format: no value found\n");
       return 0;
@@ -2199,6 +2198,8 @@ m68k_bdm_cmd_help (void)
   monitor_output ("  bdm-dbg-set <reg> <value>\n");
   monitor_output ("    Set the debug reigster where <reg> is a register value\n");
   monitor_output ("    supported by the target. For example: bdm-dbg-set 0x1 0\n");
+  monitor_output ("  bdm-reset\n");
+  monitor_output ("    Reset the BDM pod\n");
 }
 
 static int
@@ -2273,6 +2274,11 @@ m68k_bdm_commands (const char* command, int len)
                        reg, value, value);
     if (bdmWriteDebugRegister (reg, value) < 0)
       monitor_output ("m68k-bdm: error: %s\n", bdmErrorString ());
+  }
+  else if (M68K_BDM_STR_IS ("bdm-reset")) {
+     if (m68k_bdm_debug_level)
+        printf_filtered ("m68k-bdm: reset the bdm\n");
+     m68k_bdm_reset();
   }
   else {
     monitor_output ("Unknown monitor command.\n\n");
