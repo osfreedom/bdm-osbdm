@@ -82,6 +82,27 @@ The subdirectories contain:
   utils
     contains some utilities which might be useful.
 
+README Files
+============
+
+There are 4 README files which document the BDM package. They are:
+
+ o README
+    This is the top level README file and the one you are currently readling.
+
+ o README.cvs
+    If you use the code from CVS you should read this file. It explains how
+    to bootstrap the package to create the configure script and Makefiles.
+
+ o README.bdmgdbserver
+    This file documents the BDM GDB Server. It explains why you should use
+    the BDM GDB Server to interface to GDB and how to build GDB.
+
+ o README.insight
+    This is an old README and may be useful to anyone still wanting to 
+    use Insight as a GUI interface to GDB. A current Insight with a current
+    GDB should work with the BDM GDB Server.
+
 WINDOWS
 =======
 
