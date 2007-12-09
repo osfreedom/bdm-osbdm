@@ -1,3 +1,11 @@
+2007-12-10 Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_insert_breakpoint,
+	m68k_bdm_remove_breakpoint, m68k_bdm_insert_watchpoint,
+	m68k_bdm_remove_watchpoint, m68k_bdm_insert_point,
+	m68k_bdm_remove_point): Add extra info to the debug data to aid
+	debugging watchpoints.
+
 2007-12-07 Mick Davis <mickd@goanna.iinet.net.au>
 
 	* gdbserver/m68k-bdm-low.c (m68k_bdm_parse_reg_value): Fix the

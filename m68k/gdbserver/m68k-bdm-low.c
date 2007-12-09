@@ -938,8 +938,8 @@ m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
     if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
       m68k_bdm_report_error ();
     if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: insert hbreakpoint @0x%08lx\n",
-                  (unsigned long) addr);
+      printf_filtered ("m68k-bdm: insert hbreakpoint:%d: @0x%08lx\n",
+                       m68k_bdm_watchpoint_count, (unsigned long) addr);
   }
   else  {
     return -1;
@@ -992,8 +992,8 @@ m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
     if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
       m68k_bdm_report_error ();
     if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: remove breakpoint @0x%08lx\n",
-                  (unsigned long) addr);
+      printf_filtered ("m68k-bdm: remove breakpoint:%d: @0x%08lx\n",
+                       m68k_bdm_watchpoint_count, (unsigned long) addr);
   }
   else  {
     return -1;
@@ -1031,22 +1031,25 @@ m68k_bdm_insert_watchpoint (char type, CORE_ADDR addr, int len)
       if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READONLY) < 0)
         m68k_bdm_report_error ();
       if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert read watchpoint @0x%08lx-0x%08lx\n",
-                    (unsigned long) addr, (unsigned long) addr + len - 1);
+        printf_filtered ("m68k-bdm: insert read watchpoint:%d: @0x%08lx-0x%08lx\n",
+                         m68k_bdm_watchpoint_count,
+                         (unsigned long) addr, (unsigned long) addr + len - 1);
     }
     else if (type == M68K_BDM_WP_TYPE_WRITE) {
       if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_WRITEONLY) < 0)
         m68k_bdm_report_error ();
       if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert write watchpoint @0x%08lx-0x%08lx\n",
-                    (long unsigned int) addr, (unsigned long) addr + len - 1);
+        printf_filtered ("m68k-bdm: insert write watchpoint:%d @0x%08lx-0x%08lx\n",
+                         m68k_bdm_watchpoint_count,
+                         (long unsigned int) addr, (unsigned long) addr + len - 1);
     }
     else {
       if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READWRITE) < 0)
         m68k_bdm_report_error ();
       if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert access watchpoint @0x%08lx-0x%08lx\n",
-                    (unsigned long) addr, (unsigned long) addr + len - 1);
+        printf_filtered ("m68k-bdm: insert access watchpoint:%d @0x%08lx-0x%08lx\n",
+                         m68k_bdm_watchpoint_count,
+                         (unsigned long) addr, (unsigned long) addr + len - 1);
     }
     if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
       m68k_bdm_report_error ();
@@ -1076,10 +1079,11 @@ m68k_bdm_remove_watchpoint (char type, CORE_ADDR addr, int len)
     if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
       m68k_bdm_report_error ();
     if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: remove %s watchpoint @0x%08lx-0x%08lx\n",
-                  (type == M68K_BDM_WP_TYPE_READ) ? "read" :
-                  ((type == M68K_BDM_WP_TYPE_WRITE) ? "write" : "access"),
-                  (unsigned long) addr, (unsigned long) addr + len - 1);
+      printf_filtered ("m68k-bdm: remove %s watchpoint:%d: @0x%08lx-0x%08lx\n",
+                       (type == M68K_BDM_WP_TYPE_READ) ? "read" :
+                       ((type == M68K_BDM_WP_TYPE_WRITE) ? "write" : "access"),
+                       m68k_bdm_watchpoint_count,
+                       (unsigned long) addr, (unsigned long) addr + len - 1);
   }
   else  {
     return -1;
@@ -1091,7 +1095,8 @@ static int
 m68k_bdm_insert_point (char type, CORE_ADDR addr, int len)
 {
   if (m68k_bdm_debug_level)
-    printf_filtered ("m68k-bdm: inserting type:%c\n", type);
+    printf_filtered ("m68k-bdm: inserting type:%c @0x%08lx %i\n",
+                     type, (unsigned long) addr, len);
   if ((type == M68K_BDM_WP_TYPE_BREAK) || (type == M68K_BDM_WP_TYPE_HBREAK))
     return m68k_bdm_insert_breakpoint (type, addr, len);
   return m68k_bdm_insert_watchpoint (type, addr, len);
@@ -1101,7 +1106,8 @@ static int
 m68k_bdm_remove_point (char type, CORE_ADDR addr, int len)
 {
   if (m68k_bdm_debug_level)
-    printf_filtered ("m68k-bdm: removing type:%c\n", type);
+    printf_filtered ("m68k-bdm: removing type:%c @0x%08lx %i\n",
+                     type, (unsigned long) addr, len);
   if ((type == M68K_BDM_WP_TYPE_BREAK) || (type == M68K_BDM_WP_TYPE_HBREAK))
     return m68k_bdm_remove_breakpoint (type, addr, len);
   return m68k_bdm_remove_watchpoint (type, addr, len);
