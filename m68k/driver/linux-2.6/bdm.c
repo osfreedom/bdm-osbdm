@@ -56,7 +56,7 @@
 
 #define BDM_DEFAULT_DEBUG 0
 
-#include <linux/config.h>
+#include <linux/autoconf.h>
 
 #include <linux/module.h>
 #include <linux/init.h>

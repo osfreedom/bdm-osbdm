@@ -1,3 +1,9 @@
+2008-01-06 tom <tmassimi@gmail.com>
+
+	* driver/linux-2.6/bdm.c: It seems that linux kernel 2.6.19
+	eliminates include/linux/config.h, include/linux/autoconf.h should
+	now be used.
+	
 2007-12-10 Chris Johns <cjohns@users.sourceforge.net>
 
 	* README: Add documentation about the README files.
