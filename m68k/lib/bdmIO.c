@@ -60,6 +60,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -456,18 +457,18 @@ bdmOpen (const char *name)
   unsigned int ver;
 #endif
   union {
-    char  c[4];
-    long  l;
+    char     c[4];
+    uint32_t l;
   } un;
 
   /*
    * Determine what byte-swapping we'll need to do
    */
   if (sizeof un.l != sizeof un.c) {
-    bdmIO_lastErrorString = "Host machine sizeof (long) != sizeof (char[4])";
+    bdmIO_lastErrorString = "Host machine sizeof (uint32_t) != sizeof (char[4])";
     return -1;
   }
-  if ((sizeof (long) != 4) ||
+  if ((sizeof (uint32_t) != 4) ||
       (sizeof (short) != 2) ||
       (sizeof (char) != 1)) {
     bdmIO_lastErrorString = "Host machine sizeof not appropriate";
