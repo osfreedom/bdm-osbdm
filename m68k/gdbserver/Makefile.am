@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.3 2007/11/08 03:13:06 cjohns Exp $
+## $Id: Makefile.am,v 1.4 2008/01/18 01:58:03 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -23,6 +23,8 @@ AM_CFLAGS = -Wall
 XML_FILES = \
 	$(srcdir)/m68k-core.xml \
 	$(srcdir)/m68k-fpu.xml \
+	$(srcdir)/m68k-cpu32.xml \
+	$(srcdir)/m68k-cpu32plus.xml \
 	$(srcdir)/m68k-cf5200.xml \
 	$(srcdir)/m68k-cf5235.xml \
 	$(srcdir)/m68k-cf5272.xml \

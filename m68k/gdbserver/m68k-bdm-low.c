@@ -173,12 +173,12 @@ static struct m68k_bdm_reg_mapping m68k_bdm_cpu32_reg_map[] = {
   { "sp",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
   { "ps",  M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
   { "pc",  M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 28, BDM_REG_VBR },
-  { "pcc", M68K_BDM_REG_TYPE_INT32,         29, BDM_REG_PCC },
-  { "usp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 30, BDM_REG_USP },
-  { "ssp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 31, BDM_REG_SSP },
-  { "sfc", M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_SFC },
-  { "dfc", M68K_BDM_REG_TYPE_INT32,         33, BDM_REG_DFC }
+  { "vbr", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_VBR },
+  { "pcc", M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_PCC },
+  { "usp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 20, BDM_REG_USP },
+  { "ssp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 21, BDM_REG_SSP },
+  { "sfc", M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_SFC },
+  { "dfc", M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_DFC }
 };
 
 /*
@@ -577,13 +577,23 @@ static unsigned char* m68k_bdm_breakpoint_code = (unsigned char*) "\x4e\x41";
 static unsigned int   m68k_bdm_breakpoint_size = 2;
 
 /*
+ * Trial of not stopping on an error.
+ */
+static int m68k_bdm_use_error;
+
+/*
  * Display error message and jump back to main input loop
  */
 static void
 m68k_bdm_report_error (void)
 {
   if (!m68k_bdm_gdb_is_quitting)
-    error ("m68k-bdm: error: %s", bdmErrorString ());
+  {
+    if (m68k_bdm_use_error)
+      error ("m68k-bdm: error: %s", bdmErrorString ());
+    else
+      printf_filtered ("m68k-bdm: error: %s", bdmErrorString ());
+  }
 }
 
 static void
@@ -815,7 +825,10 @@ m68k_bdm_init_watchpoints(void)
     return -1;
   m68k_bdm_watchpoint_count = 0;
   if (bdmWriteSystemRegister (BDM_REG_TDR, TDR_TRC_HALT) < 0)
+  {
     m68k_bdm_report_error ();
+    return -1;
+  }
   return 0;
 }
 
@@ -1477,7 +1490,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   int           delay = -1;
   int           driver_debug_level = 0;
   int           debug_level = 0;
-
+ 
   warning_prefix = "m68k-bdm-gdbserver";
 
   while (argv[arg]) {
@@ -1493,7 +1506,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
         case 't':
           arg++;
           if (!argv[arg])
-            fatal ("m68k-bdm: no delay timwout argument found");
+            fatal ("m68k-bdm: no delay timeout argument found");
           delay = strtoul (argv[arg], 0, 0);
           break;
         case 'v':
@@ -2119,7 +2132,10 @@ m68k_bdm_look_up_symbols (void)
 static void
 m68k_bdm_request_interrupt (void)
 {
+  int save_m68k_bdm_use_error = m68k_bdm_use_error;
+  m68k_bdm_use_error = 0;
   m68k_bdm_stop_chip ();
+  m68k_bdm_use_error = save_m68k_bdm_use_error;
 }
 
 static const char*
@@ -2329,4 +2345,5 @@ initialize_low (void)
 {
   set_target_ops (&m68k_bdm_target_ops);
   set_breakpoint_data (m68k_bdm_breakpoint_code, m68k_bdm_breakpoint_size);
+  m68k_bdm_use_error = 1;
 }

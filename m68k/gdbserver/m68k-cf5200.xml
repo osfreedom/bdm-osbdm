@@ -14,18 +14,18 @@
     <!-- The 5200 specific registers  -->
     <reg name="vbr"    bitsize="32" group="system" regnum="18"/>
     <reg name="cacr"   bitsize="32" group="system" regnum="19"/>
-    <reg name="acr0"   bitsize="32" group="system" regnum="21"/>
-    <reg name="acr1"   bitsize="32" group="system" regnum="22"/>
-    <reg name="rambar" bitsize="32" group="system" regnum="23"/>
-    <reg name="mbar"   bitsize="32" group="system" regnum="24"/>
-    <reg name="csr"    bitsize="32" group="debug" regnum="25"/>
-    <reg name="aatr"   bitsize="32" group="debug" regnum="26"/>
-    <reg name="tdr"    bitsize="32" group="debug" regnum="27"/>
-    <reg name="pbr"    bitsize="32" group="debug" regnum="28"/>
-    <reg name="pbmr"   bitsize="32" group="debug" regnum="29"/>
-    <reg name="abhr"   bitsize="32" group="debug" regnum="30"/>
-    <reg name="ablr"   bitsize="32" group="debug" regnum="31"/>
-    <reg name="dbr"    bitsize="32" group="debug" regnum="32"/>
-    <reg name="dbmr"   bitsize="32" group="debug" regnum="33"/>
+    <reg name="acr0"   bitsize="32" group="system" regnum="20"/>
+    <reg name="acr1"   bitsize="32" group="system" regnum="21"/>
+    <reg name="rambar" bitsize="32" group="system" regnum="22"/>
+    <reg name="mbar"   bitsize="32" group="system" regnum="23"/>
+    <reg name="csr"    bitsize="32" group="debug"  regnum="24"/>
+    <reg name="aatr"   bitsize="32" group="debug"  regnum="25"/>
+    <reg name="tdr"    bitsize="32" group="debug"  regnum="26"/>
+    <reg name="pbr"    bitsize="32" group="debug"  regnum="27"/>
+    <reg name="pbmr"   bitsize="32" group="debug"  regnum="28"/>
+    <reg name="abhr"   bitsize="32" group="debug"  regnum="29"/>
+    <reg name="ablr"   bitsize="32" group="debug"  regnum="30"/>
+    <reg name="dbr"    bitsize="32" group="debug"  regnum="31"/>
+    <reg name="dbmr"   bitsize="32" group="debug"  regnum="32"/>
   </feature>
 </target>
