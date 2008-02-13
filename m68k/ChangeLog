@@ -1,13 +1,8 @@
-2008-01-18 Chris Johns <cjohns@users.sourceforge.net>
+2008-02-14 Federico Ulivi <fulivi@lycos.com>
 
-	* gdbserver/m68k-cpu32.xml, gdbserver/m68k-cpu32plus.xml: New.
-
-	* gdbserver/m68k-cf5200.xml: Fix the register numbers.
-
-	* gdbserver/Makefile.am: Add the new XML files.
-
-	* gdbserver/m68k-bdm-low.c: Fix the register numbers for the CPU32
-	processor. Add trial support for not calling error on an error.
+	* gdbserver/m68k-bdm-low.c: Patch to fix the register list for
+	cfv4e core. BDM now works for me with gdb 6.7.1 (targeted to m68k
+	architecture, of course).
 
 2008-01-10 Chris Johns <cjohns@users.sourceforge.net>
 
