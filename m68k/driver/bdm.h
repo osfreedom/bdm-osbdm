@@ -40,11 +40,7 @@
  *
  * Coldfire support by:
  * Chris Johns
- * Objective Design Systems
- * 35 Cairo Street
- * Cammeray, Sydney, 2062, Australia
- *
- * ccj@acm.org
+ * chris@contemporary.net.au
  *
  */
 
@@ -109,8 +105,8 @@
  * Address and value are in host-endian order
  */
 struct BDMioctl {
-    unsigned int    address;
-    unsigned int    value;
+    unsigned long int address;
+    unsigned long int value;
 };
 
 /*

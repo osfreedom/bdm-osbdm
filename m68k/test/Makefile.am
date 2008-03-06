@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.3 2004/01/08 20:37:25 codewiz Exp $
+## $Id: Makefile.am,v 1.4 2008/03/06 10:35:40 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -21,12 +21,21 @@ LIBS += -l wsock32
 endif
 endif
 
+if TBLCF_USB
+TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+endif
+
+if LIBUSB_PATH
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
+AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+endif
+
 bin_PROGRAMS = bdm-chk bdm-cpu32-chk
 
 bdm_chk_SOURCES = \
 	chk.c
-bdm_chk_LDADD = ../lib/libBDM.a
+bdm_chk_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)
 
 bdm_cpu32_chk_SOURCES = \
 	cpu32-check.c
-bdm_cpu32_chk_LDADD = ../lib/libBDM.a
+bdm_cpu32_chk_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)

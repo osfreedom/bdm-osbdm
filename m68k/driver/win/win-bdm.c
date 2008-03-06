@@ -112,18 +112,16 @@ stat (const char *file_name, struct stat *buf)
  ************************************************************************
  */
 
-#if defined (__CYGWIN__)
-
 #define udelay usleep
 
-#else
+#if !defined (__CYGWIN__)
 
 #ifndef HZ
-#define HZ 1000
+#define HZ 100
 #endif
 
 void
-udelay(int usecs)
+usleep(int usecs)
 {
   LARGE_INTEGER lpc;
   LONGLONG      lpc2;
@@ -201,7 +199,7 @@ bdm_delay (int counter)
 void
 bdm_sleep (unsigned long time)
 {
-  udelay (time * (1000 * (1000 / HZ)));
+  usleep (time * (1000 * (1000 / HZ)));
 }
 
 /*
@@ -405,6 +403,88 @@ win_bdm_init ()
 }
 
 /*
+ * Initialise the USB interface to tghe pod.
+ */
+int
+usb_bdm_init (const char *device)
+{
+#if BDM_TBLCF_USB
+  struct BDM *self;
+  int         devs;
+  int         dev;
+
+#ifdef BDM_VER_MESSAGE
+  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ "\n",
+           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
+#endif
+
+  if (bdm_dev_registered)
+  {
+    fprintf (stderr,
+             "BDM driver is already registered (Please report to BDM project).\n");
+    errno = EIO;
+    return -2;
+  }
+
+  /*
+   * Choose the pod.
+   */
+  devs = tblcf_init();
+    
+  for (dev = 0; dev < devs; dev++)
+  {
+    char name[128];
+    tblcf_usb_dev_name (dev, name, sizeof (name));
+    if (strcmp (device, name) == 0)
+      break;
+  }
+  
+  if (dev == devs)
+  {
+    errno = ENOENT;
+    return -1;
+  }
+    
+  /*
+   * Set up the self srructure. Only ever one with ioperm.
+   */
+
+  self = &bdm_device_info[0];
+
+  /*
+   * First set the default debug level.
+   */
+
+  self->debugFlag = BDM_DEFAULT_DEBUG;
+
+  /*
+   * See if the port exists
+   */
+
+  self->exists = 1;
+
+  bdm_dev_registered = 1;
+
+  self->usbDev = dev;
+  
+  self->delayTimer  = 0;
+
+  tblcf_init_self (self);
+
+  if (tblcf_open(device))
+  {
+    errno = EIO;
+    return -1;
+  }
+
+  return 0;
+#else
+  errno = ENOENT;
+  return -1;
+#endif
+}
+
+/*
  * The device is a device name of the form /dev/bdmcpu320 or
  * /dev/bdmcf0 where the /dev/bdm must be present
  * the next field can be cpu32 or cf followed by
@@ -416,41 +496,52 @@ win_bdm_open (const char *device, int flags, ...)
 {
   int port = 0;
 
-  if (!bdm_dev_registered)
-     win_bdm_init ();
-
-  if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1))
+  if (strncmp (device, "/usb/", sizeof ("/usb/") - 1) == 0)
   {
-    errno = ENOENT;
-    return -1;
-  }
-
-  device += sizeof ("/dev/bdm") - 1;
-
-  if (strncmp (device, "cpu32", 5) == 0)
-  {
-    port = 0;
-    device += 5;  /* s.b. 5 */
-  }
-  /* Allow ICD access under cygwin */
-  else if (strncmp (device, "icd", 3) == 0)
-  {
-    port = 8;
-    device += 3;
-  }
-  else if (strncmp (device, "cf", 2) == 0)
-  {
-    port = 4;
-    device += 2;
+    if (usb_bdm_init (device + 5) < 0)
+    {
+      errno = ENOENT;
+      return -1;
+    }
   }
   else
   {
-    errno = ENOENT;
-    return -1;
+    if (!bdm_dev_registered)
+      win_bdm_init ();
+
+    if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1))
+    {
+      errno = ENOENT;
+      return -1;
+    }
+
+    device += sizeof ("/dev/bdm") - 1;
+
+    if (strncmp (device, "cpu32", 5) == 0)
+    {
+      port = 0;
+      device += 5;  /* s.b. 5 */
+    }
+    /* Allow ICD access under cygwin */
+    else if (strncmp (device, "icd", 3) == 0)
+    {
+      port = 8;
+      device += 3;
+    }
+    else if (strncmp (device, "cf", 2) == 0)
+    {
+      port = 4;
+      device += 2;
+    }
+    else
+    {
+      errno = ENOENT;
+      return -1;
+    }
+
+    port += strtoul (device, 0, 0);
   }
-
-  port += strtoul (device, 0, 0);
-
+  
   errno = bdm_open (port);
   if (errno)
     return -1;

@@ -254,6 +254,38 @@ AC_ARG_ENABLE(gdbserver,
 
 AM_CONDITIONAL(GDBSERVER, test x$bdm_gdbserver = xtrue)
 
+AC_ARG_ENABLE(tblcf,
+ [  --enable-tblcf Build the Turbo BDM Light Coldfire USB driver (enabled)],
+ [case "${enableval}" in
+    yes) bdm_tblcf=true ;;
+    no)  bdm_tblcf=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-tblcf) ;;
+   esac],
+ [bdm_tblcf=true])
+
+AC_ARG_WITH(libusb-dir,
+ [  --with-libusb-dir=DIR  path for libusb package (include/usb.h, lib/gcc/libusb.a)],
+ [ ac_libusb_include_dir=$withval/include
+   ac_libusb_lib_dir=$withval/lib/gcc ],
+ [ ac_libusb_include_dir=NONE
+   ac_libusb_lib_dir=NONE ]
+)
+
+AS_IF([test x$bdm_tblcf = xtrue],
+      [AS_IF([test $ac_libusb_include_dir != NONE],
+             [ac_tmp_ldflags=${LDFLAGS}
+              LDFLAGS="$LDFLAGS -L$ac_libusb_lib_dir"])
+       AC_CHECK_LIB(usb, usb_init, ,
+                    [AC_MSG_ERROR([Could not find libusb. Try --with-libusb-dir.])])
+       AS_IF([test $ac_libusb_include_dir != NONE],
+             [LDFLAGS=$ac_tmp_ldflags])])
+
+AM_CONDITIONAL(TBLCF_USB, test x$bdm_tblcf = xtrue)
+
+AM_CONDITIONAL(LIBUSB_PATH, test $ac_libusb_include_dir != NONE)
+AC_SUBST(LIBUSB_INCLUDE_DIR, ${ac_libusb_include_dir})
+AC_SUBST(LIBUSB_LIB_DIR, ${ac_libusb_lib_dir})
+
 dnl
 dnl If on a Win32 target such as MinGW do not build
 dnl the server.
@@ -275,6 +307,7 @@ dnl
 dnl Collect list of subdirectories to build
 dnl
 bdm_subdirs="lib"
+AS_IF([test x$bdm_tblcf = xtrue], bdm_subdirs="${bdm_subdirs} tblcf")
 AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
 AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
 AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], bdm_subdirs="${bdm_subdirs} bdmabstraction")
@@ -289,6 +322,7 @@ dnl
 AC_CONFIG_FILES(Makefile \
                 flashlib/Makefile \
                 lib/Makefile \
+                tblcf/Makefile \
                 server/Makefile \
                 gdbserver/Makefile \
                 test/Makefile \

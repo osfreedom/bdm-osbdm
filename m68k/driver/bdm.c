@@ -40,7 +40,7 @@
  *
  * Coldfire support by:
  * Chris Johns
- * chris@contemporary.net.au
+ * chris@users.sourceforge.net
  *
  * ccj@acm.org
  *
@@ -101,6 +101,7 @@ struct BDM {
   int  dataPort;
   int  statusPort;
   int  controlPort;
+  int  usbDev;
 
   /*
    * Control debugging messages
@@ -129,8 +130,6 @@ struct BDM {
   int (*get_status)(struct BDM *self);
   int (*init_hardware) (struct BDM *self);
   int (*serial_clock) (struct BDM *self, unsigned short wval, int holdback);
-  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
-  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
   int (*gen_bus_error) (struct BDM *self);
   int (*restart_chip) (struct BDM *self);
   int (*release_chip) (struct BDM *self);
@@ -138,6 +137,18 @@ struct BDM {
   int (*stop_chip) (struct BDM *self);
   int (*run_chip) (struct BDM *self);
   int (*step_chip) (struct BDM *self);
+  int (*fill_buf) (struct BDM *self, int count);
+  int (*send_buf) (struct BDM *self, int count);
+  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
+  int (*read_proreg) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_long_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_byte) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
+  int (*write_proreg) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_long_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_byte) (struct BDM *self, struct BDMioctl *ioc);
 
   /*
    * Some system registers are write only so we need to shadow them
@@ -158,12 +169,19 @@ struct BDM {
    */
   int           cf_running;
   unsigned long cf_csr;
+  
   /*
    * Revision D BDM hardware does not have a bit to mask interrupts so
    * we must save the SR when we step and then restore when we go.
    */
   unsigned long cf_sr_mask_cache;
   int           cf_sr_masked;
+
+  /*
+   * Address for the current transfer. The TBLCF pod always
+   * takes the address rather than streaming. This should be changed.
+   */
+  unsigned long address;
 
 #ifdef BDM_BIT_BASH_PORT
   
@@ -202,12 +220,12 @@ static int bdmDrvReleaseChip (struct BDM *self);
 static int bdmDrvResetChip (struct BDM *self);
 static int bdmDrvStopChip (struct BDM *self);
 static int bdmDrvSerialClock (struct BDM *self, unsigned short wval, int holdback);
+static int bdmDrvGenerateBusError (struct BDM *self);
 static int bdmDrvStepChip (struct BDM *self);
 static int bdmDrvSendCommandTillTargetReady (struct BDM *self,
                                           unsigned short command);
 static int bdmDrvFillBuf (struct BDM *self, int count);
 static int bdmDrvSendBuf (struct BDM *self, int count);
-static int bdmDrvFetchWord (struct BDM *self, unsigned short *sp);
 static int bdmDrvGo (struct BDM *self);
 static int bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc, int mode);
 static int bdmDrvReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc);
@@ -219,253 +237,6 @@ static int bdmDrvWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 static int bdmDrvWriteLongWord (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvWriteWord (struct BDM *self, struct BDMioctl *ioc);
 static int bdmDrvWriteByte (struct BDM *self, struct BDMioctl *ioc);
-
-/*
- ************************************************************************
- *     BDM Interfaces                                                   *
- ************************************************************************
- */
-
-/*
- * PD (Eric's) CPU32 Interface
- *
- * Parallel port bit assignments
- *
- * Status register (bits 0-2 not used):
- * +---+---+---+---+---+---+---+---+
- * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
- * +---+---+---+---+---+---+---+---+
- *   |   |   |   |   |
- *   |   |   |   |   +--- Target FREEZE line
- *   |   |   |   |     1 - Target is in background mode
- *   |   |   |   |     0 - Target is not background mode
- *   |   |   |   |
- *   |   |   |   +------- Not used
- *   |   |   |
- *   |   |   +----------- Serial data from target
- *   |   |  1 - `0' from target
- *   |   |  0 - `1' from target
- *   |   |
- *   |   +--------------- Target power
- *   |      1 - Target power is ON
- *   |      0 - Target power is OFF
- *   |
- *   +------------------- Target connected
- *    1 - Target is connected
- *    0 - Target is not connected
- *
- * Control register (bits 4-7 not used):
- * +---+---+---+---+
- * | 3 | 2 | 1 | 0 |
- * +---+---+---+---+
- *   |   |   |   |
- *   |   |   |   +--- Target BKPT* /DSCLK line
- *   |   |   |     Write 1 - Drive BKPT* /DSCLK line LOW
- *   |   |   |     Write 0 - Allow BKPT* /DSCLK line to go HIGH
- *   |   |   |   Allow flip-flop to control BKPT* /DSCLK line
- *   |   |   |
- *   |   |   +------- Target RESET* line
- *   |   |   Write 1 - Force RESET* LOW
- *   |   |   Write 0 - Allow monitoring of RESET*
- *   |   |       Read 1 - RESET* is LOW
- *   |   |       Read 0 - RESET* is HIGH
- *   |   |
- *   |   +----------- Serial data to target
- *   |  Write 0 - Send `0' to target
- *   |  Write 1 - Send `1' to target
- *   |
- *   +--------------- Control single-step flip-flop
- *      Write 1 - Clear flip-flop
- *    BKPT* /DSCLK is controlled by bit 0.
- *      Write 0 - Allow flip-flop operation
- *    Falling edge of IFETCH* /DSI clocks a `1'
- *    into the flip-flop and drive BKPT* /DSCLK
- *    LOW, causing a breakpoint.
- */
-#define CPU32_PD_SR_CONNECTED        (0x80)
-#define CPU32_PD_SR_POWERED          (0x40)
-#define CPU32_PD_SR_DATA_BAR         (0x20)
-#define CPU32_PD_SR_FROZEN           (0x08)
-
-#define CPU32_PD_CR_NOT_SINGLESTEP   (0x08)
-#define CPU32_PD_CR_DATA             (0x04)
-#define CPU32_PD_CR_FORCE_RESET      (0x02)
-#define CPU32_PD_CR_RESET_STATUS     (0x02)
-#define CPU32_PD_CR_CLOCKBAR_BKPT    (0x01)
-
-/*
- * ICD interface.
- *
- * Parallel port bit assignments
- *
- * Status register 
- * +---+---+---+---+---+---+---+---+
- * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
- * +---+---+---+---+---+---+---+---+
- *   |   |   |   |   |
- *   |   |   |   |   +--- Not used
- *   |   |   |   +------- Not used
- *   |   |   +----------- Not used
- *   |   |
- *   |   +--------------- Target FREEZE line
- *   |                        1 - Target is in background mode
- *   |                        0 - Target is not background mode
- *   |
- *   +------------------- Serial data from target
- *                            1 - `0' from target
- *                            0 - `1' from target
- *        
- * Data register 
- * +---+---+---+---+---+---+---+---+
- * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
- * +---+---+---+---+---+---+---+---+
- *   |   |   |   |   |   |   |   |
- *   |   |   |   |   |   |   |   +---  Serial data to target
- *   |   |   |   |   |   |   |            Write 1: Send 1 to target
- *   |   |   |   |   |   |   |            Write 0: Send 0 to target
- *   |   |   |   |   |   |   |            Signal gets to target, if OE is 1
- *   |   |   |   |   |   |   |            and target is in FREEZE mode
- *   |   |   |   |   |   |   |
- *   |   |   |   |   |   |   +-------  Clock 
- *   |   |   |   |   |   |                if target in freeze mode, then:
- *   |   |   |   |   |   |                Write 1: drive BKPT* /DSCLK 1
- *   |   |   |   |   |   |                Write 0: drive BKPT* /DSCLK 0
- *   |   |   |   |   |   |
- *   |   |   |   |   |   +-----------  BREAK
- *   |   |   |   |   |                    if target not in freeze mode, then:
- *   |   |   |   |   |                    Write 0: drive BKPT* /DSCLK 0
- *   |   |   |   |   |                    line determines single stepping
- *   |   |   |   |   |                    on leaving BGND mode:
- *   |   |   |   |   |                    Write 0: do single step
- *   |   |   |   |   |                    Write 1: continue normally
- *   |   |   |   |   |
- *   |   |   |   |   +---------------  RESET
- *   |   |   |   |                        Write 0: pull reset low
- *   |   |   |   |                        Write 1: release reset line
- *   |   |   |   |
- *   |   |   |   +--- OE
- *   |   |   |           Write 0 - DSI is tristated
- *   |   |   |           Write 1 - DSI pin is forced to level of serial data
- *   |   |   |
- *   |   |   +------- LED
- *   |   |               Write 1 - turn on LED
- *   |   |               Write 0 - turn off LED
- *   |   |
- *   |   +----------- ERROR
- *   |                   Write 0 - BERR output is tristated
- *   |                   Write 1 - BERR is pulled low
- *   |
- *   +--------------- spare
- */
-
-#define CPU32_ICD_DSI        (1 << 0)    /* data shift input  Host->MCU        */
-#define CPU32_ICD_DSCLK      (1 << 1)    /* data shift clock / breakpoint pin  */
-#define CPU32_ICD_STEP_OUT   (1 << 2)    /* set low to force breakpoint        */
-#define CPU32_ICD_RST_OUT    (1 << 3)    /* set low to force reset on MCU      */
-#define CPU32_ICD_OE         (1 << 4)    /* set to a 1 to enable DSI           */
-#define CPU32_ICD_FORCE_BERR (1 << 6)    /* set to a 1 to force BERR on target */
-#define CPU32_ICD_FREEZE     (1 << 6)    /* */
-#define CPU32_ICD_DSO        (1 << 7)    /* */
-
-/*
- * Coldfire P&E Interface.
- *
- * Parallel port bit assignments 
- *
- * Data register
- * +---+---+---+---+---+---+---+---+
- * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
- * +---+---+---+---+---+---+---+---+
- *   |   |   |   |   |   |   |   |
- *   |   |   |   |   |   |   |   +--- Serial data to target
- *   |   |   |   |   |   |   |    Write 0 - Send `0' to target
- *   |   |   |   |   |   |   |    Write 1 - Send `1' to target
- *   |   |   |   |   |   |   |
- *   |   |   |   |   |   |   +------- Serial Data clock
- *   |   |   |   |   |   |  0 = clock low
- *   |   |   |   |   |   |  1 = clock high
- *   |   |   |   |   |   |
- *   |   |   |   |   |   +----------- Target Breakpoint
- *   |   |   |   |   |      0 = brkp active (low)
- *   |   |   |   |   |      1 = brkp negated (high)
- *   |   |   |   |   |
- *   |   |   |   |   +--------------- Target Reset
- *   |   |   |   |    0 = reset active (low)
- *   |   |   |   |    1 = reset negated (target active)
- *   |   |   |   |
- *   |   |   |   +------------------- Not Used
- *   |   |   |
- *   |   |   +----------------------- Not used
- *   |   |
- *   |   +--------------------------- TEA
- *   | 
- *   +------------------------------- Not used
- *
- * Status register (bits 0-2 not used):
- * +---+---+---+---+---+---+---+---+
- * | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
- * +---+---+---+---+---+---+---+---+
- *   |   |   |   |   |
- *   |   |   |   |   +--- PST1
- *   |   |   |   |     1 - ???
- *   |   |   |   |     0 - ???
- *   |   |   |   |
- *   |   |   |   +------- Target power
- *   |   |   |    1 - Target power is ON
- *   |   |   |    0 - Target power is OFF
- *   |   |   |
- *   |   |   +----------- Not used
- *   |   |
- *   |   +--------------- Halted
- *   |      1 - Target is halted (PST0 | PST1 | PST1 | PST3)
- *   |      0 - Target is running
- *   |
- *   +------------------- Serial data from target (DSO)
- *    1 - `0' from target
- *    0 - `1' from target
- *
- * Control register (bits 4-7 not used):
- * +---+---+---+---+
- * | 3 | 2 | 1 | 0 |
- * +---+---+---+---+
- *   |   |   |   |
- *   |   |   |   +--- Target /PST0
- *   |   |   |     Write 1 - /PST0 line LOW
- *   |   |   |     Write 0 - /PST0 line to go HIGH
- *   |   |   |
- *   |   |   +------- Target PST2
- *   |   |   Write 1 - /PST2 line high
- *   |   |   Write 0 - /PST2 line low
- *   |   |
- *   |   +----------- Target /PST3
- *   |  Write 0 - /PST3 line LOW
- *   |  Write 1 - /PST3 line to go HIGH
- *   |
- *   +--------------- Not Used
- */
-
-#define CF_PE_DR_DATA_IN    0x01
-#define CF_PE_DR_CLOCK_HIGH 0x02
-#define CF_PE_DR_BKPT       0x04
-#define CF_PE_DR_RESET      0x08
-#define CF_PE_DR_TEA        0x40
-
-#define CF_PE_DR_MASK       (CF_PE_DR_DATA_IN | CF_PE_DR_CLOCK_HIGH \
-                             | CF_PE_DR_BKPT | CF_PE_DR_RESET | CF_PE_DR_TEA)
-
-#define CF_PE_MAKE_POS_DR(flags) ((flags) & (CF_PE_DR_DATA_IN | CF_PE_DR_CLOCK_HIGH))
-#define CF_PE_MAKE_NEG_DR(flags) ((~(flags)) & (CF_PE_DR_BKPT | CF_PE_DR_RESET | CF_PE_DR_TEA))
-#define CF_PE_MAKE_DR(flags)     ((CF_PE_MAKE_POS_DR(flags) | CF_PE_MAKE_NEG_DR(flags)) & \
-                                  CF_PE_DR_MASK)
-
-#define CF_PE_SR_PST1       0x08
-#define CF_PE_SR_POWERED    0x10
-#define CF_PE_SR_FROZEN     0x40  /* do not use this, require SIM setup */
-#define CF_PE_SR_DATA_OUT   0x80
-
-#define CF_PE_CR_NOT_PST0   0x01
-#define CF_PE_CR_NOT_PST2   0x02
-#define CF_PE_CR_NOT_PST3   0x04
 
 /*
  * Common processor defines.
@@ -524,751 +295,41 @@ static int bdmDrvWriteByte (struct BDM *self, struct BDMioctl *ioc);
 static struct BDM bdm_device_info[BDM_NUM_OF_MINORS];
 
 /*
+ * Does this host require swapping.
+ */
+static int mustSwap;
+
+/*
+ ************************************************************************
+ *     Genric Bit Bash Functions Decls                                  *
+ ************************************************************************
+ */
+
+static int bdmBitBashSendCommandTillTargetReady (struct BDM *self,
+                                                 unsigned short command);
+static int bdmBitBashFillBuf (struct BDM *self, int count);
+static int bdmBitBashSendBuf (struct BDM *self, int count);
+static int bdmbitBashFetchWord (struct BDM *self, unsigned short *sp);
+static int bdmBitBashReadProcessorRegister (struct BDM *self,
+                                            struct BDMioctl *ioc);
+static int bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc);
+static int bdmBitBashReadWord (struct BDM *self, struct BDMioctl *ioc);
+static int bdmBitBashReadByte (struct BDM *self, struct BDMioctl *ioc);
+static int bdmBitBashWriteProcessorRegister (struct BDM *self,
+                                             struct BDMioctl *ioc);
+static int bdmBitBashWriteLongWord (struct BDM *self,
+                                    struct BDMioctl *ioc);
+static int bdmBitBashWriteWord (struct BDM *self, struct BDMioctl *ioc);
+static int bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc);
+
+
+/*
  ************************************************************************
  *     CPU32 for PD/ICD interface support routines                      *
  ************************************************************************
  */
 
-/*
- * CPU32 system register mapping. See bdm.h for the user values.
- */
-
-static int cpu32_sysreg_map[BDM_REG_VBR + 1] =
-{ 0x0,      /* BDM_REG_RPC   */
-  0x1,      /* BDM_REG_PCC   */
-  0xb,      /* BDM_REG_SR    */
-  0xc,      /* BDM_REG_USP   */
-  0xd,      /* BDM_REG_SSP   */
-  0xe,      /* BDM_REG_SFC   */
-  0xf,      /* BDM_REG_DFC   */
-  0x8,      /* BDM_REG_ATEMP */
-  0x9,      /* BDM_REG_FAR   */
-  0xa       /* BDM_REG_VBR   */
-};
-
-/* need by cpu32_read_sysreg() */
-static int cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
-static int cpu32_icd_stop_chip (struct BDM *self);
-
-/*
- * Clock a word to/from the target
- */
-
-static int
-cpu32_serial_clock (struct BDM *self, unsigned short wval, int holdback)
-{
-  return (self->serial_clock) (self, wval, holdback);
-}
-
-/*
- * Get target status
- */
-static int
-cpu32_pd_get_status (struct BDM *self)
-{
-  unsigned char sr = inb (self->statusPort);
-  int           ret;
-
-  if (!(sr & CPU32_PD_SR_CONNECTED))
-    ret = BDM_TARGETNC;
-  else if (!(sr & CPU32_PD_SR_POWERED))
-    ret = BDM_TARGETPOWER;
-  else
-    ret = (sr & CPU32_PD_SR_FROZEN ? BDM_TARGETSTOPPED : 0) |
-      (inb (self->controlPort) & CPU32_PD_CR_RESET_STATUS ? BDM_TARGETRESET : 0);
-  if (self->debugFlag > 1)
-    PRINTF (" cpu32_pd_get_status -- Status Port:0x%02x  Status:0x%04x\n",
-            sr, ret);
-  return ret;
-}
-
-/*
- * Hardware initialization
- */
-static int
-cpu32_pd_init_hardware (struct BDM *self)
-{
-  int status;
-
-  /*
-   * Force breakpoint
-   */
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (100);
-  outb (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  bdm_sleep (HZ / 100);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (100);
-  status = cpu32_pd_get_status (self);
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_init_hardware: status:0x%02x control port:0x%02x\n",
-            status, inb (self->controlPort));
-  return status;
-}
-
-/*
- * Clock a word to/from the target
- */
-static int
-cpu32_pd_serial_clock (struct BDM *self, unsigned short wval, int holdback)
-{
-  unsigned long shiftRegister;
-  unsigned char dataBit;
-  unsigned int  counter;
-  unsigned int  status = cpu32_pd_get_status (self);
-
-  if (status & BDM_TARGETRESET)
-    return BDM_FAULT_RESET;
-  if (status & BDM_TARGETNC)
-    return BDM_FAULT_CABLE;
-  if (status & BDM_TARGETPOWER)
-    return BDM_FAULT_POWER;
-  shiftRegister = wval;
-  counter = 17 - holdback;
-  while (counter--) {
-    dataBit = ((shiftRegister & 0x10000) ? CPU32_PD_CR_DATA : 0);
-    shiftRegister <<= 1;
-    outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-          self->controlPort);
-    bdm_delay (self->delayTimer + 1);
-    if ((inb (self->statusPort) & CPU32_PD_SR_DATA_BAR) == 0)
-      shiftRegister |= 1;
-    outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP, self->controlPort);
-    bdm_delay ((self->delayTimer >> 1) + 1);
-  }
-  self->readValue = shiftRegister & 0x1FFFF;
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_serial_clock -- send 0x%05x  receive 0x%05x\n",
-            wval, self->readValue);
-  if (self->readValue & 0x10000) {
-    if (self->readValue == 0x10001)
-      return BDM_FAULT_BERR;
-    else if (self->readValue != 0x10000)
-      return BDM_FAULT_NVC;
-  }
-  return 0;
-}
-
-/*
- * Restart chip and stop on first instruction fetch
- */
-static int
-cpu32_pd_restart_chip (struct BDM *self)
-{
-  int check;
-
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_restart_chip\n");
-  outb (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
-      return 0;
-  }
-  return BDM_FAULT_RESPONSE;
-}
-
-/*
- * Restart chip and disable background debugging mode
- */
-static int
-cpu32_pd_release_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_release_chip\n");
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_FORCE_RESET, self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP, self->controlPort);
-  return 0;
-}
-
-/*
- * Restart chip, enable background debugging mode, halt on first fetch
- *
- * The software from the Motorola BBS tries to have the target
- * chip begin execution, but that doesn't work very reliably.
- * The RESETH* line rises rather slowly, so sometimes the BKPT* / DSCLK
- * would be seen low, and sometimes it wouldn't.
- */
-static int
-cpu32_pd_reset_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_reset_chip\n");
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_FORCE_RESET,
-        self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_NOT_SINGLESTEP,
-        self->controlPort);
-  return 0;
-}
-
-/*
- * Force the target into background debugging mode
- */
-static int
-cpu32_pd_stop_chip (struct BDM *self)
-{
-  int check;
-
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_stop_chip\n");
-  if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
-    return 0;
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-        self->controlPort);
-  for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
-      return 0;
-  }
-  return BDM_FAULT_RESPONSE;
-}
-
-/*
- * Make the target execute a single instruction and
- * reenter background debugging mode
- */
-static int
-cpu32_pd_step_chip (struct BDM *self)
-{
-  int           check;
-  unsigned char dataBit;
-  int           err;
-
-  if (self->debugFlag)
-    PRINTF (" cpu32_pd_step_chip\n");
-  err = cpu32_serial_clock (self, BDM_GO_CMD, 1);
-  if (err)
-    return err;
-
-  /*
-   * Send the last bit of the command
-   */
-  dataBit = (BDM_GO_CMD & 0x1) ? CPU32_PD_CR_DATA : 0;
-  outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-        self->controlPort);
-  bdm_delay (self->delayTimer + 1);
-
-  /*
-   * Enable single-step
-   */
-  outb (dataBit | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-  bdm_delay (1);
-  outb (dataBit, self->controlPort);
-
-  /*
-   * Wait for step to complete
-   * The software from the Motorola BBS doesn't do this, but
-   * omitting the `outb' operation leaves a race condition the
-   * next time cpu32_serial_clock is called.
-   *
-   * The first output operation in bdmSerialClock sends
-   * `dataBit | CPU32_CR_NOT_SINGLESTEP | CPU32_CR_CLOCKBAR_BKPT' to the
-   * control port.  If the flip flop in the external circuit
-   * clears before the `CPU32_CR_CLOCKBAR_BKPT' pin of the '132 goes
-   * low, there is a narrow glitch on the BKPT* / DSCLK pin, which
-   * clocks a garbage bit into the target chip.
-   */
-  for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN) {
-      outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
-      return 0;
-    }
-  }
-  return BDM_FAULT_RESPONSE;
-}
-
-/*
- * Get target status
- */
-static int
-cpu32_icd_get_status (struct BDM *self)
-{
-  unsigned char sr = inb (self->statusPort);
-  int           ret;
-
-  ret = sr & CPU32_ICD_FREEZE ? BDM_TARGETSTOPPED : 0;
-  if (self->debugFlag > 1)
-    PRINTF (" cpu32_icd_get_status -- Status Port:0x%02x  Status:0x%04x\n",
-            sr, ret);
-  return ret;
-}
-
-/*
- * Hardware initialization
- */
-static int
-cpu32_icd_init_hardware (struct BDM *self)
-{
-  int status;
-
-  /*
-   * Force breakpoint
-   */
-  outb (CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
-  udelay (10);
-  status = cpu32_icd_get_status (self);
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_init_hardware: status:0x%02x, data port:0x%02x\n",
-            status, inb (self->dataPort));
-  return status;
-}
-
-/*
- * Clock a word to/from the target
- */
-static int
-cpu32_icd_serial_clock (struct BDM *self, unsigned short wval, int holdback)
-{
-  unsigned long shiftRegister;
-  unsigned char dataBit;
-  unsigned int  counter;
-  unsigned int  status = cpu32_icd_get_status (self);
-
-  if (status & BDM_TARGETRESET)
-    return BDM_FAULT_RESET;
-  if (status & BDM_TARGETNC)
-    return BDM_FAULT_CABLE;
-  if (status & BDM_TARGETPOWER)
-    return BDM_FAULT_POWER;
-  if(!(status & BDM_TARGETSTOPPED)) {
-    if (self->debugFlag)
-      PRINTF (" cpu32_icd_serial_clock -- stop target first\n");
-    if (cpu32_icd_stop_chip (self) == BDM_FAULT_RESPONSE) {
-      if (self->debugFlag)
-        PRINTF (" cpu32_icd_serial_clock -- can\'t stop it\n");
-      return BDM_FAULT_RESPONSE;
-    }
-  }
-  shiftRegister = wval;
-  counter = 17 - holdback;
-  while (counter--) {
-    dataBit = ((shiftRegister & 0x10000) ? CPU32_ICD_DSI : 0);
-    shiftRegister <<= 1;
-    outb (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT,
-          self->dataPort);
-    bdm_delay (self->delayTimer + 1);
-    if ((inb (self->statusPort) & CPU32_ICD_DSO) == 0)
-      shiftRegister |= 1;
-    outb (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-          self->dataPort);
-    bdm_delay ((self->delayTimer >> 1) + 1);
-  }
-  if (holdback == 0) {
-    outb (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-          self->dataPort);
-    bdm_delay (self->delayTimer + 1);
-  }
-  outb (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-        self->dataPort);
-  self->readValue = shiftRegister & 0x1FFFF;
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_serial_clock -- send 0x%05x, receive 0x%05x\n",
-            wval, self->readValue);
-  if (self->readValue & 0x10000) {
-    if (self->readValue == 0x10001)
-      return BDM_FAULT_BERR;
-    else if (self->readValue != 0x10000)
-      return BDM_FAULT_NVC;
-  }
-  return 0;
-}
-
-/*
- * Force the target into background debugging mode
- */
-static int
-cpu32_icd_stop_chip (struct BDM *self)
-{
-  int check;
-  int pass;
-
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_stop_chip: ");
-  /* if FREEZE is already high, we're stopped and we're done here */
-  if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
-    if (self->debugFlag)
-      PRINTF ("already stopped\n");
-    return 0;
-  }
-
-  /* try multiple times... */
-  for (pass = 0; pass < 14; pass++) {
-
-    /* even times, simply assert DSCLK and RESET */
-    if (pass%2 == 0) {
-      outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
-    }
-    /* odd times, yank BERR as well, in case the target is wedged */
-    else {
-      outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_FORCE_BERR,
-            self->dataPort);
-    }
-
-    /* now hang around and wait for the freeze line to come up
-     * XXX we're depending on a nop loop for timing?  arrrgh!
-     */
-    for (check = 0 ; check < (1000 + ((pass+1)%2) * 9000) ; check++) {
-      if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
-        /* if freeze line is high we're OK
-         * XXX let reset go too?
-         */
-        if (self->debugFlag)
-          PRINTF("stopped after %d bdm_delays\n", check);
-        outb (CPU32_ICD_RST_OUT, self->dataPort);
-        return 0;
-      }
-      bdm_delay (10);
-    }
-
-  }
-  /* we've failed... */
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
-  if (self->debugFlag)
-    PRINTF("failed!\n");
-  return BDM_FAULT_RESPONSE;
-}
-
-/*
- * Restart chip and stop on first instruction fetch
- */
-static int
-cpu32_icd_restart_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_restart_chip\n");
-  outb (CPU32_ICD_DSCLK, self->dataPort);
-  udelay (1);
-  return cpu32_icd_stop_chip (self);
-}
-
-/*
- * Restart chip and disable background debugging mode
- */
-static int
-cpu32_icd_release_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_release_chip\n");
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_STEP_OUT, self->dataPort);
-  udelay (10);
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT, self->dataPort);
-  udelay (10);
-  return 0;
-}
-
-/*
- * Restart chip, enable background debugging mode, halt on first fetch
- *
- * The software from the Motorola BBS tries to have the target
- * chip begin execution, but that doesn't work very reliably.
- * The RESETH* line rises rather slowly, so sometimes the BKPT* / DSCLK
- * would be seen low, and sometimes it wouldn't.
- */
-static int
-cpu32_icd_reset_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cpu32_icd_reset_chip\n");
-
-  /*
-   * Assert RESET*, BKPT*, and BREAK*
-   */
-  outb (0, self->dataPort);
-  udelay (100);
-  
-  /*
-   * Deassert RESET (CPU must see BKPT* asserted at rising edge of RESET*)
-   * Leaving BKPT* and BREAK* asserted gets us ready for first data txfer
-   * as per Figure 7-8 in CPU32RM/AD
-   */
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
-  udelay (100);
-
-  return 0;
-}
-
-
-/*
- * Make the target execute a single instruction and
- * reenter background debugging mode
- */
-static int
-cpu32_icd_step_chip (struct BDM *self)
-{
-  unsigned char dataBit;
-  int           err;
-
-  if (self->debugFlag)
-    PRINTF (" cpu32_step_chip\n");
-  err = cpu32_serial_clock (self, BDM_GO_CMD, 1);
-  if (err)
-    return err;
-
-  /*
-   * Send the last bit of the command
-   */
-  dataBit = (BDM_GO_CMD & 0x1) ? CPU32_ICD_DSI : 0;
-  outb (dataBit | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_RST_OUT,
-        self->dataPort);
-  bdm_delay (self->delayTimer + 1);
-  outb (dataBit | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self->dataPort);
-  bdm_delay (1);
-  /* Raise CPU32_ICD_DSCLK before dropping CPU32_ICD_OEA */
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self->dataPort);
-  bdm_delay (1);
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
-
-  return cpu32_icd_stop_chip (self);
-}
-
-/*
- * Read system register
- */
-
-static int 
-cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
-{
-  int err, cmd;
-  unsigned short msw, lsw;
-
-  /*
-   * CPU32 MBAR require sfc support, make it look like
-   * a register.
-   */
-  if (ioc->address == BDM_REG_MBAR) {
-    struct BDMioctl mbar_ioc;
-    unsigned long sfc;
-
-    mbar_ioc.address = BDM_REG_SFC;
-    if ((err = cpu32_read_sysreg (self, &mbar_ioc,
-                                  BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    sfc = mbar_ioc.value;
-    mbar_ioc.address = BDM_REG_SFC;
-    mbar_ioc.value = 7;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    mbar_ioc.address = 0x3FF00;
-    if ((err = bdmDrvReadLongWord (self, &mbar_ioc)) < 0)
-      return err;
-    ioc->value = mbar_ioc.value;
-    mbar_ioc.address = BDM_REG_SFC;
-    mbar_ioc.value = sfc;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    return 0;
-  }
-  
-  if (ioc->address > BDM_REG_VBR)
-    return BDM_FAULT_NVC;
-
-  if (mode != BDM_SYS_REG_MODE_MAPPED)
-    cmd = BDM_RSREG_CMD | (ioc->address & 0xffff);
-  else
-    cmd = BDM_RSREG_CMD | cpu32_sysreg_map[ioc->address];
-  
-  if (((err = cpu32_serial_clock (self, cmd, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &lsw)) != 0))
-    return err;
-  ioc->value = (msw << 16) | lsw;
-  return 0;
-}
-
-/*
- * Write system register
- */
-static int
-cpu32_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
-{
-  int err, cmd;
-
-  /*
-   * CPU32 MBAR require dfc support, make it look like
-   * a register.
-   */
-  if (ioc->address == BDM_REG_MBAR) {
-    struct BDMioctl mbar_ioc;
-    unsigned long dfc;
-
-    mbar_ioc.address = BDM_REG_DFC;
-    if ((err = cpu32_read_sysreg (self, &mbar_ioc,
-                                  BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    dfc = mbar_ioc.value;
-    mbar_ioc.address = BDM_REG_DFC;
-    mbar_ioc.value = 7;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    mbar_ioc.address = 0x3FF00;
-    mbar_ioc.value = ioc->value;
-    if ((err = bdmDrvWriteLongWord (self, &mbar_ioc)) < 0)
-      return err;
-    mbar_ioc.address = BDM_REG_DFC;
-    mbar_ioc.value = dfc;
-    if ((err = cpu32_write_sysreg (self, &mbar_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    return 0;
-  }
-  
-  if (ioc->address > BDM_REG_VBR)
-    return BDM_FAULT_NVC;
-  if (mode != BDM_SYS_REG_MODE_MAPPED)
-    cmd = BDM_WSREG_CMD | (ioc->address & 0xffff);
-  else
-    cmd = BDM_WSREG_CMD | cpu32_sysreg_map[ioc->address];
-  if (((err = cpu32_serial_clock (self, cmd, 0)) != 0) ||
-      ((err = cpu32_serial_clock (self, ioc->value >> 16, 0)) != 0) ||
-      ((err = cpu32_serial_clock (self, ioc->value, 0)) != 0))
-    return err;
-  return 0;
-}
-
-/*
- * Generate a bus error for the ICD interface
- */
-
-static int 
-cpu32_icd_gen_bus_error (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF(" cpu32_icd_gen_bus_error\n");
-
-  outb (CPU32_ICD_FORCE_BERR | CPU32_ICD_RST_OUT, self->dataPort);
-  udelay (400);
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
-
-  return BDM_FAULT_BERR;
-}
-
-/*
- * Generate a bus error as the access has failed. This is
- * not supported on the CPU32 with PD interface.
- * (the 7-chip PD interface generates it automatically in hardware
- */
-static int
-cpu32_gen_bus_error (struct BDM *self)
-{
-  if (self->debugFlag > 1)
-    PRINTF(" cpu32_gen_bus_error\n");
-  return 0;
-}
-
-/*
- * Restart target execution
- */
-static int
-cpu32_run_chip (struct BDM *self)
-{
-  return cpu32_serial_clock (self, BDM_GO_CMD, 0);
-}
-
-#ifdef BDM_BIT_BASH_PORT
-
-/*
- * Bit Bash the BDM port. No status checks. I assume you know what is happening at
- * a low level with the BDM hardware if you are using this interface.
- */
-static int
-cpu32_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
-{
-  unsigned char ctrl_port = 0;
-  
-  if (self->debugFlag)
-    PRINTF (" cpu32_bit_bash: mask=%04x, bits=%04x\n", mask, bits);
-
-  self->bit_bash_bits &= ~mask;
-  self->bit_bash_bits |= bits;
-  
-  if (self->bit_bash_bits & BDM_BB_RESET)
-    ctrl_port |= CPU32_CR_FORCE_RESET;
-
-  if ((self->bit_bash_bits & BDM_BB_BKPT) == 0)
-    ctrl_port |= CPU32_CR_CLOCKBAR_BKPT;
-
-  return 0;
-}
-
-#endif
-
-/*
- * Initialise the BDM structure for a CPU32
- */
-static int
-cpu32_pd_init_self (struct BDM *self)
-{
-  int reg;
-  
-  self->processor = BDM_CPU32;
-  self->interface = BDM_CPU32_ERIC;
-
-  self->get_status    = cpu32_pd_get_status;
-  self->init_hardware = cpu32_pd_init_hardware;
-  self->serial_clock  = cpu32_pd_serial_clock;
-  self->gen_bus_error = cpu32_gen_bus_error;
-  self->read_sysreg   = cpu32_read_sysreg;
-  self->write_sysreg  = cpu32_write_sysreg;
-  self->restart_chip  = cpu32_pd_restart_chip;
-  self->release_chip  = cpu32_pd_release_chip;
-  self->reset_chip    = cpu32_pd_reset_chip;
-  self->stop_chip     = cpu32_pd_stop_chip;
-  self->run_chip      = cpu32_run_chip;
-  self->step_chip     = cpu32_pd_step_chip;
-  
-#ifdef BDM_BIT_BASH_PORT
-  self->bit_bash      = cpu32_bit_bash;
-  self->bit_bash_bits = 0;
-#endif
-  
-  for (reg = 0; reg < BDM_MAX_SYSREG; reg++)
-    self->shadow_sysreg[reg] = 0;
-
-  return 0;
-}
-  
-static int
-cpu32_icd_init_self (struct BDM *self)
-{
-  int reg;
-  
-  self->processor = BDM_CPU32;
-  self->interface = BDM_CPU32_ICD;
-
-  self->get_status    = cpu32_icd_get_status;
-  self->init_hardware = cpu32_icd_init_hardware;
-  self->serial_clock  = cpu32_icd_serial_clock;
-  self->gen_bus_error = cpu32_icd_gen_bus_error;
-  self->read_sysreg   = cpu32_read_sysreg;
-  self->write_sysreg  = cpu32_write_sysreg;
-  self->restart_chip  = cpu32_icd_restart_chip;
-  self->release_chip  = cpu32_icd_release_chip;
-  self->reset_chip    = cpu32_icd_reset_chip;
-  self->stop_chip     = cpu32_icd_stop_chip;
-  self->run_chip      = cpu32_run_chip;
-  self->step_chip     = cpu32_icd_step_chip;
-  
-#ifdef BDM_BIT_BASH_PORT
-  self->bit_bash      = cpu32_bit_bash;
-  self->bit_bash_bits = 0;
-#endif
-  
-  for (reg = 0; reg < BDM_MAX_SYSREG; reg++)
-    self->shadow_sysreg[reg] = 0;
-
-  return 0;
-}
+#include "bdm-cpu32.c"
 
 /*
  ************************************************************************
@@ -1276,947 +337,413 @@ cpu32_icd_init_self (struct BDM *self)
  ************************************************************************
  */
 
-/*
- * Coldfire system register mapping. See bdm.h for the user values.
- *
- * For a RCREG 0x1 is invalid.
- */
-
-static int cf_sysreg_map[BDM_REG_DBMR + 1] =
-{ 0x80f,    /* BDM_REG_RPC      */
-  -1,       /* BDM_REG_PCC      */
-  0x80e,    /* BDM_REG_SR       */
-  -1,       /* BDM_REG_USP      */
-  -1,       /* BDM_REG_SSP, use A7    */
-  -1,       /* BDM_REG_SFC      */
-  -1,       /* BDM_REG_DFC      */
-  -1,       /* BDM_REG_ATEMP    */
-  -1,       /* BDM_REG_FAR      */
-  0x801,    /* BDM_REG_VBR      */
-  0x2,      /* BDM_REG_CACR     */
-  0x4,      /* BDM_REG_ACR0     */
-  0x5,      /* BDM_REG_ACR1     */
-  0xc04,    /* BDM_REG_RAMBAR   */
-  0xc0f,    /* BDM_REG_MBAR     */
-  0x0,      /* BDM_REG_CSR      */
-  0x6,      /* BDM_REG_AATR     */
-  0x7,      /* BDM_REG_TDR      */
-  0x8,      /* BDM_REG_PBR      */
-  0x9,      /* BDM_REG_PBMR     */
-  0xc,      /* BDM_REG_ABHR     */
-  0xd,      /* BDM_REG_ABLR     */
-  0xe,      /* BDM_REG_DBR      */
-  0xf       /* BDM_REG_DBMR     */
-};
-
-static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
-static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
-
-#define CF_REVISION_A (0)
-#define CF_REVISION_B (1)
-#define CF_REVISION_C (2)
-#define CF_REVISION_D (3)
+#include "bdm-cf-pe.c"
 
 /*
- * Get direct target status, that is from the parallel port.
- */
-static int
-cf_pe_get_direct_status (struct BDM *self)
-{
-  unsigned char sr = inb (self->statusPort);
-  int           ret;
-  
-  if (self->cf_use_pst) {
-    unsigned char cr = 0, pst = 0;
-
-    ret = 0;
-    if (!(sr & CF_PE_SR_POWERED))
-      ret = BDM_TARGETPOWER;
-    else if ((inb (self->dataPort) & CF_PE_DR_RESET) == 0)
-      ret = BDM_TARGETRESET;
-    else if (sr & CF_PE_SR_FROZEN) {
-      cr = inb(self->controlPort);
-
-      pst = 0;
-      if (sr & CF_PE_SR_PST1)
-        pst |= 0x02;
-      if ((cr & CF_PE_CR_NOT_PST0) == 0)
-        pst |= 0x01;
-      if ((cr & CF_PE_CR_NOT_PST2) == 0)
-        pst |= 0x04;
-      if ((cr & CF_PE_CR_NOT_PST3) == 0)
-        pst |= 0x08;
-  
-      switch (pst) {
-        case 0x00:                 /* continue execution */
-        case 0x01:                 /* begin execution of an instruction */
-        case 0x02:                 /* reserved */
-        case 0x03:                 /* entry into user mode */
-        case 0x04:                 /* begin execution of PULSE and WDDATA inst.  */
-        case 0x05:                 /* begin execution of taken branch */
-        case 0x06:                 /* reserved */
-        case 0x07:                 /* begin execution of RTE instruction */
-        case 0x08:                 /* begin 1-byte transfer on DDATA */
-        case 0x09:                 /* begin 2-byte transfer on DDATA */
-        case 0x0A:                 /* begin 3-byte transfer on DDATA */
-        case 0x0B:                 /* begin 4-byte transfer on DDATA */
-        case 0x0C:                 /* Execption processing */
-        case 0x0D:                 /* emulator mode exception processing */
-          ret = 0;
-          break;
-        case 0x0E:             /* processor stopped waiting for interrupt */
-          ret = BDM_TARGETSTOPPED;
-          break;
-        case 0x0F:                 /* processor halted */
-          ret = BDM_TARGETHALT;
-          break;
-        default:
-          PRINTF ("PST is invalid (0x%x,sr=%x,cr=%x)\n", pst, sr, cr);
-          break;
-      }
-    }
-    if (self->debugFlag > 3)
-      PRINTF (" cf_pe_get_direct_status -- Status:0x%x SR:%x CR:%x PST:%x\n",
-              ret, sr, cr, pst);
-  }
-  else {
-    if ((sr & CF_PE_SR_POWERED) == 0)
-      ret = BDM_TARGETPOWER;
-    else
-      ret = (inb (self->dataPort) & CF_PE_DR_RESET ? 0 : BDM_TARGETRESET);
-
-    if (self->debugFlag > 3)
-      PRINTF (" cf_pe_get_direct_status -- Status:0x%x, sr:0x%x\n", ret, sr);
-  }
-  
-  return ret;
-}
-
-/*
- * Invalidate the cache.
+ ************************************************************************
+ *     Coldfire P&E support routines                                    *
+ ************************************************************************
  */
 
-static int
-cf_pe_invalidate_cache (struct BDM *self)
-{
-  struct BDMioctl cacr_ioc;
-
-  cacr_ioc.address = BDM_REG_CACR;
-
-  if (cf_pe_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  /*
-   * Set the invalidate bit.
-   */
-
-  if (cacr_ioc.value) {
-    if (self->cf_debug_ver == CF_REVISION_D)
-      cacr_ioc.value |= 0x01040100;
-    else
-      cacr_ioc.value |= 0x01000100;
-
-    if (self->debugFlag > 2)
-      PRINTF (" cf_pe_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
-  
-    if (cf_pe_write_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-  }
-  
-  return 0;
-}
-
-/*
- * PC read check. This is used to see if the processor has halted.
- */
-
-static int
-cf_pe_pc_read_check (struct BDM *self)
-{
-  struct BDMioctl pc_ioc;
-
-  pc_ioc.address = BDM_REG_RPC;
-
-  if (cf_pe_read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  return 0;
-}
-
-/*
- * Get target status
- */
-
-static int
-cf_pe_get_status (struct BDM *self)
-{
-  int           cf_last_running = self->cf_running;
-  unsigned int  status = cf_pe_get_direct_status (self);
-  unsigned long csr;
-  int           ret;
-
-  if (self->cf_use_pst) {
-    return status;
-  }
-  
-  if (status & (BDM_TARGETRESET | BDM_TARGETNC | BDM_TARGETPOWER)) {
-    PRINTF (" cf_pe_get_status -- Status:0x%x\n", status);
-    return status;
-  }
-  
-  if (self->cf_running) {
-    struct BDMioctl csr_ioc;
-
-    csr_ioc.address = BDM_REG_CSR;
-
-    if (cf_pe_read_sysreg (self, &csr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-    csr = csr_ioc.value;
-  } else
-    csr = self->cf_csr;
-
-  ret = ((csr & 0x0e000000 ? BDM_TARGETHALT : 0) |
-         (csr & 0x0f000000 ? BDM_TARGETSTOPPED : 0));
-
-  /*
-   * If we were running, and we have detected we have stopped
-   * flush the cache.
-   */
-  if (cf_last_running && !self->cf_running)
-    cf_pe_invalidate_cache (self);
-  
-  if (self->debugFlag > 2)
-    PRINTF (" cf_pe_get_status -- Status:0x%x, csr:0x%08x, cf_csr:0x%08x\n",
-            ret, (int) csr, (int) self->cf_csr);
-  
-  return ret;
-}
-
-/*
- * Hardware initialization.
- */
-static int
-cf_pe_init_hardware (struct BDM *self)
-{
-  int status;
-
-  /*
-   * Set the control port to this value. It makes the pins
-   * high allowing them to be pulled down and therefore
-   * used as inputs.
-   * 
-   * This value breaks on a DELL 500MHz Pentium III machine. The
-   * only known work around is to add a second parallel port to the
-   * machine.
-   */
-
-  outb (0x00, self->controlPort);
-  
-  /*
-   * Force breakpoint
-   */
-
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  bdm_sleep (HZ / 4);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET | CF_PE_DR_BKPT), self->dataPort);
-  udelay (1000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-
-  /*
-   * We do not know which version of debug module we have so
-   * default to 0 and do not use PST signals. This will cause the
-   * CSR register to be read.
-   */
-
-  self->cf_running   = 1;
-  self->cf_debug_ver = 0;
-  self->cf_use_pst   = 0;
-
-  status = cf_pe_get_status (self);
-
-  if (self->debugFlag)
-    PRINTF (" cf_pe_init_hardware: status:%d\n", status);
-
-  /*
-   * By default we want to use PST lines.
-   */
-  
-  self->cf_use_pst = 1;
-
-  /*
-   * Process the result of the CSR read.
-   */
-
-  self->cf_debug_ver = (self->cf_csr >> 20) & 0x0f;
-
-  if (self->debugFlag)
-    PRINTF (" cf_ps_init_hardware: debug version is %d, PST %s\n",
-            self->cf_debug_ver, self->cf_use_pst ? "enabled" : "disabled");
-  
-  return status;
-}
-
-/*
- * Clock a word to/from the target
- */
-static void
-cf_pe_serial_clocker (struct BDM *self, unsigned short wval, int holdback)
-{
-  unsigned long shiftRegister;
-  unsigned char dataBit;
-  unsigned int  counter;
-
-  shiftRegister = wval;
-  counter       = 17 - holdback;
-  
-  while (counter--) {
-    dataBit = ((shiftRegister & 0x10000) ? CF_PE_DR_DATA_IN : 0);
-
-    shiftRegister <<= 1;
-    
-    outb (CF_PE_MAKE_DR (dataBit), self->dataPort);
-
-    if (self->delayTimer)
-      bdm_delay (self->delayTimer);
-
-    outb (CF_PE_MAKE_DR (dataBit | CF_PE_DR_CLOCK_HIGH), self->dataPort);
-    
-    if (self->delayTimer)
-      bdm_delay (self->delayTimer);
-
-    outb (CF_PE_MAKE_DR (dataBit), self->dataPort);
-    
-    if (self->delayTimer)
-      bdm_delay (self->delayTimer);
-
-    if ((inb (self->statusPort) & CF_PE_SR_DATA_OUT) == 0)
-      shiftRegister |= 1;    
-  }
-
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  
-  self->readValue = shiftRegister & 0x1FFFF;
-  
-  if (self->debugFlag > 2)
-    PRINTF (" cf_pe_serial_clock -- send 0x%x  receive 0x%x\n",
-            wval, self->readValue);
-}
-
-static int
-cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
-{
-  unsigned int status = cf_pe_get_direct_status (self);
-
-  if (status & BDM_TARGETRESET)
-    return BDM_FAULT_RESET;
-  if (status & BDM_TARGETNC)
-    return BDM_FAULT_CABLE;
-  if (status & BDM_TARGETPOWER)
-    return BDM_FAULT_POWER;
-  
-  cf_pe_serial_clocker (self, wval, holdback);
-  
-  if (self->readValue & 0x10000) {
-    if (self->readValue == 0x10001) {
-      if (self->debugFlag > 1)
-        PRINTF (" cf_pe_serial_clock -- failure BUS ERROR, send 0x%x receive 0x%x\n",
-                wval, self->readValue);
-      return BDM_FAULT_BERR;
-    }
-    else if (self->readValue != 0x10000) {
-      int i;
-      if (self->debugFlag > 1)
-        PRINTF (" cf_pe_serial_clock -- failure NVC, send 0x%x receive 0x%x\n",
-                wval, self->readValue);
-      /*
-       * Force TA on a Coldfire if supported. We cannot do much else if
-       * the Coldfire does not support the Forced TA command.
-       */
-      if (self->cf_debug_ver >= CF_REVISION_D) {
-        if (self->debugFlag)
-          PRINTF (" cf_pe_serial_clock --  forced ta\n");
-        cf_pe_serial_clocker (self, BDM_FORCED_TA_CMD, holdback);
-        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
-        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
-        return BDM_FAULT_FORCED_TA;
-      }
-      return BDM_FAULT_NVC;
-      for (i = 0; i < 4; i++)
-        cf_pe_serial_clocker (self, BDM_NOP_CMD, 0);
-#if EXPERIMENTAL_RECOVER
-      for (i = 17; i > 0; i--)
-        if ((self->readValue & (1 << 16)) == 0)
-          break;
-      if (i && (i < 17))
-        cf_pe_serial_clocker (self, BDM_NOP_CMD, 17 - i);
+#if BDM_TBLCF_USB
+#include "bdm-tblcf.c"
 #endif
+
+/*
+ ************************************************************************
+ *     Genric Bit Bash Functions                                        *
+ ************************************************************************
+ */
+
+/*
+ * Loop till target I/O operation completes
+ */
+static int
+bdmBitBashSendCommandTillTargetReady (struct BDM *self, unsigned short command)
+{
+  int err;
+  int timeout = 0;
+
+  /*
+   * If no response is returned hit the bus error line and
+   * then wait for the bus error response.
+   */
+  for (;;) {
+    err = bdmDrvSerialClock (self, command, 0);
+    if (err)
+      return err;
+    if ((self->readValue & 0x10000) == 0)
+      return 0;
+    ++timeout;
+    if (timeout == 5) {
+      /*
+       * Should get a bus error response back.
+       */
+      bdmDrvGenerateBusError (self);
+    }
+    if (timeout > 6) {
+      return BDM_FAULT_RESPONSE;
     }
   }
-  return 0;
 }
 
 /*
- * Read system register
+ * Fill I/O buffer with data from target
  */
-
-static int 
-cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
+static int
+bdmBitBashFillBuf (struct BDM *self, int count)
 {
-  int            err;
-  unsigned short msw, lsw;
-  int            cmd;
+  unsigned short *sp = (unsigned short *)self->ioBuffer;
+  int cmd;
+  int err;
 
-  if (self->debugFlag > 2)
-    PRINTF (" cf_pe_read_sysreg + Reg(%d):0x%x\n", mode, ioc->address);
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashFillBuf - count:%d\n", count);
   
-  if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address >= BDM_MAX_SYSREG))
-    return BDM_FAULT_NVC;
+  if (count == 0)
+    return 0;
+  
+  if (count >= 4)
+    cmd = BDM_DUMP_CMD | BDM_SIZE_LONG;
+  else if (count >= 2)
+    cmd = BDM_DUMP_CMD | BDM_SIZE_WORD;
+  else
+    cmd = BDM_DUMP_CMD | BDM_SIZE_BYTE;
+  
+  err = bdmDrvSerialClock (self, cmd, 0);
+  if (err)
+    return err;
 
-  /*
-   * For the Coldfire we need to select the type of command
-   * to use.
-   */
-  if ((mode == BDM_SYS_REG_MODE_CONTROL) ||
-      ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address < BDM_REG_CSR))) {
-    if (mode == BDM_SYS_REG_MODE_CONTROL)
-      cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
-    if (((err = cf_pe_serial_clock (self, BDM_RCREG_CMD, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, 0, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
-        ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
-        ((err = bdmDrvFetchWord (self, &lsw)) != 0))
-      return err;
-  }
-  else {
-    if (mode == BDM_SYS_REG_MODE_DEBUG) {
-      int r;
-      cmd = ioc->address & 0xffff;
-      /*
-       * See if the register is actually mapped and therefore write only.
-       */
-      for (r = BDM_REG_CSR; r < BDM_MAX_SYSREG; r++) {
-        if (cf_sysreg_map[r] == (ioc->address & 0xffff)) {
-          mode = BDM_SYS_REG_MODE_MAPPED;
-          ioc->address = r;
-          if (self->debugFlag > 2)
-            PRINTF (" cf_pe_read_sysreg - remapped to Reg:0x%x\n", ioc->address);
-          break;
-        }
-      }
+  for (;;) {
+    switch (count) {
+      case 1:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *(unsigned char *)sp = self->readValue;
+        return 0;
+
+      case 2:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *sp = self->readValue;
+        return 0;
+
+      case 3:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_BYTE);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        count -= 2;
+        break;
+
+      case 4:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        err = bdmDrvSerialClock (self, BDM_NOP_CMD, 0);
+        if (err)
+          return err;
+        *sp = self->readValue;
+        return 0;
+
+      case 5:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_BYTE);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        count -= 4;
+        break;
+
+      case 6:
+      case 7:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_WORD);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        count -= 4;
+        break;
+
+      default:
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        err = bdmBitBashSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_LONG);
+        if (err)
+          return err;
+        *sp++ = self->readValue;
+        count -= 4;
+        break;
     }
+  }
+}
+
+/*
+ * Send contents of I/O buffer to target
+ */
+static int
+bdmBitBashSendBuf (struct BDM *self, int count)
+{
+  unsigned short *sp = (unsigned short *)self->ioBuffer;
+  int cmd;
+  int err;
+
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashSendBuf - count:%d\n", count);
+
+  if (count == 0)
+    return 0;
+  
+  for (;;) {
+    if (count >= 4)
+      cmd = BDM_FILL_CMD | BDM_SIZE_LONG;
+    else if (count >= 2)
+      cmd = BDM_FILL_CMD | BDM_SIZE_WORD;
+    else if (count >= 1)
+      cmd = BDM_FILL_CMD | BDM_SIZE_BYTE;
     else
-      cmd = cf_sysreg_map[ioc->address];
-
-    cmd |= BDM_RDMREG_CMD;
-
-    /*
-     * Are the registers write only ?
-     */
-    if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address != BDM_REG_CSR)) {
-      ioc->value = self->shadow_sysreg[ioc->address];
-      if (self->debugFlag > 1)
-        PRINTF (" cf_pe_read_sysreg - Reg:0x%x is write only, 0x%08x\n",
-                ioc->address, ioc->value);
+      cmd = BDM_NOP_CMD;
+    err = bdmBitBashSendCommandTillTargetReady (self, cmd);
+    if (err)
+      return err;
+    if (count >= 4) {
+      err = bdmDrvSerialClock (self, *sp++, 0);
+      if (err)
+        return err;
+      err = bdmDrvSerialClock (self, *sp++, 0);
+      if (err)
+        return err;
+      count -= 4;
+    }
+    else if (count >= 2) {
+      err = bdmDrvSerialClock (self, *sp++, 0);
+      if (err)
+        return err;
+      count -= 2;
+    }
+    else if (count >= 1) {
+      err = bdmDrvSerialClock (self, *(unsigned char *)sp, 0);
+      if (err)
+        return err;
+      count -= 1;
+    }
+    else {
       return 0;
     }
+  }
+}
+
+/*
+ * Get a word from the target
+ */
+int
+bdmBitBashFetchWord (struct BDM *self, unsigned short *sp)
+{
+  int err;
+
+  err = bdmBitBashSendCommandTillTargetReady (self, BDM_NOP_CMD);
+  if (err)
+    return err;
+  *sp = self->readValue;
+  return 0;
+}
+
+/*
+ * Read processor register
+ */
+static int
+bdmBitBashReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
+{
+  int err;
+  unsigned short msw, lsw;
+
+  if (((err = bdmDrvSerialClock (self, BDM_RREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
+    if (self->debugFlag)
+      PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x, failed err=%d\n",
+              ioc->address & 0xF, err);
+    return err;
+  }
   
-    if (((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
-        ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
-        ((err = bdmDrvFetchWord (self, &lsw)) != 0)) {
-      PRINTF (" cf_pe_read_sysreg - Reg:0x%x failed with cmd 0x%02x, err = %d\n",
-              ioc->address, cmd, err);
-      return err;
-    }
+  ioc->value = (msw << 16) | lsw;
+  
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x = 0x%08x\n",
+            ioc->address & 0xF, ioc->value);
+  return 0;
+}
+
+/*
+ * Read a long word from memory
+ */
+static int
+bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc)
+{
+  int err;
+  unsigned short msw, lsw;
+
+  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_LONG, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
+    if (self->debugFlag)
+      PRINTF ("bdmBitBashReadLongWord : *0x%08x failed, err=%d\n", ioc->address, err);
+    return err;
   }
   
   ioc->value = (msw << 16) | lsw;
 
-  /*
-   * Watch out here as this function is called from cf_pe_get_status.
-   */
-  
-  if (ioc->address == BDM_REG_CSR) {
-    if (self->cf_running) {
-      if (ioc->value & 0x0f000000) {
-        
-       /*
-         * We could false trigger for some reason such as bit
-         * errors on the serial stream. To check if we have
-         * actually halted we should read the program counter
-         * register. If we can then we have halted, else
-         * we can only assume we are still running.
-         *
-         * We check the PC read twice to insure we are ok.
-         *
-         * This solution is provided by Motorola, more specifically
-         * Joe Circello, the chief ColdFire architect, and Sue Cozart
-         * for providing access to Joe. Thanks. (CCJ 15-05-2000)
-         */
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashReadLongWord : *0x%08x = 0x%08x\n", ioc->address, ioc->value);
 
-        if ((cf_pe_pc_read_check (self) == 0) &&
-            (cf_pe_pc_read_check (self) == 0)) {
-          self->cf_csr     = ioc->value;
-          self->cf_running = 0;
-        
-          /*
-           * If we were running, and we have detected we have stopped
-           * flush the cache.  This should probably be somewhere else
-           * if we are using PST,  I am not sure yet : davidm
-           */
-          
-          cf_pe_invalidate_cache (self);
-        }
-        else {
-          /*
-           * We have not halted as the PC is not accessable.
-           */
-          ioc->value &= ~0x0f000000;
-        }
-      }
-    } else {
-      self->cf_csr = ioc->value = (self->cf_csr & 0x0f000000) | ioc->value;
-    }
-  }
-
-  if (ioc->address == BDM_REG_SR)
-    ioc->value &= 0xffff;
-  
-  if (self->debugFlag > 1)
-    PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%x is 0x%08x\n",
-            mode, ioc->address, ioc->value);
-  
   return 0;
 }
 
 /*
- * Write system register
+ * Read a word from memory
  */
 static int
-cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
+bdmBitBashReadWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  int cmd;
-  
-  if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address >= BDM_MAX_SYSREG))
-    return BDM_FAULT_NVC;
-  
-  if (self->debugFlag)
-    PRINTF (" cf_pe_write_sysreg - Reg(%d):0x%x is 0x%x\n",
-            mode, ioc->address, ioc->value);
-  
-  /*
-   * For the Coldfire we need to select the type of command
-   * to use.
-   */
-  if ((mode == BDM_SYS_REG_MODE_CONTROL) ||
-      ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address < BDM_REG_CSR))) {
-    if (mode == BDM_SYS_REG_MODE_CONTROL)
-      cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
-    if (((err = cf_pe_serial_clock (self, BDM_WCREG_CMD, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, 0, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, ioc->value >> 16, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, ioc->value, 0)) != 0))
-      return err;
-  }
-  else {
-    if (mode == BDM_SYS_REG_MODE_DEBUG)
-      cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
-    
-    cmd |= BDM_WDMREG_CMD;
+  int            err;
+  unsigned short w;
 
-    if (mode == BDM_SYS_REG_MODE_MAPPED)
-      self->shadow_sysreg[ioc->address] = ioc->value;
-    
-    if (((err = cf_pe_serial_clock (self, cmd , 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, ioc->value >> 16, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, ioc->value, 0)) != 0))
-      return err;
-  }
-  
-  return 0;
-}
-
-/*
- * Generate a bus error as the access has failed. This is
- * not supported on the CPU32.
- */
-
-static int 
-cf_pe_gen_bus_error (struct BDM *self)
-{
-  if (self->cf_debug_ver < CF_REVISION_D) {
+  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_WORD, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &w)) != 0)) {
     if (self->debugFlag)
-      PRINTF (" cf_pe_gen_bus_error\n");
-  
-    outb (CF_PE_MAKE_DR (CF_PE_DR_TEA), self->dataPort);
-    udelay (400);
-    outb (CF_PE_MAKE_DR (0), self->dataPort);
-  
-    return BDM_FAULT_BERR;
-  } else {
-    int err;
-    if (self->debugFlag)
-      PRINTF (" cf_pe_gen_bus_error - forced ta\n");
-    if (((err = cf_pe_serial_clock (self, BDM_FORCED_TA_CMD, 0)) != 0) ||
-        ((err = cf_pe_serial_clock (self, BDM_NOP_CMD, 0)) != 0))
-      return err;
-    return BDM_FAULT_FORCED_TA;
+      PRINTF ("bdmBitBashReadWord : *0x%08x failed, err=%d\n", ioc->address, err);
+    return err;
   }
-}
-
-/*
- * Restart chip and stop on first instruction fetch. Easy for the
- * Coldfire, keep BKPT asserted during the first 16 clocks after
- * reset is negated.
- */
-static int
-cf_pe_restart_chip (struct BDM *self)
-{
+  
+  ioc->value = w;
+  
   if (self->debugFlag)
-    PRINTF (" cf_pe_restart_chip\n");
-  
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  udelay (2000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET | CF_PE_DR_BKPT), self->dataPort);
-  udelay (1000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  
-  self->cf_running = 1;
-  
-  if (cf_pe_get_status (self) & (BDM_TARGETHALT | BDM_TARGETSTOPPED))
-    return 0;
+    PRINTF ("bdmBitBashReadWord : *0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
 
-  return BDM_FAULT_RESPONSE;
-}
-
-/*
- * Restart chip and disable background debugging mode. On
- * a Coldfire exit reset without the BKPT being asserted.
- */
-static int
-cf_pe_release_chip (struct BDM *self)
-{
-  if (self->debugFlag)
-    PRINTF (" cf_pe_release_chip\n");
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  udelay (2000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  
-  self->cf_running = 1;
-  
   return 0;
 }
 
 /*
- * Restart chip, the coldfire is easier than the CPU32 to get into
- * BMD mode after reset. Just have the BKPT signal active when
- * reset is negated.
+ * Read a byte from memory
  */
 static int
-cf_pe_reset_chip (struct BDM *self)
+bdmBitBashReadByte (struct BDM *self, struct BDMioctl *ioc)
 {
+  int            err;
+  unsigned short w;
+
+  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &w)) != 0)){
   if (self->debugFlag)
-    PRINTF (" cf_pe_reset_chip\n");
-
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-  udelay (2000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET | CF_PE_DR_BKPT), self->dataPort);
-  udelay (2000);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
-  bdm_sleep (HZ / 2);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
-
-  self->cf_running = 1;
-  
-  return 0;
-}
-
-/*
- * Force the target into background debugging mode
- */
-static int
-cf_pe_stop_chip (struct BDM *self)
-{
-  int status, retries = 4;
-  
-  if (self->debugFlag)
-    PRINTF (" cf_pe_stop_chip\n");
-
-  while (retries--) {
-    outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
-
-    bdm_sleep (HZ / 50);
-    status = cf_pe_get_status (self);
+    PRINTF ("bdmBitBashReadByte : *0x%08x failed, err=%d\n", ioc->address, err);
     
-    outb (CF_PE_MAKE_DR (0), self->dataPort);
-
-    if (cf_pe_get_status (self) & (BDM_TARGETHALT | BDM_TARGETSTOPPED))
-      return 0;
+  return err;
   }
   
-  return BDM_FAULT_RESPONSE;
+  ioc->value = w;
+  
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashReadByte : *0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+  return 0;
 }
 
 /*
- * Restart target execution.
+ * Write processor register
  */
 static int
-cf_pe_run_chip (struct BDM *self)
+bdmBitBashWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 {
-  struct BDMioctl sreg_ioc;
-  struct BDMioctl pc_ioc;
   int err;
 
   if (self->debugFlag)
-    PRINTF (" cf_pe_run_chip\n");
+    PRINTF ("bdmBitBashWriteProcessorRegister - reg:%d, val:0x%08x\n",
+            ioc->address & 0xF, ioc->value);
 
-  /*
-   * Flush the cache to insure all changed data is read by the
-   * processor.
-   */
-  cf_pe_invalidate_cache (self);
-  
-  /*
-   * Change the CSR:4 or the SSM bit to off then issue a go.
-   */
-  sreg_ioc.address = BDM_REG_CSR;
-  sreg_ioc.value   = 0x00000000;
-  if ((err = cf_pe_write_sysreg (self, &sreg_ioc, BDM_SYS_REG_MODE_MAPPED)) < 0)
+  if (((err = bdmDrvSerialClock (self, BDM_WREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0))
     return err;
-
-  /*
-   * Revision D hardware does not have a bit to mask interrupts so
-   * we save the SR if we step and need to restore it now.
-   *
-   * The SR needs to be read back and the mask bits set as the
-   * other SR bits may have changed.
-   *   
-   * It appears that the V4 core has some pipelining in effect that
-   * causes instruction fetches to already be cached.  This could be
-   * problem in certain instances for stepping.  To resolve this,
-   * we read the PC value, and then write it right back out.
-   */
-
-  if ((self->cf_debug_ver == CF_REVISION_D) && self->cf_sr_masked) {
-    sreg_ioc.address = BDM_REG_SR;
-    if ((err = cf_pe_read_sysreg (self, &sreg_ioc,
-                                  BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    sreg_ioc.value &= ~0x0700;
-    sreg_ioc.value |= self->cf_sr_mask_cache;
-    if ((err = cf_pe_write_sysreg (self, &sreg_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    self->cf_sr_masked = 0;
-
-    /*
-     * Read the PC value and write it back out
-     */
-    pc_ioc.address = BDM_REG_RPC;
-    if ((err = cf_pe_read_sysreg (self, &pc_ioc,
-                                  BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    if ((err = cf_pe_write_sysreg (self, &pc_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-  }
-
-  /*
-   * Now issue a GO command.
-   */
-  err = cf_pe_serial_clock (self, BDM_GO_CMD, 0);
-  if (err) {
-    PRINTF (" cf_pe_run_chip - GO cmd failed, err = %d\n", err);
-    return err;
-  }
-  
-  self->cf_running = 1;
-
   return 0;
 }
 
 /*
- * Make the target execute a single instruction and
- * reenter background debugging mode
+ * Write a long word to memory
  */
 static int
-cf_pe_step_chip (struct BDM *self)
+bdmBitBashWriteLongWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  struct BDMioctl sreg_ioc;
-  struct BDMioctl csr_ioc;
-  struct BDMioctl pc_ioc;
   int err;
+  unsigned short w;
 
   if (self->debugFlag)
-    PRINTF (" cf_pe_step_chip\n");
+    PRINTF ("bdmBitBashWriteLongWord : 0x%08x = 0x%08x\n", ioc->address, ioc->value);
 
-  /*
-   * Flush the cache to insure all changed data is read by the
-   * processor.
-   */
-  cf_pe_invalidate_cache (self);
-  /*
-   * Change the CSR:4 or the SSM bit to on then issue a go.
-   * Mask pending interrupt to stop stepping into an interrupt.
-   */
-  csr_ioc.address = BDM_REG_CSR;
-  csr_ioc.value   = 0x00000030;  
-
-  if ((err = cf_pe_write_sysreg (self, &csr_ioc, BDM_SYS_REG_MODE_MAPPED)) < 0)
+  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_LONG, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &w)) != 0))
     return err;
-
-  /*
-   * Revision D hardware does not have a bit to mask interrupts so
-   * we save the SR when we step and then restore when we go
-   *
-   * The SR needs to be read back and the mask bits set as the
-   * other SR bits may have changed.
-   *
-   * It appears that the V4 core has some pipelining in effect that
-   * causes instruction fetches to already be cached. This could be
-   * problem in certain instances for stepping. To resolve this,
-   * we read the PC value, and then write it right back out.
-   */
-  if ((self->cf_debug_ver == CF_REVISION_D) && !self->cf_sr_masked) {
-    sreg_ioc.address = BDM_REG_SR;
-    if ((err = cf_pe_read_sysreg (self, &sreg_ioc,
-                                  BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    self->cf_sr_mask_cache = sreg_ioc.value & 0x0700;
-    sreg_ioc.value |= 0x0700;
-    if ((err = cf_pe_write_sysreg (self, &sreg_ioc,
-                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    self->cf_sr_masked = 1;
-
-    /*
-     * Read the PC value and write it back out
-     */
-    pc_ioc.address = BDM_REG_RPC;
-    if ((err=cf_pe_read_sysreg (self, &pc_ioc,
-                                BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-    if ((err=cf_pe_write_sysreg (self, &pc_ioc,
-                                 BDM_SYS_REG_MODE_MAPPED)) < 0)
-      return err;
-  }
-
-  /*
-   * Now issue a GO command.
-   */
-  err = cf_pe_serial_clock (self, BDM_GO_CMD, 0);
-  if (err) {
-    PRINTF (" cf_pe_step_chip - GO cmd failed, err = %d\n", err);
-    return err;
-  }
-  
-  self->cf_running = 0;
-  self->cf_csr     = 0x01000000;
-    
   return 0;
 }
 
-#ifdef BDM_BIT_BASH_PORT
-
 /*
- * Bit Bash the BDM port. No status checks. I assume you know what is happening at
- * a low level with the BDM hardware if you are using this interface.
+ * Write a word to memory
  */
 static int
-cf_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
+bdmBitBashWriteWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  unsigned char data_port = 0;
-  
-  self->bit_bash_bits &= ~mask;
-  self->bit_bash_bits |= bits;
-  
-  if (self->bit_bash_bits & BDM_BB_RESET)
-    data_port |= CF_PE_DR_RESET;
-
-  if (self->bit_bash_bits & BDM_BB_BKPT)
-    data_port |= CF_PE_DR_BKPT;
-
-  if (self->bit_bash_bits & BDM_BB_DATA_IN)
-    data_port |= CF_PE_DR_DATA_IN;
-
-  if (self->bit_bash_bits & BDM_BB_CLOCK)
-    data_port |= CF_PE_DR_CLOCK_HIGH;
-
-  outb (CF_PE_MAKE_DR (data_port), self->dataPort);
+  int err;
+  unsigned short w;
 
   if (self->debugFlag)
-    PRINTF (" cf_bit_bash: mask=%04x, bits=%04x, data reg=%02x\n",
-            mask, bits, CF_PE_MAKE_DR (data_port));
+    PRINTF ("bdmBitBashWriteWord : 0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
 
+  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_WORD, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &w)) != 0))
+    return err;
   return 0;
 }
 
-#endif
-
 /*
- * Initialise the BDM structure for a Coldfire in the P&E interface
+ * Write a byte to memory
  */
 static int
-cf_pe_init_self (struct BDM *self)
+bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc)
 {
-  int reg;
-  
-  self->processor = BDM_COLDFIRE;
-  self->interface = BDM_COLDFIRE_PE;
+  int err;
+  unsigned short w;
 
-  self->get_status    = cf_pe_get_status;
-  self->init_hardware = cf_pe_init_hardware;
-  self->serial_clock  = cf_pe_serial_clock;
-  self->gen_bus_error = cf_pe_gen_bus_error;
-  self->read_sysreg   = cf_pe_read_sysreg;
-  self->write_sysreg  = cf_pe_write_sysreg;
-  self->restart_chip  = cf_pe_restart_chip;
-  self->release_chip  = cf_pe_release_chip;
-  self->reset_chip    = cf_pe_reset_chip;
-  self->stop_chip     = cf_pe_stop_chip;
-  self->run_chip      = cf_pe_run_chip;
-  self->step_chip     = cf_pe_step_chip;
+  if (self->debugFlag)
+    PRINTF ("bdmBitBashWriteByte : 0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
 
-  for (reg = 0; reg < BDM_MAX_SYSREG; reg++)
-    if (reg == BDM_REG_AATR)
-      self->shadow_sysreg[reg] = 0x0005;
-    else
-      self->shadow_sysreg[reg] = 0;
-
-#ifdef BDM_BIT_BASH_PORT
-  
-  self->bit_bash      = cf_bit_bash;
-  self->bit_bash_bits = 0;
-
-#endif
-
-  self->cf_debug_ver = 0;
-  self->cf_use_pst   = 1;
-  self->cf_running   = 1;
-  self->cf_csr       = 0;
-  
-  self->cf_sr_masked = 0;
-  
+  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
+      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
+      ((err = bdmBitBashFetchWord (self, &w)) != 0))
+    return err;
   return 0;
 }
 
@@ -2319,137 +846,27 @@ bdmDrvStepChip (struct BDM *self)
 }
   
 /*
- * Loop till target I/O operation completes
- */
-static int
-bdmDrvSendCommandTillTargetReady (struct BDM *self, unsigned short command)
-{
-  int err;
-  int timeout = 0;
-
-  /*
-   * If no response is returned hit the bus error line and
-   * then wait for the bus error response.
-   */
-  for (;;) {
-    err = bdmDrvSerialClock (self, command, 0);
-    if (err)
-      return err;
-    if ((self->readValue & 0x10000) == 0)
-      return 0;
-    ++timeout;
-    if (timeout == 5) {
-      /*
-       * Should get a bus error response back.
-       */
-      bdmDrvGenerateBusError (self);
-    }
-    if (timeout > 6) {
-      return BDM_FAULT_RESPONSE;
-    }
-  }
-}
-
-/*
  * Fill I/O buffer with data from target
  */
 static int
 bdmDrvFillBuf (struct BDM *self, int count)
 {
-  unsigned short *sp = (unsigned short *)self->ioBuffer;
-  int cmd;
-  int err;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvFillBuf - count:%d\n", count);
-
-  if (count == 0)
-    return 0;
-  
-  if (count >= 4)
-    cmd = BDM_DUMP_CMD | BDM_SIZE_LONG;
-  else if (count >= 2)
-    cmd = BDM_DUMP_CMD | BDM_SIZE_WORD;
-  else
-    cmd = BDM_DUMP_CMD | BDM_SIZE_BYTE;
-  
-  err = bdmDrvSerialClock (self, cmd, 0);
-  if (err)
-    return err;
-
-  for (;;) {
-    switch (count) {
-      case 1:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *(unsigned char *)sp = self->readValue;
-        return 0;
-
-      case 2:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *sp = self->readValue;
-        return 0;
-
-      case 3:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_BYTE);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        count -= 2;
-        break;
-
-      case 4:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        err = bdmDrvSerialClock (self, BDM_NOP_CMD, 0);
-        if (err)
-          return err;
-        *sp = self->readValue;
-        return 0;
-
-      case 5:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_BYTE);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        count -= 4;
-        break;
-
-      case 6:
-      case 7:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_WORD);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        count -= 4;
-        break;
-
-      default:
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        err = bdmDrvSendCommandTillTargetReady (self, BDM_DUMP_CMD | BDM_SIZE_LONG);
-        if (err)
-          return err;
-        *sp++ = self->readValue;
-        count -= 4;
-        break;
+  int err = (self->fill_buf) (self, count);
+  if (mustSwap)
+  {
+    char *p = self->ioBuffer;
+    int  i;
+    char c;
+    for (i = 0; i < (count - 1); i += 2)
+    {
+      c = *p;
+      *p = *(p + 1);
+      p++;
+      *p = c;
+      p++;
     }
   }
+  return err;
 }
 
 /*
@@ -2458,68 +875,21 @@ bdmDrvFillBuf (struct BDM *self, int count)
 static int
 bdmDrvSendBuf (struct BDM *self, int count)
 {
-  unsigned short *sp = (unsigned short *)self->ioBuffer;
-  int cmd;
-  int err;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvSendBuf - count:%d\n", count);
-
-  if (count == 0)
-    return 0;
-  
-  for (;;) {
-    if (count >= 4)
-      cmd = BDM_FILL_CMD | BDM_SIZE_LONG;
-    else if (count >= 2)
-      cmd = BDM_FILL_CMD | BDM_SIZE_WORD;
-    else if (count >= 1)
-      cmd = BDM_FILL_CMD | BDM_SIZE_BYTE;
-    else
-      cmd = BDM_NOP_CMD;
-    err = bdmDrvSendCommandTillTargetReady (self, cmd);
-    if (err)
-      return err;
-    if (count >= 4) {
-      err = bdmDrvSerialClock (self, *sp++, 0);
-      if (err)
-        return err;
-      err = bdmDrvSerialClock (self, *sp++, 0);
-      if (err)
-        return err;
-      count -= 4;
-    }
-    else if (count >= 2) {
-      err = bdmDrvSerialClock (self, *sp++, 0);
-      if (err)
-        return err;
-      count -= 2;
-    }
-    else if (count >= 1) {
-      err = bdmDrvSerialClock (self, *(unsigned char *)sp, 0);
-      if (err)
-        return err;
-      count -= 1;
-    }
-    else {
-      return 0;
+  if (mustSwap)
+  {
+    char *p = self->ioBuffer;
+    int  i;
+    char c;
+    for (i = 0; i < (count - 1); i += 2)
+    {
+      c = *p;
+      *p = *(p + 1);
+      p++;
+      *p = c;
+      p++;
     }
   }
-}
-
-/*
- * Get a word from the target
- */
-static int
-bdmDrvFetchWord (struct BDM *self, unsigned short *sp)
-{
-  int err;
-
-  err = bdmDrvSendCommandTillTargetReady (self, BDM_NOP_CMD);
-  if (err)
-    return err;
-  *sp = self->readValue;
-  return 0;
+  return (self->send_buf) (self, count);
 }
 
 /*
@@ -2537,24 +907,7 @@ bdmDrvReadSystemRegister (struct BDM *self, struct BDMioctl *ioc, int mode)
 static int
 bdmDrvReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  unsigned short msw, lsw;
-
-  if (((err = bdmDrvSerialClock (self, BDM_RREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &lsw)) != 0)) {
-    if (self->debugFlag)
-      PRINTF ("bdmDrvReadProcessorRegister - reg:0x%02x, failed err=%d\n",
-              ioc->address & 0xF, err);
-    return err;
-  }
-  
-  ioc->value = (msw << 16) | lsw;
-  
-  if (self->debugFlag)
-    PRINTF ("bdmDrvReadProcessorRegister - reg:0x%02x = 0x%08x\n",
-            ioc->address & 0xF, ioc->value);
-  return 0;
+  return (self->read_proreg) (self, ioc);
 }
 
 /*
@@ -2563,25 +916,7 @@ bdmDrvReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvReadLongWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  unsigned short msw, lsw;
-
-  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_LONG, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &msw)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &lsw)) != 0)) {
-    if (self->debugFlag)
-      PRINTF ("bdmDrvReadLongWord : *0x%08x failed, err=%d\n", ioc->address, err);
-    return err;
-  }
-  
-  ioc->value = (msw << 16) | lsw;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvReadLongWord : *0x%08x = 0x%08x\n", ioc->address, ioc->value);
-
-  return 0;
+  return (self->read_long_word) (self, ioc);
 }
 
 /*
@@ -2590,24 +925,7 @@ bdmDrvReadLongWord (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvReadWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  int            err;
-  unsigned short w;
-
-  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_WORD, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &w)) != 0)) {
-    if (self->debugFlag)
-      PRINTF ("bdmDrvReadWord : *0x%08x failed, err=%d\n", ioc->address, err);
-    return err;
-  }
-  
-  ioc->value = w;
-  
-  if (self->debugFlag)
-    PRINTF ("bdmDrvReadWord : *0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
-
-  return 0;
+  return (self->read_word) (self, ioc);
 }
 
 /*
@@ -2616,24 +934,7 @@ bdmDrvReadWord (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvReadByte (struct BDM *self, struct BDMioctl *ioc)
 {
-  int            err;
-  unsigned short w;
-
-  if (((err = bdmDrvSerialClock (self, BDM_READ_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &w)) != 0)){
-  if (self->debugFlag)
-    PRINTF ("bdmDrvReadByte : *0x%08x failed, err=%d\n", ioc->address, err);
-    
-  return err;
-  }
-  
-  ioc->value = w;
-  
-  if (self->debugFlag)
-    PRINTF ("bdmDrvReadByte : *0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
-  return 0;
+  return (self->read_byte) (self, ioc);
 }
 
 /*
@@ -2651,17 +952,7 @@ bdmDrvWriteSystemRegister (struct BDM *self, struct BDMioctl *ioc, int mode)
 static int
 bdmDrvWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvWriteProcessorRegister - reg:%d, val:0x%08x\n",
-            ioc->address & 0xF, ioc->value);
-
-  if (((err = bdmDrvSerialClock (self, BDM_WREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0))
-    return err;
-  return 0;
+  return (self->write_proreg) (self, ioc);
 }
 
 /*
@@ -2670,20 +961,7 @@ bdmDrvWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvWriteLongWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  unsigned short w;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvWriteLongWord : 0x%08x = 0x%08x\n", ioc->address, ioc->value);
-
-  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_LONG, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &w)) != 0))
-    return err;
-  return 0;
+  return (self->write_long_word) (self, ioc);
 }
 
 /*
@@ -2692,19 +970,7 @@ bdmDrvWriteLongWord (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvWriteWord (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  unsigned short w;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvWriteWord : 0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
-
-  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_WORD, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &w)) != 0))
-    return err;
-  return 0;
+  return (self->write_word) (self, ioc);
 }
 
 /*
@@ -2713,19 +979,7 @@ bdmDrvWriteWord (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvWriteByte (struct BDM *self, struct BDMioctl *ioc)
 {
-  int err;
-  unsigned short w;
-
-  if (self->debugFlag)
-    PRINTF ("bdmDrvWriteByte : 0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
-
-  if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
-      ((err = bdmDrvSerialClock (self, ioc->value, 0)) != 0) ||
-      ((err = bdmDrvFetchWord (self, &w)) != 0))
-    return err;
-  return 0;
+  return (self->write_byte) (self, ioc);
 }
 
 #ifdef BDM_BIT_BASH_PORT
@@ -2738,7 +992,9 @@ bdmDrvWriteByte (struct BDM *self, struct BDMioctl *ioc)
 static int
 bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
 {
-  return (self->bit_bash) (self, ioc->value >> 16, ioc->value & 0xffff);
+  if (self->bit_bash)
+    return (self->bit_bash) (self, ioc->value >> 16, ioc->value & 0xffff);
+  return -1;
 }
 
 #endif
@@ -2760,9 +1016,42 @@ bdm_open (unsigned int minor)
 {  
   struct BDM *self;
   int status, err = 0;
+  
+  union {
+    char     c[4];
+    uint32_t l;
+  } un;
 
   if (minor >= (sizeof bdm_device_info / sizeof bdm_device_info[0]))
     return ENODEV;
+
+  /*
+   * Determine what byte-swapping we'll need to do
+   */
+  if (sizeof un.l != sizeof un.c) {
+    PRINTF ("bdm_open -- host machine sizeof (uint32_t) != sizeof (char[4])");
+    return ENODEV;
+  }
+  if ((sizeof (uint32_t) != 4) ||
+      (sizeof (short) != 2) ||
+      (sizeof (char) != 1)) {
+    PRINTF ("bdm_open -- host machine sizeof not appropriate");
+    return ENODEV;
+  }
+  un.c[0] = 0x01;
+  un.c[1] = 0x02;
+  un.c[2] = 0x03;
+  un.c[3] = 0x04;
+  if (un.l == 0x01020304) {
+    mustSwap = 0;
+  }
+  else if (un.l == 0x04030201) {
+    mustSwap = 1;
+  }
+  else {
+    PRINTF ("bdm_open -- host machine has peculiar byte ordering");
+    return ENODEV;
+  }
   
   self = &bdm_device_info[minor];
 
@@ -2807,7 +1096,7 @@ bdm_open (unsigned int minor)
     os_lock_module ();
     self->isOpen = 1;
   }
-  
+
   if (self->debugFlag)
     PRINTF ("BDMopen return %d, delayTimer %d\n", err, self->delayTimer);
   

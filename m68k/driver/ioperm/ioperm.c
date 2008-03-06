@@ -18,9 +18,7 @@
  *
  * I/O Permssion support by:
  * Chris Johns
- * Cybertec Pty Ltd.
- *
- * cjohns@cybertec.com.au
+ * cjohns@users.sourceforge.net
  *
  */
 
@@ -33,6 +31,9 @@
 #include <sys/io.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+
+#include "tblcf.h"
+#include "tblcf_usb.h"
 
 #define BDM_DEFAULT_DEBUG 0
 
@@ -109,13 +110,10 @@ driver_open (const char *pathname, int flags)
 void
 bdm_delay (int counter)
 {
-#if 0
   volatile unsigned long junk;
-
   while (counter--) {
     junk++;
   }
-#endif
 }
 
 /*
@@ -124,7 +122,7 @@ bdm_delay (int counter)
 void
 bdm_sleep (unsigned long time)
 {
-  usleep (time * (1000 * (1000 / HZ)));
+  usleep (time * (100 * (1000 / HZ)));
 }
 
 /*
@@ -240,7 +238,8 @@ ioperm_bdm_init (int minor)
 
   if (bdm_dev_registered)
   {
-    fprintf (stderr, "BDM driver is already registered (Please report to BDM project).\n");
+    fprintf (stderr,
+             "BDM driver is already registered (Please report to BDM project).\n");
     errno = EIO;
     return -2;
   }
@@ -311,7 +310,7 @@ ioperm_bdm_init (int minor)
     errno = EIO;
     return -3;
   }
-
+  
   sprintf (self->name, "bdm%d", minor);
   self->portBase    = self->dataPort = port;
   self->statusPort  = port + 1;
@@ -334,6 +333,88 @@ ioperm_bdm_init (int minor)
 }
 
 /*
+ * Initialise the USB interface to tghe pod.
+ */
+int
+usb_bdm_init (const char *device)
+{
+#if BDM_TBLCF_USB
+  struct BDM *self;
+  int         devs;
+  int         dev;
+
+#ifdef BDM_VER_MESSAGE
+  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ "\n",
+           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
+#endif
+
+  if (bdm_dev_registered)
+  {
+    fprintf (stderr,
+             "BDM driver is already registered (Please report to BDM project).\n");
+    errno = EIO;
+    return -2;
+  }
+
+  /*
+   * Choose the pod.
+   */
+  devs = tblcf_init();
+    
+  for (dev = 0; dev < devs; dev++)
+  {
+    char name[128];
+    tblcf_usb_dev_name (dev, name, sizeof (name));
+    if (strcmp (device, name) == 0)
+      break;
+  }
+  
+  if (dev == devs)
+  {
+    errno = ENOENT;
+    return -1;
+  }
+    
+  /*
+   * Set up the self srructure. Only ever one with ioperm.
+   */
+
+  self = &bdm_device_info[0];
+
+  /*
+   * First set the default debug level.
+   */
+
+  self->debugFlag = BDM_DEFAULT_DEBUG;
+
+  /*
+   * See if the port exists
+   */
+
+  self->exists = 1;
+
+  bdm_dev_registered = 1;
+
+  self->usbDev = dev;
+  
+  self->delayTimer  = 0;
+
+  tblcf_init_self (self);
+
+  if (tblcf_open(device))
+  {
+    errno = EIO;
+    return -1;
+  }
+
+  return 0;
+#else
+  errno = ENOENT;
+  return -1;
+#endif
+}
+
+/*
  * The device is a device name of the form /dev/bdmcpu320 or
  * /dev/bdmcf0 where the /dev/bdm must be present
  * the next field can be cpu32 or cf followed by
@@ -349,45 +430,53 @@ ioperm_bdm_open (const char *devname, int flags, ...)
   int         port = 0;
   int         result;
 
-  if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1))
+  if (strncmp (device, "/usb/", sizeof ("/usb/") - 1) == 0)
   {
-    errno = ENOENT;
-    return -1;
-  }
-
-  device += sizeof ("/dev/bdm") - 1;
-
-  if (strncmp (device, "cpu32", 5) == 0)
-  {
-    port = 0;
-    device += 5;  /* s.b. 5 */
-  }
-  else if (strncmp (device, "icd", 3) == 0)
-  {
-    port = 8;
-    device += 3;
-  }
-  else if (strncmp (device, "cf", 2) == 0)
-  {
-    port = 4;
-    device += 2;
+    result = usb_bdm_init (device + 5);
   }
   else
   {
-    errno = ENOENT;
-    return -1;
+    if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1))
+    {
+      errno = ENOENT;
+      return -1;
+    }
+
+    device += sizeof ("/dev/bdm") - 1;
+
+    if (strncmp (device, "cpu32", 5) == 0)
+    {
+      port = 0;
+      device += 5;  /* s.b. 5 */
+    }
+    else if (strncmp (device, "icd", 3) == 0)
+    {
+      port = 8;
+      device += 3;
+    }
+    else if (strncmp (device, "cf", 2) == 0)
+    {
+      port = 4;
+      device += 2;
+    }
+    else
+    {
+      errno = ENOENT;
+      return -1;
+    }
+
+    port += strtoul (device, 0, 0);
+  
+    result = ioperm_bdm_init (port);
   }
-
-  port += strtoul (device, 0, 0);
-
+  
   /*
-   * Try an ioperm call. If it fails, try to open the driver. If not
+   * Try an ioperm or usb call. If it fails, try to open the driver. If no
    * driver is found, prepend localhost and try for a local server.
-   * This make an /dev/bdmcf0 open automatically attemp to open a
-   * bdmServer. This local server may be using ioperm so no driver.
+   * This make an /dev/bdmcf0 open automatically attempt to open a
+   * bdmServer. This local server may be using ioperm or usb so no driver.
    */
 
-  result = ioperm_bdm_init (port);
   if (result < 0)
   {
     if (result == -1)
@@ -410,7 +499,7 @@ ioperm_bdm_open (const char *devname, int flags, ...)
     }
     return -1;
   }
-
+  
   errno = bdm_open (port);
   if (errno)
     return -1;

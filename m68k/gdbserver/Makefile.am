@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.4 2008/01/18 01:58:03 cjohns Exp $
+## $Id: Makefile.am,v 1.5 2008/03/06 10:35:40 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -42,6 +42,15 @@ LIBS += -l wsock32
 endif
 endif
 
+if TBLCF_USB
+TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+endif
+
+if LIBUSB_PATH
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
+AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+endif
+
 if GDBSERVER
 bin_PROGRAMS = m68k-bdm-gdbserver
 endif
@@ -55,7 +64,8 @@ m68k_bdm_gdbserver_SOURCES = \
 m68k_bdm_gdbserver_CPPFLAGS = \
 	@CFLAGS@ $(AM_CPPFLAGS)
 m68k_bdm_gdbserver_LDADD = \
-	$(top_builddir)/lib/libBDM.a
+	$(top_builddir)/lib/libBDM.a \
+	$(TBLCF_USB_LIB)
 
 version.c: Makefile $(srcdir)/version.in
 	rm -f version.c-tmp version.c

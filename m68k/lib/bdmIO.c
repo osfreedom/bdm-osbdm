@@ -115,7 +115,6 @@
  * Limit of one BDM per process
  */
 static int bdm_fd    = -1;
-static int mustSwap  = 0;
 static int cpu       = BDM_CPU32;
 static int iface     = BDM_CPU32_PD;
 #if defined (BDM_DEVICE_REMOTE)
@@ -424,30 +423,6 @@ bdmErrorString (void)
 }
 
 /*
- * Return a long in the correct order for the host.
- */
-unsigned long
-bdmHostByteOrder (unsigned long value)
-{
-  union {
-    char  c[4];
-    long  l;
-  } un;
-  
-  un.l = value;
-  
-  if (mustSwap) {
-    un.c[0] = value >> 24; 
-    un.c[1] = value >> 16; 
-    un.c[2] = value >> 8; 
-    un.c[3] = value >> 0; 
-  }
-  else
-    un.l = value;
-  return un.l;
-}
-
-/*
  * Open the specified BDM device
  */
 int
@@ -456,38 +431,6 @@ bdmOpen (const char *name)
 #if defined (BDM_LIB_CHECKS_VERSION)
   unsigned int ver;
 #endif
-  union {
-    char     c[4];
-    uint32_t l;
-  } un;
-
-  /*
-   * Determine what byte-swapping we'll need to do
-   */
-  if (sizeof un.l != sizeof un.c) {
-    bdmIO_lastErrorString = "Host machine sizeof (uint32_t) != sizeof (char[4])";
-    return -1;
-  }
-  if ((sizeof (uint32_t) != 4) ||
-      (sizeof (short) != 2) ||
-      (sizeof (char) != 1)) {
-    bdmIO_lastErrorString = "Host machine sizeof not appropriate";
-    return -1;
-  }
-  un.c[0] = 0x01;
-  un.c[1] = 0x02;
-  un.c[2] = 0x03;
-  un.c[3] = 0x04;
-  if (un.l == 0x01020304) {
-    mustSwap = 0;
-  }
-  else if (un.l == 0x04030201) {
-    mustSwap = 1;
-  }
-  else {
-    bdmIO_lastErrorString = "Host machine has peculiar byte ordering";
-    return -1;
-  }
 
   /*
    * Open the interface. Name could be an ip:port address
@@ -675,8 +618,7 @@ bdmReadControlRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_CTLREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read control register 0x%04x: %#8lx\n",
-          code, bdmHostByteOrder (ltmp));
+  PRINTF ("Read control register 0x%04x: %#8lx\n", code, ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -690,8 +632,7 @@ bdmReadDebugRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_DBREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read debug register 0x%04x: %#8lx\n",
-          code, bdmHostByteOrder (ltmp));
+  PRINTF ("Read debug register 0x%04x: %#8lx\n", code, ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -705,8 +646,7 @@ bdmReadSystemRegister (int code, unsigned long *lp)
   unsigned long ltmp = 0;
   if (readTarget (BDM_READ_SYSREG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read system register %s: %#8lx\n",
-          sysregName[code], bdmHostByteOrder (ltmp));
+  PRINTF ("Read system register %s: %#8lx\n", sysregName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -721,8 +661,7 @@ bdmReadRegister (int code, unsigned long *lp)
   code &= 0xF;
   if (readTarget (BDM_READ_REG, code, &ltmp) < 0)
     return -1;
-  PRINTF ("Read register %s: %#8lx\n",
-          regName[code], bdmHostByteOrder (ltmp));
+  PRINTF ("Read register %s: %#8lx\n", regName[code], ltmp);
   *lp = ltmp;
   return 0;
 }
@@ -735,8 +674,7 @@ bdmWriteControlRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_CTLREG, code, l) < 0)
     return -1;
-  PRINTF ("Write control register 0x%04x: %#8lx\n",
-          code, bdmHostByteOrder (l));
+  PRINTF ("Write control register 0x%04x: %#8lx\n", code, l);
   return 0;
 }
 
@@ -746,10 +684,9 @@ bdmWriteControlRegister (int code, unsigned long l)
 int
 bdmWriteDebugRegister (int code, unsigned long l)
 {
-  if (writeTarget (BDM_WRITE_DBREG, code, bdmHostByteOrder (l)) < 0)
+  if (writeTarget (BDM_WRITE_DBREG, code, l) < 0)
     return -1;
-  PRINTF ("Write debug register 0x%04x: %#8lx\n",
-          code, bdmHostByteOrder (l));
+  PRINTF ("Write debug register 0x%04x: %#8lx\n", code, l);
   return 0;
 }
 
@@ -774,7 +711,7 @@ bdmWriteRegister (int code, unsigned long l)
 {
   if (writeTarget (BDM_WRITE_REG, code, l) < 0)
     return -1;
-  PRINTF ("Write register %s: %#8lx\n", regName[code], bdmHostByteOrder (l));
+  PRINTF ("Write register %s: %#8lx\n", regName[code], l);
   return 0;
 }
 
@@ -788,7 +725,7 @@ bdmReadLongWord (unsigned long address, unsigned long *lp)
 
   if (readTarget (BDM_READ_LONGWORD, address, &ltmp) < 0)
     return -1;
-  PRINTF ("Read %#8.8lx @ %#8lx\n", bdmHostByteOrder (ltmp), address);
+  PRINTF ("Read %#8.8lx @ %#8lx\n", ltmp, address);
   *lp = ltmp;
   return 0;
 }
@@ -829,7 +766,7 @@ bdmReadByte (unsigned long address, unsigned char *cp)
 int
 bdmWriteLongWord (unsigned long address, unsigned long l)
 {
-  PRINTF ("Write %#8.8lx @ %#8lx\n", bdmHostByteOrder (l), address);
+  PRINTF ("Write %#8.8lx @ %#8lx\n", l, address);
   return writeTarget (BDM_WRITE_LONGWORD, address, l);
 }
 
@@ -982,15 +919,6 @@ bdmReadMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes)
     return 0;
   if (bdmRead (cbuf, nbytes) < 0)
     return -1;
-  if (mustSwap) {
-    unsigned int i;
-    char c;
-    for (i = 0 ; i < (nbytes-1) ; i += 2) {
-      c = cbuf[i];
-      cbuf[i] = cbuf[i+1];
-      cbuf[i+1] = c;
-    }
-  }
   PRINTF ("Read %d byte%s\n", nbytes, nbytes == 1 ? "" : "s");
   return 0;
 }
@@ -1046,25 +974,7 @@ bdmWriteMemory (unsigned long address, unsigned char *cbuf, unsigned long nbytes
   }
   if (nbytes == 0)
     return 0;
-  if (mustSwap) {
-    unsigned int i;
-    char c;
-    for (i = 0 ; i < (nbytes-1) ; i += 2) {
-      c = cbuf[i];
-      cbuf[i] = cbuf[i+1];
-      cbuf[i+1] = c;
-    }
-  }
   ret = bdmWrite (cbuf, nbytes);
-  if (mustSwap) {
-    unsigned int i;
-    char c;
-    for (i = 0 ; i < (nbytes-1) ; i += 2) {
-      c = cbuf[i];
-      cbuf[i] = cbuf[i+1];
-      cbuf[i+1] = c;
-    }
-  }
   if (ret < 0)
     return -1;
   PRINTF ("Wrote %d byte%s\n", nbytes, nbytes == 1 ? "" : "s");

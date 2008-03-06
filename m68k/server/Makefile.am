@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.3 2004/01/08 20:37:25 codewiz Exp $
+## $Id: Makefile.am,v 1.4 2008/03/06 10:35:40 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -11,9 +11,18 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../lib -I$(srcdir)/../driver
 
+if TBLCF_USB
+TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+endif
+
+if LIBUSB_PATH
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
+AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+endif
+
 sbin_PROGRAMS = bdmd
 
 bdmd_SOURCES = \
 	bdmServer.c \
 	xmalloc.c
-bdmd_LDADD = ../lib/libBDM.a
+bdmd_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)

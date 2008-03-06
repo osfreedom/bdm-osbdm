@@ -1,3 +1,39 @@
+2008-03-06 Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/bdm.c: Move the CPU32 and CF specific parts into separate
+	files and add TBLCF. Make all call happen via handlers. Move the
+	common bit bashing routines into common functions for use by the
+	CPU32 and CF driver parts. Add the swap code taken from the
+	library code.
+
+	* driver/bdm.h: Change BDMioctl fields to unsigned long int.
+
+	* driver/bdm-cf-pe.c: Moved from bdm.c. Fixed the system reg read
+	and write routines to detect a non-mapped register.
+
+	* driver/bdm-cpu32: Moved from bdm.c. Fixed the system reg read
+	and write routines to detect a non-mapped register.
+
+	* driver/bdm-tblcf.c: New.
+
+	* driver/ioperm/ioperm.c, driver/win/win-bdm.c: Add USB support.
+
+	* lib/bdmIO.c: Remove swap code. Moved to the driver as TBLCF
+	handles the swap. This is the simplest way to untangle this.
+	
+	* gdbserver/Makefile.am, lib/Makefile.am, server/Makefile.am,
+	test/Makefile.am, utils/Makefile.am: Add TBLCF and libusb support.
+
+	* tblcf/.cvsignore, tblcf/Makefile.am, tblcf/commands.h,
+	tblcf/log.c, tblcf/log.h, tblcf/log_cmdline.c,
+	tblcf/log_cmdline.h, tblcf/srec.c, tblcf/srec.h,
+	tblcf/tblcf-show.c, tblcf/tblcf.c, tblcf/tblcf.h,
+	tblcf/tblcf_bt.c, tblcf/tblcf_bt.h, tblcf/tblcf_hwdesc.h,
+	tblcf/tblcf_unsec.c, tblcf/tblcf_usb.c, tblcf/tblcf_usb.h,
+	tblcf/version.h: New. Taken from the TBLCF project.
+
+	* configure.ac, Makefile.am: Add TBLCF and libusb support.
+	
 2008-02-14 Federico Ulivi <fulivi@lycos.com>
 
 	* gdbserver/m68k-bdm-low.c: Patch to fix the register list for
