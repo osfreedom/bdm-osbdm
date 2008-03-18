@@ -7,12 +7,14 @@ INTRODUCTION
 
 This package contains everything you need to know to be able to run GDB on
 Linux, FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
-Coldfire (5206/5307/V4e) target through a standard PC parallel port.
+Coldfire (V2/V3/V4) target through a standard PC parallel port or via a USB
+pod.
 
  o The CPU32 interfaces supported are PD and the IDC interface. GDB 
    should now operate with the CPU32 processor without error.
 
- o The Coldfire interface is the P&E type interface.
+ o The Coldfire interface is the TBLCF USB pod or P&E parallel port type
+   interface.
 
  o You can build Insight if you apply the Insight patch. See the 
    Insight README in this directory.
@@ -26,16 +28,20 @@ Coldfire (5206/5307/V4e) target through a standard PC parallel port.
    default. The same library allows an application to directly 
    access the hardware or use an installed BDM kernel driver.
 
-   I/O Permission is a means getting at the parallel port hardware
+   I/O Permission is a means of getting at the parallel port hardware
    without the need for a kernel driver. This BDM package still provides
-   support to build a kernel driver, but you do not need to if you to avoid
-   kernel drivers. Some people wish to use kernel drivers and some do not.
+   support to build a kernel driver, but you do not need to if you want to
+   avoid kernel drivers. Some people wish to use kernel drivers and some do
+   not.
 
    If you wish to learn more about I/O Perm support please refer to the
    section at the end of the file.
 
    You can disable I/O perm support by editing the Makefile. It is hoped
    autoconf support in the future will provide a better way to handle this.
+
+ o To support the TBLCF UDB pod you will need the libusb package. For Windows
+   this means the LibUSB-Win32 package.
 
 The subdirectories contain:
 
@@ -76,6 +82,10 @@ The subdirectories contain:
     driver remotely. The BDM library can be built to support local and remote,
     just local or just remote access.
 
+  tblcf
+    The TBLCF code from Daniel Malik. It include the various tools for managing
+    the pod.
+
   test
     Programs to test the BDM library and driver routines.
 
@@ -107,11 +117,14 @@ WINDOWS
 =======
 
 Windows is supported on Windows 98, Windows 2000 and Windows XP. It may run on
-other version of Windows, but the ones listed have been tested. Windows 2000
-and Windows XP need to the GiveIO driver to gain direct access to the
-hardware. You can download the GiveIO package from the net plus you will need
-the INSTDRV.EXE program. To install GiveIO place the 'giveio.sys' and
-INSTDRV.EXE in a directory and log in as an Administrator or equivalent then:
+other version of Windows, but the ones listed have been tested. Windows 2000,
+Windows XP and beyond need to the GiveIO driver to gain direct access to the
+parallel port hardware if you are using a parallel port pod. A USB pod need the
+libusb software for Windows.
+
+You can download the GiveIO package from the net plus you will need the
+INSTDRV.EXE program. To install GiveIO place the 'giveio.sys' and INSTDRV.EXE
+in a directory and log in as an Administrator or equivalent then:
 
   c:\tmp> insdrv givio c:\tmp\giveio.sys
 
@@ -126,6 +139,17 @@ get the MinGW and MSYS packages from the MinGW web site:
 The MinGW package provides the compiler and MSYS provides a shell capable of
 running the configure script.
 
+To build the TBLCF USB pod support you need to obtain the LibUsb-Win32 package
+from:
+
+  http://libusb-win32.sourceforge.net/
+
+Click the Downloads link and move the Sourceforge download page then select the
+libusb-win32-device-bin package. I have tested with the 0.1.12 version. Unpack
+the tar file to a directory on your machine ready to use. Make sure you do not
+have any spaces in the path. Spaces cause problems with the autoconf test for
+the libusb library.
+
 QUICK START
 ===========
 
@@ -139,8 +163,9 @@ directory and enter it, configure the package, make, then install.
   $ make
   $ make install
 
-Note: this process by default creates an IOPERM type BDM driver. If you wish to
-build a Linux kernel driver please follow the INSTALLATION directions.
+Note: this process by default creates an IOPERM type parallel BDM driver and a
+TBLCF USB driver. If you wish to build a Linux kernel driver please follow the
+INSTALLATION directions.
 
 INSTALLATION
 ============
@@ -155,8 +180,8 @@ Notes:
    1. For Windows move to Step 2 as the driver is built into the library. You
       may also need to add `CC=gcc' to make's command line.
 
-   2. For I/O Permission users move to step 2 as the driver is built into the
-      library.
+   2. For I/O Permission or USB users move to step 2 as the driver is built
+      into the library.
 
    3. Driver users will still have a library with I/O perm support unless the
       default of the library Makefile is manually changed.
@@ -186,6 +211,8 @@ Step 1 -- Compile and install the BDM device driver
   For Coldfire users the driver now looks for the debug module version and will
   use the PST signals if it detects a version 1 debug module. The debug version
   1 is found on the 5307.
+
+  Disable the TBLCF code with the configure option '--disable-tblcf'.
 
     # cd driver/linux
     # make all install
@@ -244,6 +271,15 @@ Step 2 -- Compile and install the library and user programs
   You will need to change the 'gdb-bdm-xx' to the name of the directory in the
   version of the package you have downloaded.
 
+  On Windows if building the TBLCF driver you need to provide the location of
+  the libusb package. The details to download and obtain the libusb package for
+  Windows is detail above. Provide the path to the top of the libusb package:
+
+    $ ../gdb-bdm-xx/m68k/configure \
+          --with-usblib-dir="c:/work/libusb-win32-device-bin-0.1.12.1"
+
+  The above command is run inside the MSYS shell.
+
   Once the package has configured itself you can make it:
 
     $ make
@@ -260,7 +296,8 @@ Step 2 -- Compile and install the library and user programs
   interface.
 
   On Windows 2000 install the GiveIO driver. This is detailed in the WINDOWS
-  section earlier.
+  section earlier. To install the USB pod on Windows refer the TBLCF Pod
+  section later.
 
   The package supports a number of configuration options over and above the
   standard configure options such as '--prefix'. These are:
@@ -288,6 +325,13 @@ Step 2 -- Compile and install the library and user programs
 		       specified the configure options --with-libbfd,
 		       --with-libiberty and --with-bfd-include-dir.
 
+     --enable-tblcf:   Turn on building the TBLCF support. On by default.
+                       On Windows the --with-usblib-dir can be used to
+                       provide the location of the unpacked Win32 libusb
+                       package.
+
+     --with-libusb-dir Path, with no spaces to the libusb library if the
+                       library is not installed in the default location.
 
   To turn off an option use '--disable-*' where '*' is one of the above.
 
@@ -441,6 +485,17 @@ Step 4 -- (Optional) Testing the driver.
   start from 0, while the standard PC LPT ports number from 1. This
   means '/dev/bdmcf0' will look for a Coldfire processor on LPT1.
 
+  For a TBLCF USB pod on Linux you need to set up udev to create a symlink.
+  The section Found 1 device(s)
+      1: 001-012
+
+  There is one pod and the name is '01-012'. To run check using this pod:
+
+    $ ./bdm-chk /dev/tblcf3
+
+  Note, the name will change on Linux if you disconnect the pod and reconnect
+  it. If want to lock a name down you can use udev.
+
   To test using a BDM server on a remote host call 'foo':
 
     $ /bdm-chk foo:/dev/bdmcpu320
@@ -472,6 +527,105 @@ Step 8 -- Build a BDM interface
 Step 7 -- Try it out
 
   This is left as an exercise for the reader.....
+
+TBLCF USB Support
+=================
+
+The TBLCF is the Turbo BDM Light Coldfire UDB Pod created by Daniel Malik back
+in 2006. This is a GPL design for both hadrware and software. It uses a small
+microcontrolller and firmware in the pod and the open source libusb code to
+provide the low level USB support on various hosts.
+
+The support hosts are Linux and Windows. The specifics of the hosts make the
+set up different for each.
+
+If you are a CPU32 user and would like to look at supporting the CPU32
+processor with this pod please contact the BDM mailing list.
+
+Linux
+-----
+
+The USB pod is simple to support on Linux. Just plug it and check the kernel
+messages:
+
+  $ dmesg | tail
+  usb 1-2.1.3: new low speed USB device using ehci_hcd and address 12
+  usb 1-2.1.3: config 1 interface 0 altsetting 0 endpoint 0x82 is Bulk; changing to Interrupt
+  usb 1-2.1.3: config 1 interface 0 altsetting 0 endpoint 0x2 is Bulk; changing to Interrupt
+  usb 1-2.1.3: configuration #1 chosen from 1 choice
+
+You can see the pod has connected with address 12. Run the 'tblcf-show' command
+to list the names of the pods as seen by libusb. If you disconnect the pod or
+power cycle the pod or system the address of the pod can change. For example a
+disconnect then reconnect moves the address onto the next number on my
+system. This make it difficult to create scripts that take care of this.
+
+The solution is to use udev. This is a user land system present on current
+Linux systems that responds to and manages hot plug kernel events. The
+Wikipedia page on udev (http://en.wikipedia.org/wiki/Udev) provide a nice
+overview of udev.
+
+Create a udev rule for the TBLCF pod to create a node in the 'dev'
+directory. You can customise the node name used to suite your specific
+needs. For me I have a single pod on my local workstation and so a basic setup
+is all that is needed:
+
+  # cat /etc/udev/rules.d/91-tlbcf.rules
+  SUBSYSTEM=="usb" ATTR{manufacturer}=="Freescale" \
+  ATTR{idVendor}=="0425" ATTR{idProduct}=="1001" SYMLINK+="tblcf%n"
+
+                          Note: there is a single line in the actual file.
+
+When I plug in my pod udev creates '/dev/tblcf3'. This is:
+
+  # ls -las /dev/tblcf3
+  0 lrwxrwxrwx 1 root root 15 2008-03-06 14:59 /dev/tblcf3 -> bus/usb/001/012
+
+The USB support in the BDM package checks if the device node is a sym-link. If
+it is the link path is read and checked to see if the prefix is 'bus/usb'. If
+it is the device is assumed to be a USB device and the trailing part of the
+path is the device name returned by libusb. The USB driver will attempt to open
+the device. This may fail if the user does not have permission. In this case
+the bdmd server on the local host is used. This is similar to the I/O
+Permission support.
+
+With udev you can create device nodes with any name that suites. You can also
+add more attribute checks to create a specific node. This allows for the
+creation of nodes that match the function the pod is performing. In my example
+above the number in the dev file is based on the USB port on the work station.
+
+Windows
+-------
+
+Plugging the pod into a Windows machine brings up the standard Hardware found
+installer dialog box. I have only done this when an Administrator and I suspect
+you will need to be an Administrator because driver files are installed into
+the Windows directory.
+
+You need to have the LibUsb-Win32 package unpacked some where on your
+machine. Typically you will have done this to build the BDM software and the
+package links the libusb library. The BDM package has a axbdm.inf file and you
+navigate the Hardware installer to say you have a disk then browse to select
+the axbdm.inf file. The installer will then start to install the drivers and if
+it cannot find the files it needs it will ask for them. This time navigate to
+the location of the LibUsb-Win32 files and select the ones asked for by the
+dialog box.
+
+I created the axbdm.inf file for the AxBDM pod from Axiom I have. The
+LibUsb-Win32 package contains a program called inf-installer.exe. To use this
+program with the pod connected to the computer, run the program then select the
+pod and fill in the fields.
+
+Once finished you can run the testlibusb-win.exe and it will show the TBLCF pod
+in the list of devices.
+
+Run the tblcf-show program to get a list of detected pods. The returned name is
+not pretty but it seems to be unique to pod in a specific USB port. You need to
+use this name when using the BDM software:
+
+  > chk-bdm bus-0-\\.\libusb0-0002-0x0425-0x1001
+
+It is not a nice name but this is what libusb returns.
 
 I/O PERM SUPPORT
 ================
@@ -577,16 +731,16 @@ perform a download to target.
 Windows 9x,NT,2000
 ==================
 
-The library will build the driver in one pass. There is no driver 
-needed for Windows 9x. This should allow GDB to be built. The Cygwin
-or MinGW packages are needed to build the library.
+The library will build the driver in one pass. There is no driver needed for
+Windows 9x. This should allow GDB to be built. The Cygwin or MinGW packages are
+needed to build the library.
 
 I have tested the package on Windows 98, Windows 2000 and Windows XP using
-MinGW. This is cross-compiled from Linux and also compiled under MinGW
-on Windows XP.
+MinGW. This is cross-compiled from Linux and also compiled under MinGW on
+Windows XP.
 
-Cygwin should build and work, how-ever at the time of updating this
-file I could get Cygwin installed and working to test.
+Cygwin should build and work, how-ever at the time of updating this file I
+could get Cygwin installed and working to test.
 
 Setting the minor device number
 ===============================
@@ -660,6 +814,8 @@ the Coldfire's BDM hardware.
 
 Additional thanks to Freescale for their continued support.
 
+Thanks to Axiom Manufacturing for their support in adding the TBLCF support.
+
 WHERE TO GET HELP
 =================
 
@@ -669,4 +825,3 @@ mailing list on the SourceForge web site:
   http://sourceforge.net/projects/bdm/
 
 We like to hear any success stories, as well as suggestions for improvements.
-

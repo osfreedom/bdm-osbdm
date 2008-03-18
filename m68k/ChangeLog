@@ -1,3 +1,20 @@
+2008-03-18 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Add ther TBLCF documentation.
+
+	* configure.ac: Add support to build the package on Darwin
+	(MacOS).
+
+	* driver/bdm-tblcf.c: Move the usb_bdm_init function into a common
+	spot rather than have 2 copies. Add failure recovery incase it can
+	be made to work. Add symlink support for Linux's udev.
+
+	* driver/ioperm/ioperm.c: Remove usb_bdm_init. Change the way the
+	name is handle to allow for the udev symlink support.
+
+	* driver/win/win-bdm.c: Make the Windows TBLCF name just what
+	libusb returns.
+	
 2008-03-06 Chris Johns <cjohns@users.sourceforge.net>
 
 	* driver/bdm.c: Move the CPU32 and CF specific parts into separate

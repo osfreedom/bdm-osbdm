@@ -263,28 +263,39 @@ AC_ARG_ENABLE(tblcf,
    esac],
  [bdm_tblcf=true])
 
+case ${host} in
+  *mingw*)
+    ac_libusb_include_dir_part=include
+    ac_libusb_lib_dir=lib/gcc
+    ;;
+  *)
+    ac_libusb_include_dir_part=include
+    ac_libusb_lib_dir=lib
+    ;;
+esac
+
 AC_ARG_WITH(libusb-dir,
- [  --with-libusb-dir=DIR  path for libusb package (include/usb.h, lib/gcc/libusb.a)],
- [ ac_libusb_include_dir=$withval/include
-   ac_libusb_lib_dir=$withval/lib/gcc ],
+ [  --with-libusb-dir=DIR  path for libusb package ($ac_libusb_include_dir_part/usb.h, $ac_libusb_lib_dir/libusb.a)],
+ [ ac_libusb_include_dir=$withval/$ac_libusb_include_dir_part
+   ac_libusb_lib_dir=$withval/$ac_libusb_lib_dir ],
  [ ac_libusb_include_dir=NONE
    ac_libusb_lib_dir=NONE ]
-)
+) 
 
 AS_IF([test x$bdm_tblcf = xtrue],
-      [AS_IF([test $ac_libusb_include_dir != NONE],
+      [AS_IF([test "$ac_libusb_include_dir" != "NONE"],
              [ac_tmp_ldflags=${LDFLAGS}
-              LDFLAGS="$LDFLAGS -L$ac_libusb_lib_dir"])
+              LDFLAGS="$LDFLAGS -L $ac_libusb_lib_dir"])
        AC_CHECK_LIB(usb, usb_init, ,
                     [AC_MSG_ERROR([Could not find libusb. Try --with-libusb-dir.])])
-       AS_IF([test $ac_libusb_include_dir != NONE],
+       AS_IF([test "$ac_libusb_include_dir" != "NONE"],
              [LDFLAGS=$ac_tmp_ldflags])])
 
 AM_CONDITIONAL(TBLCF_USB, test x$bdm_tblcf = xtrue)
 
 AM_CONDITIONAL(LIBUSB_PATH, test $ac_libusb_include_dir != NONE)
-AC_SUBST(LIBUSB_INCLUDE_DIR, ${ac_libusb_include_dir})
-AC_SUBST(LIBUSB_LIB_DIR, ${ac_libusb_lib_dir})
+AC_SUBST(LIBUSB_INCLUDE_DIR, "${ac_libusb_include_dir}")
+AC_SUBST(LIBUSB_LIB_DIR, "${ac_libusb_lib_dir}")
 
 dnl
 dnl If on a Win32 target such as MinGW do not build

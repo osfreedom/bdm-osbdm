@@ -688,6 +688,7 @@ tblcf_fill_buf (struct BDM *self, int count)
    */
   
   if (tblcf_read_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_fill_buf - failed\n");
     return BDM_FAULT_RESPONSE;
@@ -711,6 +712,7 @@ tblcf_send_buf (struct BDM *self, int count)
     return 0;
   
   if (tblcf_write_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_send_buf - failed\n");
     return BDM_FAULT_RESPONSE;
@@ -728,6 +730,7 @@ static int
 tblcf_read_preg (struct BDM *self, struct BDMioctl *ioc)
 {
   if (tblcf_read_reg (self->usbDev, ioc->address & 0xF, &ioc->value)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_preg - reg:0x%02x, failed\n", ioc->address & 0xF);
     return BDM_FAULT_RESPONSE;
@@ -748,6 +751,7 @@ tblcf_read_long_word (struct BDM *self, struct BDMioctl *ioc)
   unsigned long int l;
   
   if (tblcf_read_mem32 (self->usbDev, ioc->address, &l)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_long_word : *0x%08x failed\n", ioc->address);
     return BDM_FAULT_RESPONSE;
@@ -772,6 +776,7 @@ tblcf_read_word (struct BDM *self, struct BDMioctl *ioc)
   unsigned int w;
 
   if (tblcf_read_mem16 (self->usbDev, ioc->address, &w)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_word : *0x%08x failed\n", ioc->address);
     return BDM_FAULT_RESPONSE;
@@ -796,6 +801,7 @@ tblcf_read_byte (struct BDM *self, struct BDMioctl *ioc)
   unsigned char b;
 
   if (tblcf_read_mem8 (self->usbDev, ioc->address, &b)) {
+    tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_byte : *0x%08x failed\n", ioc->address);
     return BDM_FAULT_RESPONSE;
@@ -838,6 +844,13 @@ tblcf_write_long_word (struct BDM *self, struct BDMioctl *ioc)
   
   tblcf_write_mem32 (self->usbDev, ioc->address, ioc->value);
 
+  if (tblcf_get_last_sts (self->usbDev)) {
+    tblcf_gen_bus_error (self);
+    if (self->debugFlag)
+      PRINTF ("tblcf_write_long_word : *0x%08x failed\n", ioc->address);
+    return BDM_FAULT_RESPONSE;
+  }
+    
   return 0;
 }
 
@@ -854,6 +867,13 @@ tblcf_write_word (struct BDM *self, struct BDMioctl *ioc)
 
   tblcf_write_mem16 (self->usbDev, ioc->address, ioc->value);
 
+  if (tblcf_get_last_sts (self->usbDev)) {
+    tblcf_gen_bus_error (self);
+    if (self->debugFlag)
+      PRINTF ("tblcf_write_word : *0x%08x failed\n", ioc->address);
+    return BDM_FAULT_RESPONSE;
+  }
+
   return 0;
 }
 
@@ -869,6 +889,13 @@ tblcf_write_byte (struct BDM *self, struct BDMioctl *ioc)
   self->address = ioc->address + 1;
 
   tblcf_write_mem8 (self->usbDev, ioc->address, ioc->value);
+
+  if (tblcf_get_last_sts (self->usbDev)) {
+    tblcf_gen_bus_error (self);
+    if (self->debugFlag)
+      PRINTF ("tblcf_write_byte : *0x%08x failed\n", ioc->address);
+    return BDM_FAULT_RESPONSE;
+  }
 
   return 0;
 }
@@ -935,4 +962,103 @@ tblcf_init_self (struct BDM *self)
   self->cf_sr_masked = 0;
   
   return 0;
+}
+
+/*
+ * Initialise the USB interface to tghe pod.
+ */
+int
+usb_bdm_init (const char *device)
+{
+#if BDM_TBLCF_USB
+  struct BDM *self;
+  int         devs;
+  int         dev;
+  char        usb_device[256];
+
+#ifdef BDM_VER_MESSAGE
+  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ "\n",
+           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
+#endif
+
+#if WIN32
+  strcpy (usb_device, device);
+#else
+  {
+    struct stat sb;
+    int         result;
+    char        *p;
+    
+    if (lstat (device, &sb) < 0)
+      return -2;
+
+    if (!S_ISLNK (sb.st_mode))
+    {
+      errno = ENOENT;
+      return -2;
+    }
+
+    readlink (device, usb_device, sizeof (usb_device));
+
+    /*
+     * On Linux this is bus/usb/....
+     */
+
+    if (strncmp (usb_device, "bus/usb", sizeof ("bus/usb") - 1) != 0)
+    {
+      errno = ENOENT;
+      return -2;
+    } 
+
+    memmove (usb_device, usb_device + sizeof ("bus/usb"),
+             sizeof (usb_device) - sizeof ("bus/usb") - 1);
+
+    p = strchr (usb_device, '/');
+
+    *p = '-';
+  }
+#endif
+
+  /*
+   * Initialise the USB layers.
+   */
+  tblcf_init();
+
+  /*
+   * Open the USB device.
+   */
+  self->usbDev = tblcf_open (usb_device);
+
+  if (self->usbDev < 0)
+  {
+    errno = EIO;
+    return -1;
+  }
+
+  /*
+   * Set up the self srructure. Only ever one with ioperm.
+   */
+
+  self = &bdm_device_info[0];
+
+  /*
+   * First set the default debug level.
+   */
+
+  self->debugFlag = BDM_DEFAULT_DEBUG;
+
+  /*
+   * Force the port to exist.
+   */
+  self->exists = 1;
+
+  self->delayTimer = 0;
+
+  tblcf_init_self (self);
+
+  return 0;
+#else
+  errno = ENOENT;
+  return -1;
+#endif
 }
