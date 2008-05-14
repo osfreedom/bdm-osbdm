@@ -1,6 +1,18 @@
+2008-05-15 Mark Giacobbe <mcgiacobbe@gmail.com>
+
+	* gdbserver/m68k-cf5307.xml: New.
+
+	* gdbserver/Makefile.am: Add m68k-cf5307.xml.
+
+	* gdbserver/m68k-bdm-low.c: Add 5307 support.
+
+2008-05-15 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Fix the TBLCF documentation.
+
 2008-03-18 Chris Johns <cjohns@users.sourceforge.net>
 
-	* README: Add ther TBLCF documentation.
+	* README: Add the TBLCF documentation.
 
 	* configure.ac: Add support to build the package on Darwin
 	(MacOS).

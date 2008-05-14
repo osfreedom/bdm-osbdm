@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.5 2008/03/06 10:35:40 cjohns Exp $
+## $Id: Makefile.am,v 1.6 2008/05/14 23:23:37 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -29,6 +29,7 @@ XML_FILES = \
 	$(srcdir)/m68k-cf5235.xml \
 	$(srcdir)/m68k-cf5272.xml \
 	$(srcdir)/m68k-cf5282.xml \
+	$(srcdir)/m68k-cf5307.xml \
 	$(srcdir)/m68k-cfv4e.xml
 
 ##

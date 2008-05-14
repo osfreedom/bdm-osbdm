@@ -57,7 +57,8 @@
 #define M68K_BDM_MARCH_CF5235     (4)
 #define M68K_BDM_MARCH_CF5272     (5)
 #define M68K_BDM_MARCH_CF5282     (6)
-#define M68K_BDM_MARCH_CFV4E      (7)
+#define M68K_BDM_MARCH_CF5307     (7)
+#define M68K_BDM_MARCH_CFV4E      (8)
 
 /*
  * The CPU labels.
@@ -69,6 +70,7 @@
 #define M68K_BDM_MARCH_CF5235_LABEL    "CF5235"
 #define M68K_BDM_MARCH_CF5272_LABEL    "CF5272"
 #define M68K_BDM_MARCH_CF5282_LABEL    "CF5282"
+#define M68K_BDM_MARCH_CF5307_LABEL    "CF5307"
 #define M68K_BDM_MARCH_CFV4E_LABEL     "CFV4E"
 
 /*
@@ -397,6 +399,40 @@ static struct m68k_bdm_reg_mapping m68k_bdm_cf5282_reg_map[] = {
 };
 
 /*
+ * 5307 V3 Coldfire Register set
+ */
+
+static struct m68k_bdm_reg_mapping m68k_bdm_cf5307_reg_map[] = {
+  { "d0",       M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
+  { "d1",       M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
+  { "d2",       M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
+  { "d3",       M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
+  { "d4",       M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
+  { "d5",       M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
+  { "d6",       M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
+  { "d7",       M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
+  { "a0",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
+  { "a1",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
+  { "a2",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
+  { "a3",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
+  { "a4",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
+  { "a5",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
+  { "fp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
+  { "sp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
+  { "ps",       M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
+  { "pc",       M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
+  { "vbr",      M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
+  { "cacr",     M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
+  { "acr0",     M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
+  { "acr1",     M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
+  { "rambar",   M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc04) },
+  { "mbar",     M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0xc0f) },
+  { "macsr",    M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_CTRL (0x804) },
+  { "mask",     M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_CTRL (0x805) },
+  { "acc",      M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_CTRL (0x806) }
+};
+
+/*
  * V4E Coldfire Register set.
  */
 
@@ -510,6 +546,8 @@ struct m68k_bdm_registers m68k_bdm_reg_map[] = {
     m68k_bdm_cf5272_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5272_reg_map) },
   { "m68k-cf5282.xml",
     m68k_bdm_cf5282_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5282_reg_map) },
+  { "m68k-cf5307.xml",
+    m68k_bdm_cf5307_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5307_reg_map) },
   { "m68k-cfv4e.xml",
     m68k_bdm_cfv4e_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cfv4e_reg_map) }
 };
@@ -1662,10 +1700,17 @@ m68k_bdm_create_inferior (char *program, char *argv[])
             printf_filtered ("m68k-bdm: detected V2 core\n");
           }
         }
+      } else if (m68k_bdm_cf_debug_ver == 1) {
+        m68k_bdm_cpu_type = M68K_BDM_MARCH_CF5307;
+        m68k_bdm_cpu_label = M68K_BDM_MARCH_CF5307_LABEL;
+        printf_filtered ("m68k-bdm: detected MCF5307\n");
       } else if (m68k_bdm_cf_debug_ver == 3) {
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CFV4E;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CFV4E_LABEL;
         printf_filtered ("m68k-bdm: detected V4e core\n");
+      } else {
+        bdmClose ();
+        error ("m68k-bdm: unknown processor debug version.");
       }
       break;
 

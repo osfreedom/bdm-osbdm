@@ -486,10 +486,17 @@ Step 4 -- (Optional) Testing the driver.
   means '/dev/bdmcf0' will look for a Coldfire processor on LPT1.
 
   For a TBLCF USB pod on Linux you need to set up udev to create a symlink.
-  The section Found 1 device(s)
+  The section 'TBLCF USB Support' details how to set up udev. The TBLCF tools
+  tblcf-show returns the following for a single pod connected to a Linux box:
+
+    $ ./tblcf-show
+    TBLCF Turbo BDM Light ColdFire Show
+
+    Found 1 device(s)
       1: 001-012
 
-  There is one pod and the name is '01-012'. To run check using this pod:
+  There is one pod and the name is '01-012' and udev links this to
+  /dev/tblcf3. To run check using this pod:
 
     $ ./bdm-chk /dev/tblcf3
 
