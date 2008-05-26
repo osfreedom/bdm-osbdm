@@ -19,6 +19,17 @@
 #ifndef REGDEF_H
 #define REGDEF_H
 
+/* The register is not to be cached. All accesses are passed to the
+   target. */
+#define REG_NON_CACHEABLE (1 << 0)
+/* The register is not accessable to gdb. The target should not
+ * read or write it. */
+#define REG_NOT_ACCESSABLE (1 << 1)
+/* The register is write only. The target should not read it. */
+#define REG_WRITE_ONLY (1 << 2)
+/* The register is read only. The target should not write it. */
+#define REG_READ_ONLY (1 << 3)
+
 struct reg
 {
   /* The name of this register - NULL for pad entries.  */
@@ -34,6 +45,9 @@ struct reg
 
   /* The size (in bits) of the value of this register, as transmitted.  */
   int size;
+
+  /* Flags for the register. Default to 0 for existing registers. */
+  unsigned int flags;
 };
 
 /* Set the current remote protocol and register cache according to the array

@@ -141,19 +141,27 @@ set_register_cache (struct reg *regs, int n)
   register_bytes = offset / 8;
 }
 
+/* Sending to GDB */
 void
 registers_to_string (char *buf)
 {
   unsigned char *registers = get_regcache (current_inferior, 1)->registers;
+  int i;
 
   convert_int_to_ascii (registers, buf, register_bytes);
+
+  for (i = 0; i < num_registers; i++)
+    if (reg_defs[i].flags & REG_NON_CACHEABLE)
+        fetch_inferior_registers (i);
 }
 
+/* Received from GDB */
 void
 registers_from_string (char *buf)
 {
   int len = strlen (buf);
   unsigned char *registers = get_regcache (current_inferior, 1)->registers;
+  int i;
   
   if (len != register_bytes * 2)
     {
@@ -162,6 +170,10 @@ registers_from_string (char *buf)
       if (len > register_bytes * 2)
         len = register_bytes * 2;
     }
+
+  for (i = 0; i < num_registers; i++)
+    if (reg_defs[i].flags & REG_NON_CACHEABLE)
+        store_inferior_registers (i);
   
   convert_ascii_to_int (buf, registers, len / 2);  
 }

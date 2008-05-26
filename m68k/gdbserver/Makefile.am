@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.6 2008/05/14 23:23:37 cjohns Exp $
+## $Id: Makefile.am,v 1.7 2008/05/26 02:50:52 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -29,6 +29,7 @@ XML_FILES = \
 	$(srcdir)/m68k-cf5235.xml \
 	$(srcdir)/m68k-cf5272.xml \
 	$(srcdir)/m68k-cf5282.xml \
+	$(srcdir)/m68k-cf52223.xml \
 	$(srcdir)/m68k-cf5307.xml \
 	$(srcdir)/m68k-cfv4e.xml
 
@@ -60,7 +61,11 @@ m68k_bdm_gdbserver_SOURCES = \
 	inferiors.c m68k-bdm-low.c mem-break.c \
 	regcache.c remote-utils.c \
 	server.c signals.c target.c utils.c version.c \
-	xml-builtin.c
+	xml-builtin.c \
+	m68k-core-regs.c m68k-cpu32-regs.c m68k-cpu32plus-regs.c\
+	m68k-cf5200-regs.c m68k-cf52223-regs.c m68k-cf5235-regs.c \
+	m68k-cf5272-regs.c m68k-cf5282-regs.c m68k-cf5307-regs.c \
+	m68k-cfv4e-regs.c 
 
 m68k_bdm_gdbserver_CPPFLAGS = \
 	@CFLAGS@ $(AM_CPPFLAGS)

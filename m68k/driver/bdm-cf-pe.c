@@ -267,7 +267,9 @@ cf_pe_invalidate_cache (struct BDM *self)
    */
 
   if (cacr_ioc.value) {
-    if (self->cf_debug_ver == CF_REVISION_D)
+    /* CCJ: Add version C as I think the version D was wrong. */
+    if ((self->cf_debug_ver == CF_REVISION_C) ||
+        (self->cf_debug_ver == CF_REVISION_D))
       cacr_ioc.value |= 0x01040100;
     else
       cacr_ioc.value |= 0x01000100;

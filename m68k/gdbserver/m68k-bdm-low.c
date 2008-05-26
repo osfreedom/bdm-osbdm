@@ -37,7 +37,13 @@
 #include "server.h"
 #include "regdef.h"
 
-#include "BDMlib.h"
+#include "m68k-bdm-low.h"
+
+/*
+ * Compare a string with a constant string.
+ */
+#define M68K_BDM_STR_IS(_s, _c)                  \
+  (strncmp (_s, _c, sizeof (_c) - 1) == 0)
 
 /*
  * Map the internal GDB wait kinds to the response letters for the
@@ -46,6 +52,16 @@
 #define TARGET_WAITKIND_STOPPED 'S'
 #define TARGET_WAITKIND_TRAP    'T'
 #define TARGET_WAITKIND_EXITED  'X'
+
+/*
+ * The version of BDM hardware.
+ */
+#define M68K_BDM_VER_A            (0)
+#define M68K_BDM_VER_B            (1)
+#define M68K_BDM_VER_B_PLUS       (9)
+#define M68K_BDM_VER_C            (2)
+#define M68K_BDM_VER_D            (3)
+#define M68K_BDM_VER_D_PLUS       (12)
 
 /*
  * The type of CPU.
@@ -57,8 +73,9 @@
 #define M68K_BDM_MARCH_CF5235     (4)
 #define M68K_BDM_MARCH_CF5272     (5)
 #define M68K_BDM_MARCH_CF5282     (6)
-#define M68K_BDM_MARCH_CF5307     (7)
-#define M68K_BDM_MARCH_CFV4E      (8)
+#define M68K_BDM_MARCH_CF52223    (7)
+#define M68K_BDM_MARCH_CF5307     (8)
+#define M68K_BDM_MARCH_CFV4E      (9)
 
 /*
  * The CPU labels.
@@ -70,44 +87,9 @@
 #define M68K_BDM_MARCH_CF5235_LABEL    "CF5235"
 #define M68K_BDM_MARCH_CF5272_LABEL    "CF5272"
 #define M68K_BDM_MARCH_CF5282_LABEL    "CF5282"
+#define M68K_BDM_MARCH_CF52223_LABEL   "CF52223"
 #define M68K_BDM_MARCH_CF5307_LABEL    "CF5307"
 #define M68K_BDM_MARCH_CFV4E_LABEL     "CFV4E"
-
-/*
- * The different register names for the processors.
- */
-
-/*
- * Mark a register as a control register using this define.
- */
-#define BDM_REG_CONTROL_REG      (1 << 31)
-#define BDM_REG_CONTROL_REG_MASK (~(1 << 31))
-#define BDM_REG_CTRL(r)          (BDM_REG_CONTROL_REG | (r))
-
-/*
- * Mark a register as a debug register using this define.
- */
-#define BDM_REG_DEBUG_REG      (1 << 30)
-#define BDM_REG_DEBUG_REG_MASK (~(1 << 30))
-#define BDM_REG_DEBUG(r)       (BDM_REG_DEBUG_REG | (r))
-
-/*
- * Mark a register as virtual or not present.
- */
-#define BDM_REG_VIRTUAL_REG      (1 << 29)
-#define BDM_REG_VIRTUAL_REG_MASK (~(1 << 29))
-#define BDM_REG_VIRT(r)          (BDM_REG_VIRTUAL_REG | (r))
-
-#define BDM_REG_MASK \
-  (~(BDM_REG_CONTROL_REG | BDM_REG_DEBUG_REG | BDM_REG_VIRTUAL_REG))
-
-/*
- * Types of registers.
- */
-#define M68K_BDM_REG_TYPE_INT32         (0)
-#define M68K_BDM_REG_TYPE_UINT32        (1)
-#define M68K_BDM_REG_TYPE_VOID_DATA_PTR (2)
-#define M68K_BDM_REG_TYPE_M68881_EXT    (3)
 
 /*
  * The size of the register in bits.
@@ -115,441 +97,87 @@
 static const int m68k_bdm_reg_sizes[4] = { 32, 32, 32, 64 };
 
 /*
- * Hold a mapping from a register number to a register type
- * and device number type. The register number comes from the
- * register name.
- */
-struct m68k_bdm_reg_mapping
-{
-  const char*   name;
-  int           type;
-  int           num;
-  unsigned int  code;
-};
-
-/*
- * The standard 68000.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_68000_reg_map[] = {
-  { "d0",        M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",        M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",        M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",        M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",        M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",        M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",        M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",        M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",        M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",        M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC }
-};
-
-/*
- * The standard CPU32 core.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cpu32_reg_map[] = {
-  { "d0",  M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",  M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",  M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",  M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",  M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",  M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",  M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",  M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",  M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",  M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_VBR },
-  { "pcc", M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_PCC },
-  { "usp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 20, BDM_REG_USP },
-  { "ssp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 21, BDM_REG_SSP },
-  { "sfc", M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_SFC },
-  { "dfc", M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_DFC }
-};
-
-/*
- * The CPU32+ core, ie 68360.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cpu32plus_reg_map[] = {
-  { "d0",    M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",    M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",    M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",    M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",    M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",    M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",    M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",    M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",    M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",    M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",   M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_VBR },
-  { "pcc",   M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_PCC },
-  { "usp",   M68K_BDM_REG_TYPE_VOID_DATA_PTR, 20, BDM_REG_USP },
-  { "ssp",   M68K_BDM_REG_TYPE_VOID_DATA_PTR, 21, BDM_REG_SSP },
-  { "sfc",   M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_SFC },
-  { "dfc",   M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_DFC },
-  { "atemp", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 24, BDM_REG_ATEMP },
-  { "far",   M68K_BDM_REG_TYPE_VOID_DATA_PTR, 25, BDM_REG_FAR },
-  { "mbar",  M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_MBAR }
-};
-
-/*
- * Generic Coldfire Register set, MCF5200e.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cf5200_reg_map[] = {
-  { "d0",     M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",     M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",     M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",     M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",     M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",     M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",     M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",     M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",     M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",     M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
-  { "cacr",   M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
-  { "acr0",   M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
-  { "acr1",   M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
-  { "rambar", M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc04) },
-  { "mbar",   M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0xc0f) },
-  { "csr",    M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_DEBUG (0x0) },
-  { "aatr",   M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_DEBUG (0x6) },
-  { "tdr",    M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_DEBUG (0x7) },
-  { "pbr",    M68K_BDM_REG_TYPE_INT32,         27, BDM_REG_DEBUG (0x8) },
-  { "pbmr",   M68K_BDM_REG_TYPE_INT32,         28, BDM_REG_DEBUG (0x9) },
-  { "abhr",   M68K_BDM_REG_TYPE_INT32,         29, BDM_REG_DEBUG (0xc) },
-  { "ablr",   M68K_BDM_REG_TYPE_INT32,         30, BDM_REG_DEBUG (0xd) },
-  { "dbr",    M68K_BDM_REG_TYPE_INT32,         31, BDM_REG_DEBUG (0xe) },
-  { "dbmr",   M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_DEBUG (0xf) }
-};
-
-/*
- * 5235 Coldfire Register set.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cf5235_reg_map[] = {
-  { "d0",       M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",       M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",       M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",       M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",       M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",       M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",       M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",       M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",       M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",       M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",      M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
-  { "cacr",     M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
-  { "acr0",     M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
-  { "acr1",     M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
-  { "rambar",   M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc05) },
-  { "othera7",  M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0x800) },
-  { "csr",      M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_DEBUG (0x0) },
-  { "xcsr",     M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_DEBUG (0x1) },
-  { "aatr",     M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_DEBUG (0x6) },
-  { "tdr",      M68K_BDM_REG_TYPE_INT32,         27, BDM_REG_DEBUG (0x7) },
-  { "pbr",      M68K_BDM_REG_TYPE_INT32,         28, BDM_REG_DEBUG (0x8) },
-  { "pbmr",     M68K_BDM_REG_TYPE_INT32,         29, BDM_REG_DEBUG (0x9) },
-  { "abhr",     M68K_BDM_REG_TYPE_INT32,         30, BDM_REG_DEBUG (0xc) },
-  { "ablr",     M68K_BDM_REG_TYPE_INT32,         31, BDM_REG_DEBUG (0xd) },
-  { "dbr",      M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_DEBUG (0xe) },
-  { "dbmr",     M68K_BDM_REG_TYPE_INT32,         33, BDM_REG_DEBUG (0xf) },
-  { "macsr",    M68K_BDM_REG_TYPE_INT32,         34, BDM_REG_CTRL (0x804) },
-  { "mask",     M68K_BDM_REG_TYPE_INT32,         35, BDM_REG_CTRL (0x805) },
-  { "acc0",     M68K_BDM_REG_TYPE_INT32,         36, BDM_REG_CTRL (0x806) },
-  { "acc1",     M68K_BDM_REG_TYPE_INT32,         37, BDM_REG_CTRL (0x809) },
-  { "acc2",     M68K_BDM_REG_TYPE_INT32,         38, BDM_REG_CTRL (0x80a) },
-  { "acc3",     M68K_BDM_REG_TYPE_INT32,         39, BDM_REG_CTRL (0x80b) },
-  { "accext01", M68K_BDM_REG_TYPE_INT32,         40, BDM_REG_CTRL (0x807) },
-  { "accext32", M68K_BDM_REG_TYPE_INT32,         41, BDM_REG_CTRL (0x808) }
-};
-
-/*
- * 5272 Coldfire Register set. Has the EMAC.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cf5272_reg_map[] = {
-  { "d0",     M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",     M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",     M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",     M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",     M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",     M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",     M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",     M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",     M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",     M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",     M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",    M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
-  { "cacr",   M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
-  { "acr0",   M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
-  { "acr1",   M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
-  { "rambar", M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc04) },
-  { "mbar",   M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0xc0f) },
-  { "csr",    M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_DEBUG (0x0) },
-  { "aatr",   M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_DEBUG (0x6) },
-  { "tdr",    M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_DEBUG (0x7) },
-  { "pbr",    M68K_BDM_REG_TYPE_INT32,         27, BDM_REG_DEBUG (0x8) },
-  { "pbmr",   M68K_BDM_REG_TYPE_INT32,         28, BDM_REG_DEBUG (0x9) },
-  { "abhr",   M68K_BDM_REG_TYPE_INT32,         29, BDM_REG_DEBUG (0xc) },
-  { "ablr",   M68K_BDM_REG_TYPE_INT32,         30, BDM_REG_DEBUG (0xd) },
-  { "dbr",    M68K_BDM_REG_TYPE_INT32,         31, BDM_REG_DEBUG (0xe) },
-  { "dbmr",   M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_DEBUG (0xf) },
-  { "macsr",  M68K_BDM_REG_TYPE_INT32,         33, BDM_REG_CTRL (0x804) },
-  { "mask",   M68K_BDM_REG_TYPE_INT32,         34, BDM_REG_CTRL (0x805) },
-  { "acc",    M68K_BDM_REG_TYPE_INT32,         35, BDM_REG_CTRL (0x806) }
-};
-
-/*
- * 5282 Coldfire Register set. Has the extended EMAC, no MBAR.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cf5282_reg_map[] = {
-  { "d0",       M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",       M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",       M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",       M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",       M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",       M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",       M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",       M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",       M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",       M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",      M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
-  { "cacr",     M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
-  { "acr0",     M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
-  { "acr1",     M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
-  { "rambar",   M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc05) },
-  { "flashbar", M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0xc04) },
-  { "othera7",  M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_CTRL (0x800) },
-  { "csr",      M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_DEBUG (0x0) },
-  { "aatr",     M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_DEBUG (0x6) },
-  { "tdr",      M68K_BDM_REG_TYPE_INT32,         27, BDM_REG_DEBUG (0x7) },
-  { "pbr",      M68K_BDM_REG_TYPE_INT32,         28, BDM_REG_DEBUG (0x8) },
-  { "pbmr",     M68K_BDM_REG_TYPE_INT32,         29, BDM_REG_DEBUG (0x9) },
-  { "abhr",     M68K_BDM_REG_TYPE_INT32,         30, BDM_REG_DEBUG (0xc) },
-  { "ablr",     M68K_BDM_REG_TYPE_INT32,         31, BDM_REG_DEBUG (0xd) },
-  { "dbr",      M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_DEBUG (0xe) },
-  { "dbmr",     M68K_BDM_REG_TYPE_INT32,         33, BDM_REG_DEBUG (0xf) },
-  { "macsr",    M68K_BDM_REG_TYPE_INT32,         34, BDM_REG_CTRL (0x804) },
-  { "mask",     M68K_BDM_REG_TYPE_INT32,         35, BDM_REG_CTRL (0x805) },
-  { "acc0",     M68K_BDM_REG_TYPE_INT32,         36, BDM_REG_CTRL (0x806) },
-  { "acc1",     M68K_BDM_REG_TYPE_INT32,         37, BDM_REG_CTRL (0x809) },
-  { "acc2",     M68K_BDM_REG_TYPE_INT32,         38, BDM_REG_CTRL (0x80a) },
-  { "acc3",     M68K_BDM_REG_TYPE_INT32,         39, BDM_REG_CTRL (0x80b) },
-  { "accext01", M68K_BDM_REG_TYPE_INT32,         40, BDM_REG_CTRL (0x807) },
-  { "accext32", M68K_BDM_REG_TYPE_INT32,         41, BDM_REG_CTRL (0x808) }
-};
-
-/*
- * 5307 V3 Coldfire Register set
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cf5307_reg_map[] = {
-  { "d0",       M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",       M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",       M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",       M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",       M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",       M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",       M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",       M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",       M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR },
-  { "pc",       M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC },
-  { "vbr",      M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801) },
-  { "cacr",     M68K_BDM_REG_TYPE_INT32,         19, BDM_REG_CTRL (0x002) },
-  { "acr0",     M68K_BDM_REG_TYPE_INT32,         20, BDM_REG_CTRL (0x004) },
-  { "acr1",     M68K_BDM_REG_TYPE_INT32,         21, BDM_REG_CTRL (0x005) },
-  { "rambar",   M68K_BDM_REG_TYPE_INT32,         22, BDM_REG_CTRL (0xc04) },
-  { "mbar",     M68K_BDM_REG_TYPE_INT32,         23, BDM_REG_CTRL (0xc0f) },
-  { "macsr",    M68K_BDM_REG_TYPE_INT32,         24, BDM_REG_CTRL (0x804) },
-  { "mask",     M68K_BDM_REG_TYPE_INT32,         25, BDM_REG_CTRL (0x805) },
-  { "acc",      M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_CTRL (0x806) }
-};
-
-/*
- * V4E Coldfire Register set.
- */
-
-static struct m68k_bdm_reg_mapping m68k_bdm_cfv4e_reg_map[] = {
-  { "d0",        M68K_BDM_REG_TYPE_INT32,         0,  BDM_REG_D0 },
-  { "d1",        M68K_BDM_REG_TYPE_INT32,         1,  BDM_REG_D1 },
-  { "d2",        M68K_BDM_REG_TYPE_INT32,         2,  BDM_REG_D2 },
-  { "d3",        M68K_BDM_REG_TYPE_INT32,         3,  BDM_REG_D3 },
-  { "d4",        M68K_BDM_REG_TYPE_INT32,         4,  BDM_REG_D4 },
-  { "d5",        M68K_BDM_REG_TYPE_INT32,         5,  BDM_REG_D5 },
-  { "d6",        M68K_BDM_REG_TYPE_INT32,         6,  BDM_REG_D6 },
-  { "d7",        M68K_BDM_REG_TYPE_INT32,         7,  BDM_REG_D7 },
-  { "a0",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 8,  BDM_REG_A0 },
-  { "a1",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 9,  BDM_REG_A1 },
-  { "a2",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 10, BDM_REG_A2 },
-  { "a3",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 11, BDM_REG_A3 },
-  { "a4",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 12, BDM_REG_A4 },
-  { "a5",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 13, BDM_REG_A5 },
-  { "fp",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 14, BDM_REG_A6 },
-  { "sp",        M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7 },
-  { "ps",        M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_CTRL (0x80e) },
-  { "pc",        M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_CTRL (0x80f) },
-  { "fp0",       M68K_BDM_REG_TYPE_M68881_EXT,    18, BDM_REG_CTRL (0x810) },
-  { "fp1",       M68K_BDM_REG_TYPE_M68881_EXT,    19, BDM_REG_CTRL (0x812) },
-  { "fp2",       M68K_BDM_REG_TYPE_M68881_EXT,    20, BDM_REG_CTRL (0x814) },
-  { "fp3",       M68K_BDM_REG_TYPE_M68881_EXT,    21, BDM_REG_CTRL (0x816) },
-  { "fp4",       M68K_BDM_REG_TYPE_M68881_EXT,    22, BDM_REG_CTRL (0x818) },
-  { "fp5",       M68K_BDM_REG_TYPE_M68881_EXT,    23, BDM_REG_CTRL (0x81a) },
-  { "fp6",       M68K_BDM_REG_TYPE_M68881_EXT,    24, BDM_REG_CTRL (0x81c) },
-  { "fp7",       M68K_BDM_REG_TYPE_M68881_EXT,    25, BDM_REG_CTRL (0x81e) },
-  { "fpcontrol", M68K_BDM_REG_TYPE_INT32,         26, BDM_REG_CTRL (0x824) },
-  { "fpstatus",  M68K_BDM_REG_TYPE_INT32,         27, BDM_REG_CTRL (0x822) },
-  { "fpiaddr",   M68K_BDM_REG_TYPE_INT32,         28, BDM_REG_CTRL (0x821) },
-  { "vbr",       M68K_BDM_REG_TYPE_VOID_DATA_PTR, 29, BDM_REG_CTRL (0x801) },
-  { "cacr",      M68K_BDM_REG_TYPE_INT32,         30, BDM_REG_CTRL (0x002) },
-  { "asid",      M68K_BDM_REG_TYPE_INT32,         31, BDM_REG_CTRL (0x003) },
-  { "acr0",      M68K_BDM_REG_TYPE_INT32,         32, BDM_REG_CTRL (0x004) },
-  { "acr1",      M68K_BDM_REG_TYPE_INT32,         33, BDM_REG_CTRL (0x005) },
-  { "acr2",      M68K_BDM_REG_TYPE_INT32,         34, BDM_REG_CTRL (0x006) },
-  { "acr3",      M68K_BDM_REG_TYPE_INT32,         35, BDM_REG_CTRL (0x007) },
-  { "mmubar",    M68K_BDM_REG_TYPE_INT32,         36, BDM_REG_CTRL (0x008) },
-  { "mbar",      M68K_BDM_REG_TYPE_INT32,         37, BDM_REG_CTRL (0xc0f) },
-  { "rambar0",   M68K_BDM_REG_TYPE_INT32,         38, BDM_REG_CTRL (0xc04) },
-  { "rambar1",   M68K_BDM_REG_TYPE_INT32,         39, BDM_REG_CTRL (0xc05) },
-  { "csr",       M68K_BDM_REG_TYPE_INT32,         40, BDM_REG_DEBUG (0x0) },
-  { "aatr",      M68K_BDM_REG_TYPE_INT32,         41, BDM_REG_DEBUG (0x6) },
-  { "tdr",       M68K_BDM_REG_TYPE_INT32,         42, BDM_REG_DEBUG (0x7) },
-  { "pbr",       M68K_BDM_REG_TYPE_INT32,         43, BDM_REG_DEBUG (0x8) },
-  { "pbmr",      M68K_BDM_REG_TYPE_INT32,         44, BDM_REG_DEBUG (0x9) },
-  { "abhr",      M68K_BDM_REG_TYPE_INT32,         45, BDM_REG_DEBUG (0xc) },
-  { "ablr",      M68K_BDM_REG_TYPE_INT32,         46, BDM_REG_DEBUG (0xd) },
-  { "dbr",       M68K_BDM_REG_TYPE_INT32,         47, BDM_REG_DEBUG (0xe) },
-  { "dbmr",      M68K_BDM_REG_TYPE_INT32,         48, BDM_REG_DEBUG (0xf) },
-  { "macsr",     M68K_BDM_REG_TYPE_INT32,         49, BDM_REG_CTRL (0x804) },
-  { "mask",      M68K_BDM_REG_TYPE_INT32,         50, BDM_REG_CTRL (0x805) },
-  { "acc0",      M68K_BDM_REG_TYPE_INT32,         51, BDM_REG_CTRL (0x806) },
-  { "acc1",      M68K_BDM_REG_TYPE_INT32,         52, BDM_REG_CTRL (0x809) },
-  { "acc2",      M68K_BDM_REG_TYPE_INT32,         53, BDM_REG_CTRL (0x80a) },
-  { "acc3",      M68K_BDM_REG_TYPE_INT32,         54, BDM_REG_CTRL (0x80b) },
-  { "accext01",  M68K_BDM_REG_TYPE_INT32,         55, BDM_REG_CTRL (0x807) },
-  { "accext32",  M68K_BDM_REG_TYPE_INT32,         56, BDM_REG_CTRL (0x808) }
-};
-
-/*
  * The array of registers for each support processor.
  */
 struct m68k_bdm_registers {
-  const char const*            xml_name;
-  struct m68k_bdm_reg_mapping* map;
-  int                          num_regs;
+  const char const*                  xml_name;
+  const struct m68k_bdm_reg_mapping* map;
+  const int*                         num_regs;
+  int                                watchpoints;
+  int                                breakpoints;
 };
 
 /*
  * The number of registers.
  */
-#define M68K_BDM_REG_NUMBER(_m) (sizeof (_m) / sizeof (struct m68k_bdm_reg_mapping))
-
-/*
- * The number of registers.
- */
-#define M68K_BDM_NUM_REGS_BDM (m68k_bdm_regs->num_regs)
+#define M68K_BDM_NUM_REGS_BDM (*m68k_bdm_regs->num_regs)
 
 /*
  * Get a BDM register.
  */
-#define M68K_BDM_REG_XML()            (m68k_bdm_regs->xml_name)
-#define M68K_BDM_REG_NAME_INDEXED(_r) (m68k_bdm_regs->map[_r].name)
-#define M68K_BDM_REG_TYPE_INDEXED(_r) (m68k_bdm_regs->map[_r].type)
-#define M68K_BDM_REG_NUM_INDEXED(_r)  (m68k_bdm_regs->map[_r].num)
-#define M68K_BDM_REG_CODE_INDEXED(_r) (m68k_bdm_regs->map[_r].code)
-#define M68K_BDM_REG_SIZE_INDEXED(_r) (m68k_bdm_reg_sizes[M68K_BDM_REG_TYPE_INDEXED (_r)])
-#define M68K_BDM_REG_NAME(_r)         M68K_BDM_REG_NAME_INDEXED(m68k_bdm_register_index (_r))
-#define M68K_BDM_REG_TYPE(_r)         M68K_BDM_REG_TYPE_INDEXED(m68k_bdm_register_index (_r))
-#define M68K_BDM_REG_NUM(_r)          M68K_BDM_REG_NUM_INDEXED(m68k_bdm_register_index (_r))
-#define M68K_BDM_REG_CODE(_r)         M68K_BDM_REG_CODE_INDEXED(m68k_bdm_register_index (_r))
-#define M68K_BDM_REG_SIZE(_r)         M68K_BDM_REG_SIZE_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_XML()             (m68k_bdm_regs->xml_name)
+#define M68K_BDM_REG_NAME_INDEXED(_r)  (m68k_bdm_regs->map[_r].name)
+#define M68K_BDM_REG_TYPE_INDEXED(_r)  (m68k_bdm_regs->map[_r].type)
+#define M68K_BDM_REG_NUM_INDEXED(_r)   (m68k_bdm_regs->map[_r].num)
+#define M68K_BDM_REG_CODE_INDEXED(_r)  (m68k_bdm_regs->map[_r].code)
+#define M68K_BDM_REG_FLAGS_INDEXED(_r) (m68k_bdm_regs->map[_r].flags)
+#define M68K_BDM_REG_SIZE_INDEXED(_r)  (m68k_bdm_reg_sizes[M68K_BDM_REG_TYPE_INDEXED (_r)])
+#define M68K_BDM_REG_NAME(_r)          M68K_BDM_REG_NAME_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_TYPE(_r)          M68K_BDM_REG_TYPE_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_NUM(_r)           M68K_BDM_REG_NUM_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_CODE(_r)          M68K_BDM_REG_CODE_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_FLAGS(_r)         M68K_BDM_REG_FLAGS_INDEXED(m68k_bdm_register_index (_r))
+#define M68K_BDM_REG_SIZE(_r)          M68K_BDM_REG_SIZE_INDEXED(m68k_bdm_register_index (_r))
 
+/*
+ * The supported registers maps.
+ */
 
-struct m68k_bdm_registers m68k_bdm_reg_map[] = {
-  { "m68k-core.xml",
-    m68k_bdm_68000_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_68000_reg_map) },
-  { "m68k-cpu32.xml",
-    m68k_bdm_cpu32_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cpu32_reg_map) },
-  { "m68k-cpu32plus.xml",
-    m68k_bdm_cpu32plus_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cpu32plus_reg_map) },
-  { "m68k-cf5200.xml",
-    m68k_bdm_cf5200_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5200_reg_map) },
-  { "m68k-cf5235.xml",
-    m68k_bdm_cf5235_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5235_reg_map) },
-  { "m68k-cf5272.xml",
-    m68k_bdm_cf5272_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5272_reg_map) },
-  { "m68k-cf5282.xml",
-    m68k_bdm_cf5282_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5282_reg_map) },
-  { "m68k-cf5307.xml",
-    m68k_bdm_cf5307_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cf5307_reg_map) },
-  { "m68k-cfv4e.xml",
-    m68k_bdm_cfv4e_reg_map, M68K_BDM_REG_NUMBER (m68k_bdm_cfv4e_reg_map) }
+extern const struct m68k_bdm_reg_mapping m68k_bdm_68000_reg_map[];
+extern const int m68k_bdm_68000_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cpu32_reg_map[];
+extern const int m68k_bdm_cpu32_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cpu32plus_reg_map[];
+extern const int m68k_bdm_cpu32plus_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5200_reg_map[];
+extern const int m68k_bdm_cf5200_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf52223_reg_map[];
+extern const int m68k_bdm_cf52223_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5235_reg_map[];
+extern const int m68k_bdm_cf5235_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5272_reg_map[];
+extern const int m68k_bdm_cf5272_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5282_reg_map[];
+extern const int m68k_bdm_cf5282_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5307_reg_map[];
+extern const int m68k_bdm_cf5307_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cfv4e_reg_map[];
+extern const int m68k_bdm_cfv4e_reg_map_size;
+
+/*
+ * Must match the type of CPU index at the start of this file.
+ */
+const struct m68k_bdm_registers m68k_bdm_reg_map[] = {
+  /* 0 */ { "m68k-core.xml",
+    m68k_bdm_68000_reg_map, &m68k_bdm_68000_reg_map_size, 0, 0 },
+  /* 1 */ { "m68k-cpu32.xml",
+    m68k_bdm_cpu32_reg_map, &m68k_bdm_cpu32_reg_map_size, 0, 0 },
+  /* 2 */ { "m68k-cpu32plus.xml",
+    m68k_bdm_cpu32plus_reg_map, &m68k_bdm_cpu32plus_reg_map_size, 0, 0 },
+  /* 3 */ { "m68k-cf5200.xml",
+    m68k_bdm_cf5200_reg_map, &m68k_bdm_cf5200_reg_map_size, 1, 1 },
+  /* 4 */ { "m68k-cf5235.xml",
+    m68k_bdm_cf5235_reg_map, &m68k_bdm_cf5235_reg_map_size, 1, 1 },
+  /* 5 */ { "m68k-cf5272.xml",
+    m68k_bdm_cf5272_reg_map, &m68k_bdm_cf5272_reg_map_size, 1, 1 },
+  /* 6 */ { "m68k-cf5282.xml",
+    m68k_bdm_cf5282_reg_map, &m68k_bdm_cf5282_reg_map_size, 1, 1 },
+  /* 7 */ { "m68k-cf52223.xml",
+    m68k_bdm_cf52223_reg_map, &m68k_bdm_cf52223_reg_map_size, 1, 4 },
+  /* 8 */ { "m68k-cf5307.xml",
+    m68k_bdm_cf5307_reg_map, &m68k_bdm_cf5307_reg_map_size, 1, 1 },
+  /* 9 */ { "m68k-cfv4e.xml",
+    m68k_bdm_cfv4e_reg_map, &m68k_bdm_cfv4e_reg_map_size, 2, 4 }
 };
 
 const char *m68k_bdm_expedite_regs[] = { "sp", "fp", "pc", 0 };
@@ -561,7 +189,7 @@ static char*       m68k_bdm_dev_name;
 static int         m68k_bdm_cpu_family;
 static int         m68k_bdm_cpu_type = M68K_BDM_MARCH_68000;
 static const char* m68k_bdm_cpu_label = M68K_BDM_MARCH_68000_LABEL;
-static struct m68k_bdm_registers *m68k_bdm_regs = &m68k_bdm_reg_map[M68K_BDM_MARCH_68000];
+static const struct m68k_bdm_registers *m68k_bdm_regs = &m68k_bdm_reg_map[M68K_BDM_MARCH_68000];
 
 static int m68k_bdm_kill_on_exit;
 
@@ -621,6 +249,11 @@ static unsigned int   m68k_bdm_breakpoint_size = 2;
 static int m68k_bdm_use_error;
 
 /*
+ * Treat all breakpoints as hardware breakpoints.
+ */
+static int m68k_bdm_breakpoints_hard;
+
+/*
  * Display error message and jump back to main input loop
  */
 static void
@@ -639,10 +272,11 @@ static void
 m68k_bdm_help (void)
 {
   printf_filtered ("%s\n" \
-              "%s -vVhDd -t <time> <device>\n" \
+              "%s -vVhBDd -t <time> <device>\n" \
               "\t-v\tVerbose. More than one the more verbose.\n" \
               "\t-V\tVersion.\n" \
               "\t-h\tThis help.\n" \
+              "\t-B\tTreat all breakpoints as hardware breakpoints. Useful for flash.\n" \
               "\t-D\tDriver debug level. More than one for more debug.\n" \
               "\t-d\tBDM Library debug level. More than one for more debug.\n" \
               "\t-t time\tDelay timing for the parallel ports.\n" \
@@ -667,6 +301,22 @@ m68k_bdm_register_index (int regno)
     if (M68K_BDM_REG_NUM_INDEXED (index) == regno)
       return index;
   fatal ("m68k-bdm: no register found: %d", regno);
+}
+
+static int
+m68k_bdm_register_index_by_name (const char* name)
+{
+  int index;
+  for (index = 0; index < M68K_BDM_NUM_REGS_BDM; index++)
+    if (M68K_BDM_STR_IS (name, M68K_BDM_REG_NAME_INDEXED (index)))
+      return index;
+  fatal ("m68k-bdm: no register found: %s", name);
+}
+
+static int
+m68k_bdm_register_by_name (const char* name)
+{
+  return M68K_BDM_REG_CODE_INDEXED (m68k_bdm_register_index_by_name (name));
 }
 
 static int
@@ -700,6 +350,7 @@ m68k_bdm_init_registers (void)
     regs[reg].name = M68K_BDM_REG_NAME (reg);
     regs[reg].offset = m68k_bdm_register_offset (reg);
     regs[reg].size = M68K_BDM_REG_SIZE (reg);
+    regs[reg].flags = M68K_BDM_REG_FLAGS (reg);
   }
 
   if (m68k_bdm_debug_level)
@@ -843,10 +494,14 @@ struct m68k_bdm_break  {
   unsigned char code[M68K_BDM_BREAKPOINT_SIZE_MAX];
 };
 
-#define M68K_BDM_WATCHPOINT_MAX 1
-
-static struct m68k_bdm_watch m68k_bdm_watchpoints[M68K_BDM_WATCHPOINT_MAX];
-static int m68k_bdm_watchpoint_count;
+/*
+ * We can have a variable number of hardware watch and break
+ * points.
+ */
+static struct m68k_bdm_watch* m68k_bdm_hwatchpoints;
+static int m68k_bdm_hbreakpoint_max;
+static struct m68k_bdm_watch* m68k_bdm_hbreakpoints;
+static int m68k_bdm_hwatchpoint_max;
 static int m68k_bdm_hit_watchpoint;
 
 /*
@@ -860,35 +515,133 @@ static int m68k_bdm_num_breakpoints;
 static int
 m68k_bdm_init_watchpoints(void)
 {
+  /*
+   * Return 0 if not supported as an error will abort this program.
+   */
   if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+    return 0;
+
+  m68k_bdm_hwatchpoint_max = m68k_bdm_reg_map[m68k_bdm_cpu_type].watchpoints;
+  m68k_bdm_hbreakpoint_max = m68k_bdm_reg_map[m68k_bdm_cpu_type].breakpoints;
+  
+  /*
+   * Nothing defined is an error for a Coldfire.
+   */
+  if ((m68k_bdm_hwatchpoint_max == 0) && (m68k_bdm_hbreakpoint_max == 0))
     return -1;
-  m68k_bdm_watchpoint_count = 0;
-  if (bdmWriteSystemRegister (BDM_REG_TDR, TDR_TRC_HALT) < 0)
-  {
+
+  if (bdmWriteSystemRegister (BDM_REG_TDR, TDR_TRC_HALT) < 0) {
     m68k_bdm_report_error ();
     return -1;
   }
+
+  m68k_bdm_hwatchpoints = calloc (m68k_bdm_hwatchpoint_max,
+                                 sizeof (struct m68k_bdm_watch));
+
+  if (!m68k_bdm_hwatchpoints)
+    return -1;
+  
+  m68k_bdm_hbreakpoints = calloc (m68k_bdm_hbreakpoint_max,
+                                  sizeof (struct m68k_bdm_watch));
+
+  if (!m68k_bdm_hbreakpoints) {
+    free (m68k_bdm_hwatchpoints);
+    return -1;
+  }
+  
   return 0;
 }
 
 static int
-m68k_bdm_check_watchpoint (char type, CORE_ADDR addr, int len)
+m68k_bdm_get_pbr_register (int index)
+{
+  char pbr[6];
+
+  if (index == 0)
+    strcpy (pbr, "pbr");
+  else
+    sprintf (pbr, "pbr%d", index);
+
+  return m68k_bdm_register_by_name (pbr);
+}
+  
+static int
+m68k_bdm_get_ablr_register (int index)
+{
+  char ablr[6];
+
+  if (index == 0)
+    strcpy (ablr, "ablr");
+  else
+    sprintf (ablr, "ablr%d", index);
+
+  return m68k_bdm_register_by_name (ablr);
+}
+  
+static int
+m68k_bdm_get_abhr_register (int index)
+{
+  char abhr[6];
+
+  if (index == 0)
+    strcpy (abhr, "abhr");
+  else
+    sprintf (abhr, "abhr%d", index);
+
+  return m68k_bdm_register_by_name (abhr);
+}
+  
+static int
+m68k_bdm_find_hbreakpoint (char type, CORE_ADDR addr, int len)
 {
   int i;
-
-  for (i = 0; i < m68k_bdm_watchpoint_count; i++) {
-    if (m68k_bdm_watchpoints[i].type == type &&
-        m68k_bdm_watchpoints[i].addr == addr &&
-        m68k_bdm_watchpoints[i].len == len)  {
-      for (; i < (M68K_BDM_WATCHPOINT_MAX - 1); i++) {
-        m68k_bdm_watchpoints[i] = m68k_bdm_watchpoints[i + 1];
-      }
-      m68k_bdm_watchpoint_count--;
-      return 1;
+  for (i = 0; i < m68k_bdm_hbreakpoint_max; i++) {
+    if (m68k_bdm_hbreakpoints[i].type == type &&
+        m68k_bdm_hbreakpoints[i].addr == addr &&
+        m68k_bdm_hbreakpoints[i].len == len)  {
+      return i;
     }
   }
-  return 0;
+  return -1;
 }
+
+static int
+m68k_bdm_find_hwatchpoint (char type, CORE_ADDR addr, int len)
+{
+  int i;
+  for (i = 0; i < m68k_bdm_hwatchpoint_max; i++) {
+    if (m68k_bdm_hwatchpoints[i].type == type &&
+        m68k_bdm_hwatchpoints[i].addr == addr &&
+        m68k_bdm_hwatchpoints[i].len == len)  {
+      return i;
+    }
+  }
+  return -1;
+}
+
+static int
+m68k_bdm_hbreakpoint_active ()
+{
+  int i;
+  int c;
+  for (c = 0, i = 0; i < m68k_bdm_hbreakpoint_max; i++)
+    if (m68k_bdm_hbreakpoints[i].len)
+      c++;
+  return c;
+}
+
+#if NOTUSED
+static int
+m68k_bdm_hwatchpoint_active ()
+{
+  int i;
+  int c;
+  for (c = 0, i = 0; i < m68k_bdm_hwatchpoint_max; i++)
+    if (m68k_bdm_hwatchpoints[i].len)
+      c++;
+  return c;
+}
+#endif
 
 static void
 m68k_bdm_grow_breakpoints (int count)
@@ -911,8 +664,10 @@ static int
 m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
 {
   unsigned long tdr;
+  int           pbr;
+  int           hb;
 
-  if (type == M68K_BDM_WP_TYPE_BREAK) {
+  if (!m68k_bdm_breakpoints_hard && (type == M68K_BDM_WP_TYPE_BREAK)) {
     int next_free = -1;
 
     if (len != m68k_bdm_breakpoint_size) {
@@ -971,31 +726,54 @@ m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
    * Hardware breakpoints.
    */
   
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)  {
+  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
     return 1;
-  }
 
-  if (m68k_bdm_watchpoint_count < M68K_BDM_WATCHPOINT_MAX)  {
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count].type = M68K_BDM_WP_TYPE_HBREAK;
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count].addr = addr;
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count++].len = 2;
+  hb = m68k_bdm_find_hbreakpoint (M68K_BDM_WP_TYPE_HBREAK, addr, 2);
+  
+  if (hb >= 0)
+    return 0;
 
-    if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
-      m68k_bdm_report_error ();
-    tdr = ((tdr & ~TDR_L1_ALL) | (TDR_L1_EBL | TDR_L1_EPC));
-    if (bdmWriteSystemRegister (BDM_REG_PBR, addr) < 0)
-      m68k_bdm_report_error ();
-    if (bdmWriteSystemRegister (BDM_REG_PBMR, 0) < 0)
-      m68k_bdm_report_error ();
-    if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
-      m68k_bdm_report_error ();
-    if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: insert hbreakpoint:%d: @0x%08lx\n",
-                       m68k_bdm_watchpoint_count, (unsigned long) addr);
-  }
-  else  {
+  for (hb = 0; hb < m68k_bdm_hbreakpoint_max; hb++)
+    if (!m68k_bdm_hbreakpoints[hb].len)
+      break;
+
+  if (hb == m68k_bdm_hbreakpoint_max)
     return -1;
-  }
+    
+  m68k_bdm_hbreakpoints[hb].type = M68K_BDM_WP_TYPE_HBREAK;
+  m68k_bdm_hbreakpoints[hb].addr = addr;
+  m68k_bdm_hbreakpoints[hb].len = 2;
+
+  if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
+    m68k_bdm_report_error ();
+    
+  tdr |= TDR_L1_EBL | TDR_L1_EPC;
+
+  /*
+   * If the BDM version is C then each PBR register has a
+   * valid bit (bit 0). If not the first PBR is controlled
+   * by the TDR bits and any more if they exist have valid
+   * bits.
+   */
+  
+  if ((m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) || (hb > 0))
+    addr |= 1;
+
+  pbr = m68k_bdm_get_pbr_register (hb);
+
+  if (bdmWriteDebugRegister (pbr, addr) < 0)
+    m68k_bdm_report_error ();
+    
+  if (bdmWriteSystemRegister (BDM_REG_PBMR, 0) < 0)
+    m68k_bdm_report_error ();
+  if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
+    m68k_bdm_report_error ();
+    
+  if (m68k_bdm_debug_level)
+    printf_filtered ("m68k-bdm: insert hbreakpoint:%d: @0x%08lx\n",
+                     hb, (unsigned long) addr);
+  
   return 0;
 }
 
@@ -1003,8 +781,10 @@ static int
 m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
 {
   unsigned long tdr;
-
-  if (type == M68K_BDM_WP_TYPE_BREAK) {
+  int           pbr;
+  int           hb;
+  
+  if (!m68k_bdm_breakpoints_hard && (type == M68K_BDM_WP_TYPE_BREAK)) {
     int bp;
     for (bp = 0; bp < m68k_bdm_num_breakpoints; bp++) {
       if (m68k_bdm_breakpoints[bp].len) {
@@ -1034,22 +814,67 @@ m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
   if (m68k_bdm_cpu_family != BDM_COLDFIRE)
     return 1;
 
-  if (m68k_bdm_check_watchpoint (M68K_BDM_WP_TYPE_HBREAK, addr, 2)) {
-    if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
-      m68k_bdm_report_error ();
-    tdr &= ~TDR_L1_EPC;
-    if ((tdr & TDR_L1_ALL) == 0) {
-      tdr &= ~TDR_L1_EBL;
-    }
-    if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
-      m68k_bdm_report_error ();
-    if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: remove breakpoint:%d: @0x%08lx\n",
-                       m68k_bdm_watchpoint_count, (unsigned long) addr);
-  }
-  else  {
+  hb = m68k_bdm_find_hbreakpoint (M68K_BDM_WP_TYPE_HBREAK, addr, 2);
+  
+  if (hb < 0)
     return -1;
+
+  if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
+    m68k_bdm_report_error ();
+
+  /*
+   * If the BDM version is not C and there is more than one PBR
+   * register then we need to move the higher PBR registers down
+   * from PBR registers with the valid bit to PBR(0) or turn
+   * off the trigger in the TDR register.
+   */
+
+  pbr = m68k_bdm_get_pbr_register (hb);
+
+  if ((hb == 0) &&
+      (m68k_bdm_cf_debug_ver != M68K_BDM_VER_C) &&
+      (m68k_bdm_hbreakpoint_max > 1)) {
+    /*
+     * See if any other breakpoints are set. If one is move to
+     * slot 0.
+     */
+    int bp;
+    for (bp = 1; bp < m68k_bdm_hbreakpoint_max; bp++) {
+      if (m68k_bdm_hbreakpoints[bp].len) {
+        if (bdmWriteDebugRegister (pbr, m68k_bdm_hbreakpoints[bp].addr) < 0)
+          m68k_bdm_report_error ();
+        pbr = m68k_bdm_get_pbr_register (bp);
+        m68k_bdm_hbreakpoints[0] = m68k_bdm_hbreakpoints[bp];
+        m68k_bdm_hbreakpoints[bp].len = 0;
+        break;
+      }
+    }
+
+    if (bp == m68k_bdm_hbreakpoint_max)
+       m68k_bdm_hbreakpoints[hb].len = 0;
   }
+  else
+    m68k_bdm_hbreakpoints[hb].len = 0;
+  
+  /*
+   * Assume all PBR registers have a valid bit.
+   */
+  if (bdmWriteDebugRegister (pbr, 0) < 0)
+    m68k_bdm_report_error ();
+
+  if (!m68k_bdm_hbreakpoint_active ())
+    tdr &= ~TDR_L1_EPC;
+
+  if ((tdr & TDR_L1_ALL) == 0)
+    tdr &= ~TDR_L1_EBL;
+  
+  if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
+    m68k_bdm_report_error ();
+
+  if (m68k_bdm_debug_level)
+    printf_filtered ("m68k-bdm: remove hbreakpoint:%d: @0x%08lx\n",
+                     hb, (unsigned long) addr);
+  
   return 0;
 }
 
@@ -1060,86 +885,126 @@ m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
 static int
 m68k_bdm_insert_watchpoint (char type, CORE_ADDR addr, int len)
 {
-  unsigned long tdr;
+  int           tdr;
+  unsigned long tdr_value;
+  int           ablr;
+  int           abhr;
+  int           hw;
 
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE) {
+  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
     return 1;
-  }
 
-  if (m68k_bdm_watchpoint_count < M68K_BDM_WATCHPOINT_MAX) {
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count].type = type;
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count].addr = addr;
-    m68k_bdm_watchpoints[m68k_bdm_watchpoint_count++].len = len;
+  hw = m68k_bdm_find_hwatchpoint (type, addr, len);
+  
+  if (hw >= 0)
+    return 0;
 
-    if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
-      m68k_bdm_report_error ();
-    tdr = ((tdr & ~TDR_L1_ALL) | (TDR_L1_EBL|TDR_L1_EAR));
-    if (bdmWriteSystemRegister (BDM_REG_ABLR, addr) < 0)
-      m68k_bdm_report_error ();
-    if (bdmWriteSystemRegister (BDM_REG_ABHR, addr+len-1) < 0)
-      m68k_bdm_report_error ();
+  for (hw = 0; hw < m68k_bdm_hwatchpoint_max; hw++)
+    if (!m68k_bdm_hwatchpoints[hw].len)
+      break;
+
+  if (hw == m68k_bdm_hwatchpoint_max)
+    return -1;
     
-    if (type == M68K_BDM_WP_TYPE_READ) {
-      if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READONLY) < 0)
-        m68k_bdm_report_error ();
-      if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert read watchpoint:%d: @0x%08lx-0x%08lx\n",
-                         m68k_bdm_watchpoint_count,
-                         (unsigned long) addr, (unsigned long) addr + len - 1);
-    }
-    else if (type == M68K_BDM_WP_TYPE_WRITE) {
-      if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_WRITEONLY) < 0)
-        m68k_bdm_report_error ();
-      if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert write watchpoint:%d @0x%08lx-0x%08lx\n",
-                         m68k_bdm_watchpoint_count,
-                         (long unsigned int) addr, (unsigned long) addr + len - 1);
-    }
-    else {
-      if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READWRITE) < 0)
-        m68k_bdm_report_error ();
-      if (m68k_bdm_debug_level)
-        printf_filtered ("m68k-bdm: insert access watchpoint:%d @0x%08lx-0x%08lx\n",
-                         m68k_bdm_watchpoint_count,
-                         (unsigned long) addr, (unsigned long) addr + len - 1);
-    }
-    if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
+  m68k_bdm_hwatchpoints[hw].type = type;
+  m68k_bdm_hwatchpoints[hw].addr = addr;
+  m68k_bdm_hwatchpoints[hw].len = len;
+
+  /*
+   * If the BDM version is C then we have 2 TDR registers
+   */
+  if ((m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) && (hw > 0))
+    tdr = m68k_bdm_register_by_name ("xtdr");
+  else
+    tdr = m68k_bdm_register_by_name ("tdr");
+  
+  if (bdmReadDebugRegister (tdr, &tdr_value) < 0)
+    m68k_bdm_report_error ();
+
+  tdr_value |= TDR_L1_EBL | TDR_L1_EAR;
+
+  ablr = m68k_bdm_get_ablr_register (hw);
+  abhr = m68k_bdm_get_abhr_register (hw);
+  
+  if (bdmWriteDebugRegister (ablr, addr) < 0)
+    m68k_bdm_report_error ();
+  if (bdmWriteDebugRegister (abhr, addr + len - 1) < 0)
+    m68k_bdm_report_error ();
+    
+  if (type == M68K_BDM_WP_TYPE_READ) {
+    if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READONLY) < 0)
       m68k_bdm_report_error ();
+    if (m68k_bdm_debug_level)
+      printf_filtered ("m68k-bdm: insert read hwatchpoint:%d: @0x%08lx-0x%08lx\n",
+                       hw,
+                       (unsigned long) addr, (unsigned long) addr + len - 1);
+  }
+  else if (type == M68K_BDM_WP_TYPE_WRITE) {
+    if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_WRITEONLY) < 0)
+      m68k_bdm_report_error ();
+    if (m68k_bdm_debug_level)
+      printf_filtered ("m68k-bdm: insert write hwatchpoint:%d @0x%08lx-0x%08lx\n",
+                       hw,
+                       (long unsigned int) addr, (unsigned long) addr + len - 1);
   }
   else {
-    return -1;
+    if (bdmWriteSystemRegister (BDM_REG_AATR, AATR_READWRITE) < 0)
+      m68k_bdm_report_error ();
+    if (m68k_bdm_debug_level)
+      printf_filtered ("m68k-bdm: insert access hwatchpoint:%d @0x%08lx-0x%08lx\n",
+                       hw,
+                       (unsigned long) addr, (unsigned long) addr + len - 1);
   }
+
+  if (bdmWriteDebugRegister (tdr, tdr_value) < 0)
+    m68k_bdm_report_error ();
+
   return 0;
 }
 
 static int
 m68k_bdm_remove_watchpoint (char type, CORE_ADDR addr, int len)
 {
-  unsigned long tdr;
-
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE) {
+  int           tdr;
+  unsigned long tdr_value;
+  int           hw;
+  
+  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
     return -1;
-  }
 
-  if (m68k_bdm_check_watchpoint (type, addr, len)) {
-    if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
-      m68k_bdm_report_error ();
-    tdr &= ~TDR_L1_EAR;
-    if ((tdr & TDR_L1_ALL) == 0)  {
-      tdr &= ~TDR_L1_EBL;
-    }
-    if (bdmWriteSystemRegister (BDM_REG_TDR, tdr) < 0)
-      m68k_bdm_report_error ();
-    if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: remove %s watchpoint:%d: @0x%08lx-0x%08lx\n",
-                       (type == M68K_BDM_WP_TYPE_READ) ? "read" :
-                       ((type == M68K_BDM_WP_TYPE_WRITE) ? "write" : "access"),
-                       m68k_bdm_watchpoint_count,
-                       (unsigned long) addr, (unsigned long) addr + len - 1);
-  }
-  else  {
+  hw = m68k_bdm_find_hwatchpoint (type, addr, len);
+
+  if (hw < 0)
     return -1;
-  }
+
+  m68k_bdm_hwatchpoints[hw].len = 0;
+  
+  /*
+   * If the BDM version is C then we have 2 TDR registers
+   */
+  if ((m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) && (hw > 0))
+    tdr = m68k_bdm_register_by_name ("xtdr");
+  else
+    tdr = m68k_bdm_register_by_name ("tdr");
+
+  if (bdmReadDebugRegister (tdr, &tdr_value) < 0)
+    m68k_bdm_report_error ();
+
+  tdr &= ~TDR_L1_EAR;
+
+  if ((tdr & TDR_L1_ALL) == 0)
+    tdr &= ~TDR_L1_EBL;
+
+  if (bdmWriteDebugRegister (tdr, tdr_value) < 0)
+      m68k_bdm_report_error ();
+
+  if (m68k_bdm_debug_level)
+    printf_filtered ("m68k-bdm: remove %s watchpoint:%d: @0x%08lx-0x%08lx\n",
+                     (type == M68K_BDM_WP_TYPE_READ) ? "read" :
+                     ((type == M68K_BDM_WP_TYPE_WRITE) ? "write" : "access"),
+                     hw,
+                     (unsigned long) addr, (unsigned long) addr + len - 1);
+
   return 0;
 }
 
@@ -1536,6 +1401,9 @@ m68k_bdm_create_inferior (char *program, char *argv[])
     if (argv[arg][0] == '-') {
       switch (argv[arg][1])
       {
+        case 'B':
+          m68k_bdm_breakpoints_hard = 1;
+          break;
         case 'D':
           driver_debug_level++;
           break;
@@ -1660,7 +1528,6 @@ m68k_bdm_create_inferior (char *program, char *argv[])
     case BDM_COLDFIRE:
       m68k_bdm_breakpoint_code = m68k_bdm_cf_breakpoint;
       m68k_bdm_breakpoint_size = sizeof m68k_bdm_cf_breakpoint;
-      m68k_bdm_init_watchpoints ();
 
       /*
        * Read the CSR register to determine the debug module
@@ -1675,7 +1542,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
        * an if they can be read read the mbar. If that fails
        * we have a 5282.
        */
-      if (m68k_bdm_cf_debug_ver == 0) {
+      if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_A) {
         unsigned long junk;
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CF5200;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CF5200_LABEL;
@@ -1700,11 +1567,15 @@ m68k_bdm_create_inferior (char *program, char *argv[])
             printf_filtered ("m68k-bdm: detected V2 core\n");
           }
         }
-      } else if (m68k_bdm_cf_debug_ver == 1) {
+      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B_PLUS) {
+        m68k_bdm_cpu_type = M68K_BDM_MARCH_CF52223;
+        m68k_bdm_cpu_label = M68K_BDM_MARCH_CF52223_LABEL;
+        printf_filtered ("m68k-bdm: detected MCF52223 (MCF52235)\n");
+      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B) {
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CF5307;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CF5307_LABEL;
         printf_filtered ("m68k-bdm: detected MCF5307\n");
-      } else if (m68k_bdm_cf_debug_ver == 3) {
+      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) {
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CFV4E;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CFV4E_LABEL;
         printf_filtered ("m68k-bdm: detected V4e core\n");
@@ -1725,11 +1596,15 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   {
     char* cf_type = "5206(e)/5235/5272/5282";
     m68k_bdm_ptid = 0x5200;
-    if (m68k_bdm_cf_debug_ver == 1) {
-      cf_type = "5307/5407(e)";
+    if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B) {
+      cf_type = "5307/5407";
       m68k_bdm_ptid = 0x5300;
     }
-    else if (m68k_bdm_cf_debug_ver == 2) {
+    else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B_PLUS) {
+      cf_type = "52223/52235";
+      m68k_bdm_ptid = 0x52223;
+    }
+    else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) {
       cf_type = "V4e (547x/548x)";
       m68k_bdm_ptid = 0x5400;
     }
@@ -1742,6 +1617,8 @@ m68k_bdm_create_inferior (char *program, char *argv[])
 
   m68k_bdm_init_registers ();
   
+  m68k_bdm_init_watchpoints ();
+
   set_breakpoint_data (m68k_bdm_breakpoint_code, m68k_bdm_breakpoint_size);
 
   add_thread (m68k_bdm_ptid, NULL, m68k_bdm_ptid);
@@ -2033,6 +1910,22 @@ m68k_bdm_fetch_registers (int regno)
      */
     regno--;
     
+    if (M68K_BDM_REG_FLAGS (regno) & REG_NOT_ACCESSABLE) {
+      if (m68k_bdm_debug_level) {
+        printf_filtered ("m68k-bdm: fetch reg:%s(%i) is not accessable\n",
+                         M68K_BDM_REG_NAME (regno), regno);
+      }
+      return;
+    }
+    
+    if (M68K_BDM_REG_FLAGS (regno) & REG_WRITE_ONLY) {
+      if (m68k_bdm_debug_level) {
+        printf_filtered ("m68k-bdm: fetch reg:%s(%i) is write only\n",
+                         M68K_BDM_REG_NAME (regno), regno);
+      }
+      return;
+    }
+    
     if (regno < 16) {
       ret = bdmReadRegister (regno, &lu);
     }
@@ -2092,13 +1985,29 @@ m68k_bdm_store_registers (int regno)
       m68k_bdm_store_registers (regno);
   }
   else {
+    char cbuf[8];
+
     /*
      * Drop down to be from 0..M68K_BDM_NUM_REGS_BDM.
      */
     regno--;
     
-    char cbuf[8];
-
+    if (M68K_BDM_REG_FLAGS (regno) & REG_NOT_ACCESSABLE) {
+      if (m68k_bdm_debug_level) {
+        printf_filtered ("m68k-bdm: store reg:%s(%i) is not accessable\n",
+                         M68K_BDM_REG_NAME (regno), regno);
+      }
+      return;
+    }
+    
+    if (M68K_BDM_REG_FLAGS (regno) & REG_READ_ONLY) {
+      if (m68k_bdm_debug_level) {
+        printf_filtered ("m68k-bdm: store reg:%s(%i) is read only\n",
+                         M68K_BDM_REG_NAME (regno), regno);
+      }
+      return;
+    }
+    
     if (collect_register (regno, &cbuf)) {
       int ret;
 
@@ -2215,9 +2124,6 @@ m68k_bdm_xml (const char *annex)
   return NULL;
 }
 
-#define M68K_BDM_STR_IS(_s) \
-  (strncmp (command, _s, sizeof (_s) - 1) == 0)
-
 static int
 m68k_bdm_parse_reg_value (const char* command,
                           unsigned int* reg,
@@ -2273,29 +2179,29 @@ m68k_bdm_cmd_help (void)
 static int
 m68k_bdm_commands (const char* command, int len)
 {
-  if (M68K_BDM_STR_IS ("bdm-help"))
+  if (M68K_BDM_STR_IS (command, "bdm-help"))
     m68k_bdm_cmd_help ();
-  else if (M68K_BDM_STR_IS ("bdm-debug")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-debug")) {
     m68k_bdm_debug_level = strtoul (command + sizeof ("bdm-debug"), 0, 0);
     if (m68k_bdm_debug_level)
       printf_filtered ("m68k-bdm: set debug level: %d\n",
                        m68k_bdm_debug_level);
   }
-  else if (M68K_BDM_STR_IS ("bdm-lib-debug")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-lib-debug")) {
     int level = strtoul (command + sizeof ("bdm-lib-debug"), 0, 0);
     if (m68k_bdm_debug_level)
       printf_filtered ("m68k-bdm: set BDM lib debug level: %d\n",
                        level);
     bdmSetDebugFlag (level);
   }
-  else if (M68K_BDM_STR_IS ("bdm-driver-debug")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-driver-debug")) {
     int level = strtoul (command + sizeof ("bdm-driver-debug"), 0, 0);
     if (m68k_bdm_debug_level)
       printf_filtered ("m68k-bdm: set driver debug level: %d\n",
                        level);
     bdmSetDriverDebugFlag (level);
   }
-  else if (M68K_BDM_STR_IS ("bdm-ctl-get")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-ctl-get")) {
     unsigned int reg = 0;
     unsigned long value = 0;
     if (!m68k_bdm_parse_reg_value (command, &reg, 0))
@@ -2308,7 +2214,7 @@ m68k_bdm_commands (const char* command, int len)
       monitor_output ("m68k-bdm: control reg: 0x%03x = %ld (0x%0lx)\n",
                       reg, value, value);
   }
-  else if (M68K_BDM_STR_IS ("bdm-ctl-set")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-ctl-set")) {
     unsigned int reg = 0;
     unsigned long value = 0;
     if (!m68k_bdm_parse_reg_value (command, &reg, &value))
@@ -2319,7 +2225,7 @@ m68k_bdm_commands (const char* command, int len)
     if (bdmWriteControlRegister (reg, value) < 0)
       monitor_output ("m68k-bdm: error: %s\n", bdmErrorString ());
   }
-  else if (M68K_BDM_STR_IS ("bdm-dbg-get")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-dbg-get")) {
     unsigned int reg = 0;
     unsigned long value = 0;
     if (!m68k_bdm_parse_reg_value (command, &reg, 0))
@@ -2332,7 +2238,7 @@ m68k_bdm_commands (const char* command, int len)
       monitor_output ("m68k-bdm: debug reg: 0x%03x = %ld (0x%0lx)\n",
                       reg, value, value);
   }
-  else if (M68K_BDM_STR_IS ("bdm-dbg-set")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-dbg-set")) {
     unsigned int reg = 0;
     unsigned long value = 0;
     if (!m68k_bdm_parse_reg_value (command, &reg, &value))
@@ -2343,7 +2249,7 @@ m68k_bdm_commands (const char* command, int len)
     if (bdmWriteDebugRegister (reg, value) < 0)
       monitor_output ("m68k-bdm: error: %s\n", bdmErrorString ());
   }
-  else if (M68K_BDM_STR_IS ("bdm-reset")) {
+  else if (M68K_BDM_STR_IS (command, "bdm-reset")) {
      if (m68k_bdm_debug_level)
         printf_filtered ("m68k-bdm: reset the bdm\n");
      m68k_bdm_reset();

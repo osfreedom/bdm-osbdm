@@ -1,3 +1,28 @@
+2008-05-26  Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-cf5200-regs.c, gdbserver/m68k-cf52223-regs.c,
+	gdbserver/m68k-cf52223.xml, gdbserver/m68k-cf5235-regs.c,
+	gdbserver/m68k-cf5272-regs.c, gdbserver/m68k-cf5282-regs.c,
+	gdbserver/m68k-cf5307-regs.c, gdbserver/m68k-cfv4e-regs.c,
+	gdbserver/m68k-core-regs.c, gdbserver/m68k-cpu32-regs.c,
+	gdbserver/m68k-cpu32plus-regs.c: New. Moved the registers into
+	separate files. Support for the cf52223 (Debug B+) added.
+
+	* driver/bdm-cf-pe.c: The 4ve is a Version C debug module.
+
+	* gdbserver/m68k-cfv4e.xml: Fixed the register map. Matches the
+	V4E better.
+
+	* gdbserver/regcache.c, gdbserver/regdef.h: Add registers flags to
+	control the types of registers that we need to support.
+
+	* gdbserver/Makefile.am: Added new files.
+
+	* gdbserver/m68k-bdm-low.c: Added support for the
+	cf52223. Added support for the register flags. Reworked the
+	hardware breakpoint and hardware watchpoint to support more than
+	one breakpoint.
+
 2008-05-15 Mark Giacobbe <mcgiacobbe@gmail.com>
 
 	* gdbserver/m68k-cf5307.xml: New.
