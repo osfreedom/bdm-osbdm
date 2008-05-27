@@ -1,3 +1,8 @@
+2008-05-27  Matt Riek <matthew.riek@ibiscomputer.com.au>
+
+	* driver/bdm-tblcf.c: Terminate the link returned from
+	readlink with a nul character.
+
 2008-05-26  Chris Johns <cjohns@users.sourceforge.net>
 
 	* gdbserver/m68k-cf5200-regs.c, gdbserver/m68k-cf52223-regs.c,

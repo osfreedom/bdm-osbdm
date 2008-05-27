@@ -975,6 +975,7 @@ usb_bdm_init (const char *device)
   int         devs;
   int         dev;
   char        usb_device[256];
+  ssize_t     dev_size;
 
 #ifdef BDM_VER_MESSAGE
   fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ "\n",
@@ -998,7 +999,15 @@ usb_bdm_init (const char *device)
       return -2;
     }
 
-    readlink (device, usb_device, sizeof (usb_device));
+    dev_size = readlink (device, usb_device, sizeof (usb_device));
+
+    if ((dev_size == -1) || (dev_size >= sizeof (usb_device) - 1))
+    {
+      errno = ENOENT;
+      return -2;
+    }
+    
+    usb_device[dev_size] = '\0';
 
     /*
      * On Linux this is bus/usb/....
