@@ -141,6 +141,33 @@ set_register_cache (struct reg *regs, int n)
   register_bytes = offset / 8;
 }
 
+static int
+register_dirty (int n)
+{
+  struct inferior_regcache_data *regcache = get_regcache (current_inferior, 0);
+  return memcmp (regcache->registers + (reg_defs[n].offset / 8),
+                 regcache->shadow + (reg_defs[n].offset / 8),
+                 register_size (n)) != 0;
+}
+
+static unsigned char *
+register_data (int n, int fetch)
+{
+  unsigned char *registers
+    = get_regcache (current_inferior, fetch)->registers;
+
+  return registers + (reg_defs[n].offset / 8);
+}
+
+static unsigned char *
+register_shadow_data (int n)
+{
+  unsigned char *registers
+    = get_regcache (current_inferior, 0)->shadow;
+
+  return registers + (reg_defs[n].offset / 8);
+}
+
 /* Sending to GDB */
 void
 registers_to_string (char *buf)
@@ -148,11 +175,12 @@ registers_to_string (char *buf)
   unsigned char *registers = get_regcache (current_inferior, 1)->registers;
   int i;
 
-  convert_int_to_ascii (registers, buf, register_bytes);
-
   for (i = 0; i < num_registers; i++)
-    if (reg_defs[i].flags & REG_NON_CACHEABLE)
+    if ((reg_defs[i].flags & REG_NON_CACHEABLE) &&
+        ((reg_defs[i].flags & (REG_NOT_ACCESSABLE | REG_WRITE_ONLY)) == 0))
         fetch_inferior_registers (i);
+
+  convert_int_to_ascii (registers, buf, register_bytes);
 }
 
 /* Received from GDB */
@@ -171,11 +199,13 @@ registers_from_string (char *buf)
         len = register_bytes * 2;
     }
 
-  for (i = 0; i < num_registers; i++)
-    if (reg_defs[i].flags & REG_NON_CACHEABLE)
-        store_inferior_registers (i);
-  
   convert_ascii_to_int (buf, registers, len / 2);  
+
+  for (i = 0; i < num_registers; i++)
+    if (register_dirty (i) &&
+        (reg_defs[i].flags & REG_NON_CACHEABLE) &&
+        ((reg_defs[i].flags & (REG_NOT_ACCESSABLE | REG_READ_ONLY)) == 0))
+        store_inferior_registers (i);
 }
 
 struct reg *
@@ -212,33 +242,6 @@ int
 register_size (int n)
 {
   return reg_defs[n].size / 8;
-}
-
-static unsigned char *
-register_data (int n, int fetch)
-{
-  unsigned char *registers
-    = get_regcache (current_inferior, fetch)->registers;
-
-  return registers + (reg_defs[n].offset / 8);
-}
-
-static unsigned char *
-register_shadow_data (int n)
-{
-  unsigned char *registers
-    = get_regcache (current_inferior, 0)->shadow;
-
-  return registers + (reg_defs[n].offset / 8);
-}
-
-static int
-register_dirty (int n)
-{
-  struct inferior_regcache_data *regcache = get_regcache (current_inferior, 0);
-  return memcmp (regcache->registers + (reg_defs[n].offset / 8),
-                 regcache->shadow + (reg_defs[n].offset / 8),
-                 register_size (n)) != 0;
 }
 
 void

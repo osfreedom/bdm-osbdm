@@ -1893,7 +1893,7 @@ m68k_bdm_fetch_registers (int regno)
 {
   unsigned long lu = 0;
   unsigned long ll = 0;
-  char cbuf[8];
+  unsigned char cbuf[8];
   int ret;
 
   /* ??? Some callers use 0 to mean all registers.  */
@@ -1966,7 +1966,7 @@ m68k_bdm_fetch_registers (int regno)
         printf_filtered ("m68k-bdm: fetch reg:%s(%i) = 0x%08lx\n",
                          M68K_BDM_REG_NAME (regno), regno, lu);
     }
-    supply_register (regno, cbuf);
+    supply_register (regno, (char*) cbuf);
   }
 }
 
@@ -1985,7 +1985,7 @@ m68k_bdm_store_registers (int regno)
       m68k_bdm_store_registers (regno);
   }
   else {
-    char cbuf[8];
+    unsigned char cbuf[8];
 
     /*
      * Drop down to be from 0..M68K_BDM_NUM_REGS_BDM.
@@ -2008,7 +2008,7 @@ m68k_bdm_store_registers (int regno)
       return;
     }
     
-    if (collect_register (regno, &cbuf)) {
+    if (collect_register (regno, (char*) cbuf)) {
       int ret;
 
       unsigned long lu = 0;

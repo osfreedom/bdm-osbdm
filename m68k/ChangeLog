@@ -1,3 +1,12 @@
+2008-05-27  Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c: The cbuf for register supply and
+	collect needs to be unsigned. The collect_register cbuf argument
+	was wrong.
+
+	* gdbserver/regcache.c: Fix the registers_from_string and
+	registers_to_string to handle the data from GDB correctly.
+
 2008-05-27  Matt Riek <matthew.riek@ibiscomputer.com.au>
 
 	* driver/bdm-tblcf.c: Terminate the link returned from
