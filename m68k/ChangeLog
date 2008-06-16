@@ -1,3 +1,8 @@
+2008-06-16  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+
+	* gdbserver/m68k-bdm-low.c: Add a bdm-sleep command to create
+	scripts that can wait for various hardware action to complete.
+
 2008-06-08  Chris Johns <cjohns@users.sourceforge.net>
 
 	* libelf/COPYING.LIB, libelf/ChangeLog, libelf/INSTALL,
@@ -56,7 +61,7 @@
 2008-06-08  Matthew Riek <matthew.riek@ibiscomputer.com.au>
 	
 	* flashlib/flashcfm.c, flashlib/flashcfm.h,
-	flashlib/compile_flashcfm, utils/mcf52235.test:
+	flashlib/compile_flashcfm, utils/mcf52235.test.
 
 2008-05-27  Chris Johns <cjohns@users.sourceforge.net>
 

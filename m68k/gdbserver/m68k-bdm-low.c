@@ -2157,14 +2157,20 @@ m68k_bdm_cmd_help (void)
   monitor_output ("    Set the BDM library debug level.\n");
   monitor_output ("  bdm-driver-debug <level>\n");
   monitor_output ("    Set the BDM driver debug level. This may result in a\n");
-  monitor_output ("    remote BDm server logging to syslog if this is enabled.\n");
+  monitor_output ("    remote BDm server logging to syslog if this is " \
+                  "enabled.\n");
   monitor_output ("  bdm-ctl-get <reg>\n");
-  monitor_output ("    Get the control register where <reg> is a register value\n");
-  monitor_output ("    supported by the target. For example: bdm-ctl-get 0x801\n");
-  monitor_output ("    will return the VBR register for most Coldfire processors.\n");
+  monitor_output ("    Get the control register where <reg> is a register " \
+                  "value\n");
+  monitor_output ("    supported by the target. For example: bdm-ctl-get " \
+                  "0x801\n");
+  monitor_output ("    will return the VBR register for most Coldfire " \
+                  "processors.\n");
   monitor_output ("  bdm-ctl-set <reg <value>>\n");
-  monitor_output ("    Set the control reigster where <reg> is a register value\n");
-  monitor_output ("    supported by the target. For example: bdm-ctl-set 0x801 0\n");
+  monitor_output ("    Set the control reigster where <reg> is a register " \
+                  "value\n");
+  monitor_output ("    supported by the target. For example: bdm-ctl-set " \
+                  "0x801 0\n");
   monitor_output ("  bdm-dbg-get <reg>\n");
   monitor_output ("    Get the debug register where <reg> is a register value\n");
   monitor_output ("    supported by the target. For example: bdm-dbg-get 0x1\n");
@@ -2174,6 +2180,8 @@ m68k_bdm_cmd_help (void)
   monitor_output ("    supported by the target. For example: bdm-dbg-set 0x1 0\n");
   monitor_output ("  bdm-reset\n");
   monitor_output ("    Reset the BDM pod\n");
+  monitor_output ("  bdm-sleep\n");
+  monitor_output ("    Sleep the require number of milliseconds.\n");
 }
 
 static int
@@ -2254,7 +2262,20 @@ m68k_bdm_commands (const char* command, int len)
         printf_filtered ("m68k-bdm: reset the bdm\n");
      m68k_bdm_reset();
   }
-  else {
+  else if (M68K_BDM_STR_IS (command, "bdm-sleep")) {
+    unsigned int msecs = 0;
+    msecs = strtoul (command + sizeof ("bdm-sleep"), 0, 0);
+#if defined (__MINGW32__)
+    Sleep (msecs);
+#else
+    {
+      struct timeval tv;
+      tv.tv_sec = msecs / 1000;
+      tv.tv_usec = (msecs % 1000) * 1000;
+      select (0, NULL, NULL, NULL, &tv);
+    }
+#endif    
+  }  else {
     monitor_output ("Unknown monitor command.\n\n");
     m68k_bdm_cmd_help ();
     return 0;
