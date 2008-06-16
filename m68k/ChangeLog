@@ -1,5 +1,17 @@
 2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
 
+	* packages/.cvsignore, packages/gpl.txt, packages/m68k-bdm.nsi:
+	New.
+
+	* flashlib/elf-utils.h: Add elf_handle_init decl.
+	
+	* utils/Makefile.am: Add warnings flags.
+
+	* bdmabstraction/BDMFlash.h, utils/bdmctrl.c, utils/bdmflash.c:
+	Fix warnings.
+
+2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+
 	* utils/bdmctrl.c: Clean up the load verbose messages.
 
 2008-06-16  Matthew Riek <matthew.riek@ibiscomputer.com.au>

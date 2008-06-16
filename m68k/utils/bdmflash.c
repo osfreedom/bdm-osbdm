@@ -28,6 +28,19 @@
  *
  * HISTORY:
  * $Log: bdmflash.c,v $
+ * Revision 1.3  2008/06/16 12:57:49  cjohns
+ * 2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+ *
+ * 	* packages/.cvsignore, packages/gpl.txt, packages/m68k-bdm.nsi:
+ * 	New.
+ *
+ * 	* flashlib/elf-utils.h: Add elf_handle_init decl.
+ *
+ * 	* utils/Makefile.am: Add warnings flags.
+ *
+ * 	* bdmabstraction/BDMFlash.h, utils/bdmctrl.c, utils/bdmflash.c:
+ * 	Fix warnings.
+ *
  * Revision 1.2  2005/10/24 01:32:21  cjohns
  * Removed warnings when built with gcc 4.x
  *
@@ -244,7 +257,7 @@ Write( int ArgC, char *ArgV[] )
 	  fprintf( stderr, 
 		   "Problem writing flash.\n"
 		   "While at offset 0x%08x attempting to write %lu bytes, error code %d, '%s'.\n",
-		   Offset, 
+		   (unsigned int) Offset, 
 		   (unsigned long) NumRead, 
 		   (int) Error,
 		   FlashErrorDescriptionEnglish[Error] );
@@ -300,7 +313,6 @@ main( int ArgC, char *ArgV[] )
   unsigned int Base;
   unsigned int Chips;
   unsigned int Bytes;
-  unsigned long Offset;
   char *Operation;
   FlashError_t Error;
 

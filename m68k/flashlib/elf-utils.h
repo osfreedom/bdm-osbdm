@@ -53,6 +53,8 @@ typedef int (*elf_section_handler) (elf_handle* handle,
                                     const char* sname, 
                                     GElf_Shdr*  shdr);
 
+void elf_handle_init (elf_handle* handle);
+
 int elf_open (const char* file, elf_handle* handle, elf_output output);
 int elf_close (elf_handle* handle);
 

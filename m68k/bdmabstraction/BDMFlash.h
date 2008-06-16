@@ -31,6 +31,19 @@
  *
  * HISTORY:
  * $Log: BDMFlash.h,v $
+ * Revision 1.2  2008/06/16 12:57:49  cjohns
+ * 2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+ *
+ * 	* packages/.cvsignore, packages/gpl.txt, packages/m68k-bdm.nsi:
+ * 	New.
+ *
+ * 	* flashlib/elf-utils.h: Add elf_handle_init decl.
+ *
+ * 	* utils/Makefile.am: Add warnings flags.
+ *
+ * 	* bdmabstraction/BDMFlash.h, utils/bdmctrl.c, utils/bdmflash.c:
+ * 	Fix warnings.
+ *
  * Revision 1.1  2003/12/29 22:18:49  codewiz
  * Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
  *
@@ -60,6 +73,8 @@
 
 #include <Flash.h>
 #include <stdlib.h> /* size_t */
+
+#include <BDMTargetAddress.h>
 
 /* configure for arrangement of flash */
 FlashError_t

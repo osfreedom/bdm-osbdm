@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.21 2008/06/16 00:56:43 cjohns Exp $
+/* $Id: bdmctrl.c,v 1.22 2008/06/16 12:57:49 cjohns Exp $
  *
  * A utility to control bdm targets.
  *
@@ -71,6 +71,18 @@ static int num_vars=0;
 static int loaded_elf_cnt=0;
 static elf_handle *loaded_elfs=NULL;
 
+static void wait (int msecs)
+{
+#if defined (__MINGW32__)
+  Sleep (msecs);
+#else
+  struct timeval tv;
+  tv.tv_sec = msecs / 1000;
+  tv.tv_usec = (msecs % 1000) * 1000;
+  select (0, NULL, NULL, NULL, &tv);
+#endif    
+}
+
 static void clean_exit (int exit_value)
 {
   int i;
@@ -140,6 +152,7 @@ static char *get_var (const char *name)
   }
 
   fatal ("Variable %s not defined\n", name);
+  return 0; /* remove warning */
 }
 
 /* Duplicate a string with (rudimentary) variable substitution.
@@ -546,7 +559,7 @@ static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
 
     if (!data)
     {
-      printf (" cannot load data for section: %d", sname);
+      printf (" cannot load data for section: %s", sname);
       return 0;
     }
     
@@ -983,9 +996,8 @@ static void cmd_reset (size_t argc, char *argv[])
  */
 static void cmd_wait (size_t argc, char **argv)
 {
-  while (!((bdmStatus ()) & (BDM_TARGETSTOPPED|BDM_TARGETHALT))) {
-    bdm_sleep (1);
-  }
+  while (!((bdmStatus ()) & (BDM_TARGETSTOPPED|BDM_TARGETHALT)))
+    wait (250);
 
   if (verbosity) printf ("OK\n");
 }
@@ -1001,7 +1013,7 @@ static void cmd_time (size_t argc, char **argv)
  */
 static void cmd_sleep (size_t argc, char **argv)
 {
-  bdm_sleep (strtoul (argv[1], NULL, 0));
+  wait (strtoul (argv[1], NULL, 0));
   if (verbosity) printf ("OK\n");
 }
 
@@ -1010,7 +1022,6 @@ static void cmd_sleep (size_t argc, char **argv)
 static void cmd_echo (size_t argc, char **argv)
 {
   int i;
-
   for (i=1; i<argc; i++)
     printf ("%s%s", i>1 ? " " : "", argv[i]);
   printf ("\n");
@@ -1106,8 +1117,7 @@ static void cmd_source (size_t argc, char **argv)
     fatal ("%s: %s: %s\n", progname, argv[1], strerror(errno));
 
   while (fgets (buf, 1020, file)) {
-    unsigned int i, ac;
-    char *p, **av;
+    char *p;
     buf[1020]=0;
     if ((p=strchr(buf, '\n'))) *p=0;
     if ((p=strchr(buf, '#'))) *p=0;
@@ -1389,7 +1399,6 @@ static void help_command (char *progname, char *cmd)
 int main (int argc, char *argv[])
 {
   int opt, need_stdin=1;
-  char *dev;
 
   progname = argv[0];
 

@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.12 2008/06/16 00:01:23 cjohns Exp $
+## $Id: Makefile.am,v 1.13 2008/06/16 12:57:49 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -11,6 +11,8 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../driver \
               -I$(srcdir)/../lib
+
+AM_CFLAGS = -Wall
 
 ##
 ## Only way I know of anding in automake.
