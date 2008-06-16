@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.20 2008/06/16 00:01:23 cjohns Exp $
+/* $Id: bdmctrl.c,v 1.21 2008/06/16 00:56:43 cjohns Exp $
  *
  * A utility to control bdm targets.
  *
@@ -521,18 +521,12 @@ static void check_one_register (char *regname)
 
 static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
 {
-  if (verbosity) {
-    printf (" fl:0x%08x %10s 0x%08lx..0x%08lx (0x%08lx): 0x%08lx  ",
-            shdr->sh_flags, sname, shdr->sh_addr, shdr->sh_addr + shdr->sh_size,
-            shdr->sh_size, shdr->sh_offset);
-    fflush (stdout);
-  }
-
   if ((shdr->sh_type == SHT_PROGBITS) &&
       (shdr->sh_flags & (SHF_WRITE | SHF_ALLOC))) {
     
-    unsigned char rbuf[1*1024];
-    uint32_t      off = 0;
+    unsigned char  rbuf[1*1024];
+    uint32_t       off = 0;
+    unsigned char* data;
     
 #if FIX_THIS_FOR_CPU32
     unsigned long dfc;
@@ -541,7 +535,14 @@ static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
     write_register ("dfc", flags & SEC_CODE ? 6 : 5);
 #endif
 
-    unsigned char* data = elf_get_section_data (elf, sname);
+    if (verbosity) {
+      printf (" fl:%15s 0x%08lx..0x%08lx (0x%08lx): 0x%08lx:    ",
+              sname, shdr->sh_addr, shdr->sh_addr + shdr->sh_size,
+              shdr->sh_size, shdr->sh_offset);
+      fflush (stdout);
+    }
+
+    data = elf_get_section_data (elf, sname);
 
     if (!data)
     {
@@ -588,9 +589,6 @@ static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
 #if FIX_THIS_FOR_CPU32
     write_register ("dfc", dfc);
 #endif
-    
-  } else {
-    if (verbosity) printf ("\b\bSkip\n");
   }
 
   return 1;
@@ -897,7 +895,8 @@ static void cmd_load (size_t argc, char **argv)
 
   write_register ("rpc", elf.ehdr.e_entry);
 
-  if (verbosity) printf ("default entry address: 0x%08lx\n", elf.ehdr.e_entry);
+  if (verbosity) printf ("PC set to default entry address: 0x%08lx\n",
+                         elf.ehdr.e_entry);
 }
 
 /* execute code withhin target

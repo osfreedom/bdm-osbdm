@@ -1,3 +1,7 @@
+2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+
+	* utils/bdmctrl.c: Clean up the load verbose messages.
+
 2008-06-16  Matthew Riek <matthew.riek@ibiscomputer.com.au>
 
 	* gdbserver/m68k-bdm-low.c: Add a bdm-sleep command to create
