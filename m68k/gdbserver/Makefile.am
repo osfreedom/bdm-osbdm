@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.7 2008/05/26 02:50:52 cjohns Exp $
+## $Id: Makefile.am,v 1.8 2008/06/16 00:01:21 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -83,5 +83,5 @@ version.c: Makefile $(srcdir)/version.in
 xml-builtin.c: $(srcdir)/feature_to_c.sh Makefile $(XML_FILES)
 	rm -f xml-builtin.tmp
 	sh $(srcdir)/feature_to_c.sh xml-builtin.tmp $(XML_FILES)
-	sh $(srcdir)/move-if-change xml-builtin.tmp xml-builtin.c
+	mv xml-builtin.tmp xml-builtin.c
 	echo stamp > stamp-xml

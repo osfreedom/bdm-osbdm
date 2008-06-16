@@ -1,34 +1,22 @@
 /*
- * $Id: bdmfilt.h,v 1.3 2007/11/03 05:31:21 cjohns Exp $
+ * $Id: bdmfilt.h,v 1.4 2008/06/16 00:01:21 cjohns Exp $
  */
 
 #ifndef BDMFILT_H
 #define BDMFILT_H
 
 #include <sys/types.h>
-//#include <bfd.h>
-
-/* Windows does not have caddr_t so we add it here. */
-#if defined (__WIN32__) || !defined (__CYGWIN__)
-typedef char* caddr_t;
-#ifndef _BSDTYPES_DEFINED
-typedef unsigned char   u_char;
-typedef unsigned short  u_short;
-typedef unsigned int    u_int;
-typedef unsigned long   u_long;
-#define _BSDTYPES_DEFINED
-#endif
-#endif
+#include <stdint.h>
 
 /* support of filtered write for flash programming */
 
 typedef struct bdmlib_bfilt{
 	struct bdmlib_bfilt *next;
-	caddr_t begin_adr;
-	caddr_t end_adr;
+	uint32_t begin_adr;
+	uint32_t end_adr;
 	int filt_id;
-	u_int flags;
-	int (*wrb_filt)(struct bdmlib_bfilt *, caddr_t , u_int, u_char * );
+	unsigned int flags;
+	int (*wrb_filt)(struct bdmlib_bfilt *, uint32_t , unsigned int, unsigned char * );
 	void *info;
 	void *state;
 }bdmlib_bfilt_t;
@@ -42,7 +30,7 @@ int bdmlib_load_use_lma;	/* use LMA instead of VMA for load */
 bdmlib_bfilt_t * bdmlib_bfilt;
 
 int
-bdmlib_wrb_filt(bdmlib_bfilt_t * bdmlib_bfilt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr);
+bdmlib_wrb_filt(bdmlib_bfilt_t * bdmlib_bfilt, uint32_t in_adr,
+                unsigned int size, unsigned char * bl_ptr);
 
 #endif /* BDMFILT_H */

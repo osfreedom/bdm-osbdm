@@ -1,4 +1,4 @@
-/* $Id: flash29.c,v 1.4 2007/01/17 22:47:39 joewolf Exp $
+/* $Id: flash29.c,v 1.5 2008/06/16 00:01:21 cjohns Exp $
  *
  * Driver for 29Fxxx and 49Fxxx flash chips.
  *
@@ -648,7 +648,7 @@ void init_flash29 (int num)
     register_algorithm (num, driver_magic, sizeof(chiptype_t),
 			download_struct,
 			flash29_search_chip,
-			flash29_erase, flash29_erase_wait, flash29_prog,
+			flash29_erase, NULL, flash29_erase_wait, flash29_prog,
 			prog_entry);
 }
 # endif

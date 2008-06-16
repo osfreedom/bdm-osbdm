@@ -1,4 +1,4 @@
-/* $Id: flash_filter.h,v 1.2 2004/01/15 22:22:24 joewolf Exp $
+/* $Id: flash_filter.h,v 1.3 2008/06/16 00:01:21 cjohns Exp $
  *
  * Header for the flash filtering layer.
  *
@@ -41,6 +41,7 @@ void register_algorithm (
     int (*download_struct) (void *, unsigned long),     /* dnload chip-descr */
     int (*search_chip) (void *, char *, unsigned long),
     void (*erase) (void *, long),
+    int (*blank_chk) (void *, long),
     int (*erase_wait) (void *),
     int (*prog) (void *, unsigned long, unsigned char *, unsigned long),
     char *(*prog_entry)(void)      /* returns the name of the entry function */
@@ -54,9 +55,10 @@ int flash_plugin (int (*prfunc) (const char *format, ...),
 
 /* Register a flash chip on ADR
  */
-int flash_register (char *description, unsigned long adr);
+int flash_register (char *description, unsigned long adr, char *hint_driver);
 
 int flash_erase (unsigned long adr, long sec_adr);
+int flash_blank_chk (unsigned long adr, long sec_adr);
 int flash_erase_wait (unsigned long adr);
 
 unsigned long write_memory (unsigned long adr, unsigned char *data,

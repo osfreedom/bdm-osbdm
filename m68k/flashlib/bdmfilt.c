@@ -7,11 +7,11 @@ int bdmlib_load_use_lma=0;
 bdmlib_bfilt_t * bdmlib_bfilt=NULL;
 
 int
-bdmfilt_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr)
+bdmfilt_wrb_filt(bdmlib_bfilt_t * filt, uint32_t in_adr,
+                 unsigned int size, unsigned char * bl_ptr)
 {
 	int ret, part_ret;
-	u_int part_size;	
+	unsigned int part_size;	
 	if (!size) return 0;
 
 	while (filt) {

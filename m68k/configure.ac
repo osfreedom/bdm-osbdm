@@ -15,6 +15,8 @@ AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_TARGET([])
 AM_INIT_AUTOMAKE([-Wall dist-bzip2 dist-zip])
 
+AC_CONFIG_HEADERS(config.h:config.h.in)
+
 AC_PROG_CC
 AC_PROG_RANLIB
 AC_PROG_INSTALL
@@ -63,48 +65,6 @@ AC_CHECK_TYPES(socklen_t, [], [],
 [#include <sys/types.h>
 #include <sys/socket.h>
 ])
-
-dnl
-dnl libbfd and libiberty are required to build bdmctrl
-dnl
-
-AC_ARG_WITH(libbfd,
- [  --with-libbfd=FILE     path to libbfd.a library to use],
- [ac_libbfd=$withval],
- [ac_libbfd=NONE]
-)
-
-LIBBFD="$ac_libbfd"
-AC_SUBST(LIBBFD)
-
-AC_ARG_WITH(libiberty,
- [  --with-libiberty=FILE  path to libiberty.a library to use ],
- [ac_libiberty=$withval],
- [ac_libiberty=NONE]
-)
-
-LIBIBERTY="$ac_libiberty"
-AC_SUBST(LIBIBERTY)
-
-AC_ARG_WITH(bfd-include-dir,
- [  --with-bfd-include-dir=DIR  include path for correct bfd.h ],
- [ ac_bfd_include_dir=$withval ],
- [ ac_bfd_include_dir=NONE ]
-)
-
-BFD_INCLUDE="-I$ac_bfd_include_dir"
-AC_SUBST(BFD_INCLUDE)
-
-if test "$ac_libbfd" = "NONE" -o "$ac_libiberty" = "NONE" -o "$ac_bfd_include_dir" = "NONE" ; then
-	echo "WARNING: To build bdmctrl and bdmflash, you need to specify the location of target-specific"
-	echo "WARNING: libbfd.a and libiberty.a libraries from the binutils org GDB package."
-	echo "WARNING: "
-	echo "WARNING: Please re-run configure with the following options:"
-	echo "WARNING:   ./configure --with-bfd-include-dir=<dir> --with-libbfd=<libbfd.a> --with-libiberty=<libiberty.a>"
-	ac_libbfd_auto=false
-else
-	ac_libbfd_auto=true
-fi
 
 dnl
 dnl Handle our configuration options.
@@ -205,7 +165,7 @@ AC_ARG_ENABLE(bdmctrl,
     no)  bdm_bdmctrl=false ;;
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmctrl) ;;
    esac],
- [bdm_bdmctrl=$ac_libbfd_auto])
+ [bdm_bdmctrl=true])
 
 AM_CONDITIONAL(BDMCTRL, test x$bdm_bdmctrl = xtrue)
 
@@ -216,7 +176,7 @@ AC_ARG_ENABLE(flashlib,
     no)  bdm_flashlib=false ;;
     *) AC_MSG_ERROR(bad value ${enableval} for --enable-flashlib) ;;
    esac],
- [bdm_flashlib=$ac_libbfd_auto])
+ [bdm_flashlib=true])
 
 AM_CONDITIONAL(BDMFLASHLIB, test x$bdm_flashlib = xtrue)
 
@@ -321,10 +281,16 @@ bdm_subdirs="lib"
 AS_IF([test x$bdm_tblcf = xtrue], bdm_subdirs="${bdm_subdirs} tblcf")
 AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
 AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
-AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], bdm_subdirs="${bdm_subdirs} bdmabstraction")
+AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], 
+                    bdm_subdirs="${bdm_subdirs} bdmabstraction")
 AS_IF([test x$bdm_gdbserver = xtrue], bdm_subdirs="${bdm_subdirs} gdbserver")
-bdm_subdirs="${bdm_subdirs} test utils"
+bdm_subdirs="libelf ${bdm_subdirs} test utils"
 AC_SUBST(BDM_SUBDIRS, ${bdm_subdirs})
+
+dnl
+dnl Configure libelf
+dnl
+AC_CONFIG_SUBDIRS(libelf)
 
 dnl
 dnl Output the Makefiles and config.h.
@@ -339,6 +305,5 @@ AC_CONFIG_FILES(Makefile \
                 test/Makefile \
                 bdmabstraction/Makefile \
                 utils/Makefile)
-AC_CONFIG_HEADERS(config.h)
 
 AC_OUTPUT

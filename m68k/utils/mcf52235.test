@@ -1,0 +1,32 @@
+#!/usr/local/bin/bdmctrl
+
+open $1
+
+reset
+
+# VBR
+write-ctrl 0x0801 0x20000000
+
+# RAMBAR
+write-ctrl 0x0C05 0x20000021
+
+# FLASHBAR
+write-ctrl 0x0C04 0x00000061
+
+# Enable PST[3:0] signals
+write 0x40100074 0x0F 1
+
+# Configure the clock
+
+flash 0 flashcfm
+erase 0 -1
+erase-wait 0
+#blank-chk 0 -1
+
+flash-plugin 0x20000000 0x4000 /home/rtems/Development/bdm-cvs/build/utils/mcf52235.plugin
+
+load -v $2
+#dump-mem 0x20000000 16 L
+#dump-mem 0x00000000 16 L
+#dump-mem 0x00000400 16 L
+#dump-mem 0x00000500 16 L

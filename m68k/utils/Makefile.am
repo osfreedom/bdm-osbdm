@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.11 2008/03/06 10:35:40 cjohns Exp $
+## $Id: Makefile.am,v 1.12 2008/06/16 00:01:23 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -10,7 +10,7 @@
 ##
 
 AM_CPPFLAGS = -I$(srcdir)/../driver \
-	      -I$(srcdir)/../lib
+              -I$(srcdir)/../lib
 
 ##
 ## Only way I know of anding in automake.
@@ -31,6 +31,8 @@ AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
 AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
 endif
 
+LIBELF = $(top_builddir)/libelf/lib/libelf.a
+
 bin_PROGRAMS = bdmreset
 
 if BDMCTRL
@@ -49,13 +51,13 @@ bdmctrl_SOURCES = \
 	bdmctrl.c
 bdmctrl_CPPFLAGS = \
 	-I$(srcdir)/../flashlib \
-	@BFD_INCLUDE@ @CFLAGS@ $(AM_CPPFLAGS)
+	-I$(srcdir)/../libelf/lib -I../libelf/lib \
+        $(AM_CPPFLAGS)
 bdmctrl_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
 	$(top_builddir)/flashlib/libbdmflash.a \
 	$(TBLCF_USB_LIB) \
-	@LIBBFD@ \
-	@LIBIBERTY@
+	$(LIBELF)
 
 bdmreset_SOURCES = \
 	bdmreset.c

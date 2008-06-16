@@ -84,7 +84,8 @@
 #define BDM_CPU32_PD        BDM_CPU32_ERIC
 #define BDM_COLDFIRE_PE     1
 #define BDM_CPU32_ICD       2
-#define BDM_NUM_OF_IFACES   3
+#define BDM_COLDFIRE_TBLCF  3
+#define BDM_NUM_OF_IFACES   4 /* last */
 
 /*
  * Error codes

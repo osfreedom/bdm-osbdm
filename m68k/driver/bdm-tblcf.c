@@ -923,7 +923,7 @@ tblcf_init_self (struct BDM *self)
   int reg;
   
   self->processor = BDM_COLDFIRE;
-  self->interface = BDM_COLDFIRE_PE;
+  self->interface = BDM_COLDFIRE_TBLCF;
 
   self->get_status      = tblcf_get_status;
   self->init_hardware   = tblcf_init_hardware;

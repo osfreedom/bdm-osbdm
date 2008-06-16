@@ -31,6 +31,67 @@
  *
  * HISTORY:
  * $Log: BDMTargetAddress.c,v $
+ * Revision 1.3  2008/06/16 00:01:21  cjohns
+ * 2008-06-08  Chris Johns <cjohns@users.sourceforge.net>
+ *
+ * 	* libelf/COPYING.LIB, libelf/ChangeLog, libelf/INSTALL,
+ * 	libelf/MANIFEST, libelf/Makefile.in, libelf/README,
+ * 	libelf/VERSION, libelf/acconfig.h, libelf/aclocal.m4,
+ * 	libelf/config.guess, libelf/config.h.in, libelf/config.sub,
+ * 	libelf/configure, libelf/configure.in, libelf/install-sh,
+ * 	libelf/libelf.pc.in, libelf/mkinstalldirs, libelf/stamp-h.in,
+ * 	libelf/lib/32.fsize.c, libelf/lib/32.getehdr.c,
+ * 	libelf/lib/32.getphdr.c, libelf/lib/32.getshdr.c,
+ * 	libelf/lib/32.newehdr.c, libelf/lib/32.newphdr.c,
+ * 	libelf/lib/32.xlatetof.c, libelf/lib/64.xlatetof.c,
+ * 	libelf/lib/Makefile.in, libelf/lib/Makefile.w32,
+ * 	libelf/lib/assert.c, libelf/lib/begin.c, libelf/lib/build.bat,
+ * 	libelf/lib/byteswap.h, libelf/lib/checksum.c, libelf/lib/cntl.c,
+ * 	libelf/lib/config.h.w32, libelf/lib/cook.c, libelf/lib/data.c,
+ * 	libelf/lib/elf_repl.h, libelf/lib/end.c, libelf/lib/errmsg.c,
+ * 	libelf/lib/errno.c, libelf/lib/errors.h, libelf/lib/ext_types.h,
+ * 	libelf/lib/fill.c, libelf/lib/flag.c, libelf/lib/gelf.h,
+ * 	libelf/lib/gelfehdr.c, libelf/lib/gelfphdr.c,
+ * 	libelf/lib/gelfshdr.c, libelf/lib/gelftrans.c,
+ * 	libelf/lib/getarhdr.c, libelf/lib/getarsym.c,
+ * 	libelf/lib/getbase.c, libelf/lib/getdata.c, libelf/lib/getident.c,
+ * 	libelf/lib/getscn.c, libelf/lib/hash.c, libelf/lib/input.c,
+ * 	libelf/lib/kind.c, libelf/lib/libelf.def, libelf/lib/libelf.h,
+ * 	libelf/lib/memset.c, libelf/lib/ndxscn.c, libelf/lib/newdata.c,
+ * 	libelf/lib/newscn.c, libelf/lib/next.c, libelf/lib/nextscn.c,
+ * 	libelf/lib/nlist.c, libelf/lib/nlist.h, libelf/lib/opt.delscn.c,
+ * 	libelf/lib/private.h, libelf/lib/rand.c, libelf/lib/rawdata.c,
+ * 	libelf/lib/rawfile.c, libelf/lib/strptr.c, libelf/lib/swap64.c,
+ * 	libelf/lib/sys_elf.h.in, libelf/lib/sys_elf.h.w32,
+ * 	libelf/lib/update.c, libelf/lib/verdef.h,
+ * 	libelf/lib/verdef_32_tof.c, libelf/lib/verdef_32_tom.c,
+ * 	libelf/lib/verdef_64_tof.c, libelf/lib/verdef_64_tom.c,
+ * 	libelf/lib/verneed.h, libelf/lib/version.c, libelf/lib/x.elfext.c,
+ * 	libelf/lib/x.movscn.c, libelf/lib/x.remscn.c,
+ * 	libelf/po/Makefile.in, libelf/po/de.gmo, libelf/po/de.msg,
+ * 	libelf/po/de.po, libelf/po/gmo2msg.c, libelf/po/libelf.pot,
+ * 	libelf/po/stamp-po: Merge libelf into the BDM package.
+ *
+ * 	* configure.ac, utils/Makefile.am, utils/bdmctrl.c,
+ * 	flashlib/Makefile.am, flashlib/bdmfilt.c, flashlib/bdmfilt.h,
+ * 	flashlib/bdmflash.c, flashlib/bdmflash.h, flashlib/flash29.c,
+ * 	flashlib/flash_filter.c, flashlib/flash_filter.h: Remove all BFD
+ * 	references and change to ELF file support.
+ *
+ * 	* flashlib/elf-utils.c, flashlib/elf-utils.h: New.
+ *
+ * 	* driver/bdm.h, driver/bdm-tblcf.c: Add the TBLCF interface
+ * 	number.
+ *
+ * 	* bdmabstraction/BDMTargetAddress.c: Add a long write call.
+ *
+ * 	* gdbserver/Makefile.am: Fix the XML to C regen rule.
+ *
+ * 2008-06-08  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+ *
+ * 	* flashlib/flashcfm.c, flashlib/flashcfm.h,
+ * 	flashlib/compile_flashcfm, utils/mcf52235.test.
+ *
  * Revision 1.2  2005/10/24 01:37:25  cjohns
  * Fixed includes for building in Windows with MinGW.
  *
@@ -199,8 +260,15 @@ BDMTargetWordWrite( int fd, unsigned int addr, unsigned short word )
 int /* 0 if success, or error code */
 BDMTargetLongWrite( int fd, unsigned int addr, unsigned long Long )
 {
-  assert( 0 ); /* not implemented */
-  return (-1);
+#if BDMDriverVersion_M == BDMDriverFiedler_M
+    assert( 0 ); /* not implemented */
+#else
+    int Ret = bdmWriteLongWord( addr, Long );
+    if (Ret)
+      PRINTDTRACE();
+    return (Ret);  
+#endif
+    return (-1);
 }
 
 /* Read byte into target address space through BDM */
