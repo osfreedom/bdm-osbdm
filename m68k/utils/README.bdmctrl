@@ -2,12 +2,23 @@ bdmctrl utility
 ===============
 
 Josef Wolf <jw@raven.inka.de> 2003-10-26
+Matthew Riek <matthew.riek@ibiscomputer.com.au> 2008-06-27
 
 The intention of the bdmctrl utility is to do basic control of the target
 over the BDM interface. It can be used for various tasks. Examples are
 loading code to the target and executing it or do hardware tests. I have
-even used it to do rudimentary debugging (as I could still not get the
-gdb-patches from the m68k branch to work).
+even used it to do rudimentary debugging.
+
+Flashing
+===============
+
+Most useful, is for using bdmctrl as a flashing utility!  You can load
+elf files into flash (and-or ram) and execute them from the bdm interface.
+Please see the example *.test scripts for examples on using bdmctrl as
+a flash loader.  Also see flashlib/README
+
+Invoking
+===============
 
 Bdmctrl is invoked like this:
 
@@ -44,9 +55,13 @@ The first two examples above are semantically almost identical. Please check
 the discussion about stdin in the description to the "source" command for the
 exception.
 
-For example, the bundeled test script can be executed with
+For example, the bundeled test scripts can be executed with
 
   bdmctrl m68332.test /dev/bdmicd0 /path/to/my/executable.coff
+  bdmctrl mcf52235.test /dev/bdmcf0 /path/to/my/executable.elf
+  bdmctrl mcf5235.test /dev/tblcf2 /path/to/my/executable.elf
+
+  etc.
 
 If you set the executable bit, you can execute it with:
 
@@ -57,10 +72,9 @@ into the target and execute it.
 
 The bdmctrl utility shouldn't contain any target specific code and should
 therefore work on coldfire as well as on the variuos cpu32 based CPUs.
-Currently, it is tested only on 68332 target. Please test it on your target
-and report the results so that either the problem can be fixed or the list
-of working targets can be extended.
-
+Currently, it is tested only on 68332, and a few coldfire targets.
+Please test it on your target and report the results so that either the 
+problem can be fixed or the list of working targets can be extended.
 
 Basic syntax of the commands
 ============================
@@ -89,33 +103,10 @@ Please use "bdmctrl -h COMMAND" to get information on specific command.
 
 
 Plans for the future
-====================
+=======================================
 
-short time
-----------
- - Fix the issues marked with "FIXME"
-
- - Extend "write" command to automatically call flash driver.
-
- - Cleanup/extend output to make it easier to analyze hardware defects.
-
- - Extend the "execute" command to pass arguments to the target function.
-   The big question for this extension is: where to allocate the memory
-   for the stack that is needed to put the arguments (and the bgnd
-   instruction)
-   This extension is a prerequisite for the "flash" command. 
-   [ Is this remark stilll valid? ]
-
-long run
---------
- - implement breakpoints.
-
- - implement disassembler.
-
- - Rewrite parsing to flex/bison. (This one will probably never be done)
-
- - implement flow control (if/while/for) (This one will probably never be
-   done)
+- Add srec loading support!
+- Add more flash chips (for existing drivers) and more drivers!
 
 
 Miscelaneus

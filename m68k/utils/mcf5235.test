@@ -1,0 +1,96 @@
+#!/usr/local/bin/bdmctrl
+# 
+# This script is for use with the bdmctrl utility and allows flashing of
+# 5235 BCC (have not tested with EVB) from linux.
+#
+# Usage ./bdmctrl mcf5235.test /dev/tblcf2 elf_file
+#
+# see flashlib/README and bdmctrl/README.bdmctrl for more information
+#
+# you will need to run flashlib/compile_plugins with 5200 as a target
+# and copy the resulting intelc3 plugin to the working folder
+#
+
+open $1
+
+reset
+
+# IPSBAR   at 0x40000000
+# SRAMBAR  at 0x20000000
+# FLASH    at 0xFFE00000 (AM29PL160CB(1x16))
+# DRAM     at 0x00000000
+
+# RAMBAR
+write-ctrl 0x0C05 0x20000001
+
+# Set PAR_SDRAM to allow SDRAM signals to be enabled
+write 0x40100046 0x3F 1
+
+# Set PAR_AD to allow 32-bit SDRAM if the external boot device is 16 bits
+write 0x40100040 0xE1 1
+
+# Turn off WCR
+write 0x40140000 0x0000 2
+
+# set up 2nd RAMBAR to make 2nd port avail to FEC
+write 0x40000008 0x20000201 4
+
+# 1MB ASRAM on CS1 at 0x30000000  (not populated)
+#write 0x4000008C 0x3000 2
+#write 0x40000090 0x000f0001 4
+#write 0x40000096 0x3d20 2
+
+# 2 meg flash on CS0 at 0xffe000
+write 0x40000080 0xFFE0 2
+write 0x40000084 0x001f0001 4
+write 0x4000008a 0x1980 2
+
+sleep 100
+
+# crank up PLL
+write 0x40120000 0x00000000 4
+
+sleep 100
+
+# 16 meg sdram (page 18.6.4 of ref 5235 ref-manual)
+#powerup sequence
+write 0x40000040 0x0446 2
+write 0x40000048 0x00001300 4
+write 0x4000004c 0x00fc0001 4
+
+#precharge
+write 0x40000048 0x00001308 4
+write 0x00000000 0x00000000 4
+
+sleep 100
+
+#refresh sequence
+write 0x40000048 0x00009300 4
+#enable IMRS
+write 0x40000048 0x00009340 4
+#access sd ram to initialize the mode register
+write 0x00000400 0x00000000 4
+
+sleep 600
+
+#notify flashlib that we have flash at address 0xFFE00000, plugin is flash29
+flash 0xFFE00000 flash29
+
+#erase the entire flash
+erase 0xFFE00000 -1
+
+#wait for the erase operation to complete
+erase-wait 0xFFE00000
+
+#load our flash plugin
+flash-plugin 0x20000000 0x4000 flash29_5200.plugin
+
+#load and verify
+load -v $2
+
+# dump some memory at the start of flash for debugging
+dump-mem 0xFFE00000 48 l
+
+execute
+
+wait

@@ -1,3 +1,0 @@
-#! /bin/sh -ex
-m68k-rtems4.9-gcc -DHOST_FLASHING=0 -O2 -Wall -fomit-frame-pointer -mpcrel -mcpu=52235 -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -c -o mcf52235.plugin flashcfm.c
- 

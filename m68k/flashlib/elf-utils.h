@@ -50,30 +50,25 @@ typedef struct
  * Section handler.
  */
 typedef int (*elf_section_handler) (elf_handle* handle,
+                                    GElf_Phdr*  phdr, 
+                                    GElf_Shdr*  shdr,
                                     const char* sname, 
-                                    GElf_Shdr*  shdr);
+                                    int         sindex);
 
 void elf_handle_init (elf_handle* handle);
 
 int elf_open (const char* file, elf_handle* handle, elf_output output);
 int elf_close (elf_handle* handle);
 
-int elf_has_symbol_table (elf_handle* handle);
 int elf_get_symbol (elf_handle* handle, const char* label, GElf_Sym* sym);
-int elf_get_symbol_value (elf_handle* handle, 
-                          const char* label, uint32_t* value);
-int elf_get_symbol_address (elf_handle* handle,
-                            const char* sym, uint32_t* addr);
-int elf_get_section_address (elf_handle* handle,
-                             const char* sname, uint32_t* addr);
-int elf_get_section_flags (elf_handle* handle,
-                           const char* sname, uint32_t* flags);
-int elf_get_section_size (elf_handle* handle,
-                          const char* sname, uint32_t* size);
-void* elf_get_section_data (elf_handle* handle, const char* sname);
+
+int elf_get_section_hdr (elf_handle* handle, int secindex, GElf_Shdr* shdr);
+
+void* elf_get_section_data (elf_handle* handle, int secindex,
+                            uint32_t* size);
+void* elf_get_section_data_sym (elf_handle* handle, const char* label);
 int elf_map_over_sections (elf_handle* handle, 
                            elf_section_handler handler, const char* sname);
-const char* elf_get_string (elf_handle* handle, const char* label);
 
 void elf_show_exeheader (elf_handle* handle);
 void elf_show_symbol (elf_handle* handle, GElf_Sym* esym);

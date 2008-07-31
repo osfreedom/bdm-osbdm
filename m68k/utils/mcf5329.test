@@ -1,0 +1,95 @@
+#!/usr/local/bin/bdmctrl
+#
+# This script is for use with the bdmctrl utility and allows flashing of
+# 5329 Logic PD + Zoom EVB from linux.
+#
+# Usage ./bdmctrl mcf5329.test /dev/tblcf2 elf_file
+#
+# see flashlib/README and bdmctrl/README.bdmctrl for more information
+#
+# you will need to run flashlib/compile_plugins with 5307 as a target
+# and copy the resulting intelc3 plugin to the working folder
+#
+
+open $1
+
+reset
+
+# SRAMBAR  at 0x80000000
+# FLASH    at 0x00000000 (28F160C3)
+# DRAM     at 0x40000000
+
+# Turn on RAMBAR1 at address 80000000
+write-ctrl 0x0C05 0x80000221
+
+# Disable watchdog timer
+write 0xFC098000 0x0000 2
+
+# Init CS0
+write 0xFC008000 0x00000000 4
+write 0xFC008008 0x00001FA0 4
+write 0xFC008004 0x001F0001 4
+
+sleep 100
+
+# SDRAM Initialization
+
+# SDCS0
+write 0xFC0B8110 0x40000018 4
+# SDCFG1
+write 0xFC0B8008 0x53722730 4
+# SDCFG2
+write 0xFC0B800C 0x56670000 4
+
+# Issue PALL
+# SDCR
+write 0xFC0B8004 0xE1092002 4
+
+# Issue LEMR
+# SDMR
+write 0xFC0B8000 0x40010000 4
+
+# Write mode register
+# SDMR
+write 0xFC0B8000 0x058D0000 4
+
+# Wait a bit
+sleep 1000
+
+# Issue PALL
+# SDCR
+write 0xFC0B8004 0xE1092002 4
+
+# Perform two refresh cycles
+# SDCR
+write 0xFC0B8004 0xE1092004 4
+# SDCR
+write 0xFC0B8004 0xE1092004 4
+
+# SDMR
+write 0xFC0B8000 0x018D0000 4
+# SDCR
+write 0xFC0B8004 0x71092C00 4
+
+# Wait a bit
+sleep 100
+
+#notify flashlib that we have flash at address 0x00000000, plugin is flashintelc3
+flash 0x00000000 flashintelc3
+
+#erase the entire flash
+erase 0x00000000 -1
+
+#load our flash plugin
+flash-plugin 0x80000000 0x4000 flashintelc3_5307.plugin
+
+#load and verify
+load -v $2
+
+# dump some memory at the start of flash for debugging
+dump-mem 0x00000000 48 l
+
+execute
+
+wait
+

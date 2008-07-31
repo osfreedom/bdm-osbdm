@@ -1,3 +1,31 @@
+2008-07-31  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+
+	* INSTALL: New.
+
+	* config/bootstrap, config/config.guess, config/config.sub,
+	config/depcomp, config/install-sh, config/missing,
+	config/mkinstalldirs: Update by a newer autoconf.
+	
+	* flashlib/flashintelc3.c, flashlib/flashintelc3.h,
+	flashlib/m68k-bdm-compile-plugin: New.
+	
+	* configure.ac, flashlib/Makefile.am: Detect a m68k cross-compiler
+	and if found build the various plugins.
+
+	* flashlib/README, flashlib/elf-utils.c, flashlib/elf-utils.h,
+	flashlib/flash29.c, flashlib/flash29.h, flashlib/flash_filter.c,
+	flashlib/flash_filter.h, flashlib/flashcfm.c, flashlib/flashcfm.h:
+	Changed elf-utils to iterate over program headers to get physical
+	addresses. Added flashlib variable support updated flashcfm to use
+	variables moved clock code from flashcfm into mcf52235.test.
+
+	* flashlib/compile_flashcfm, flashlib/tcompile: Removed.
+
+	* utils/Makefile.am, utils/README.bdmctrl, utils/bdmctrl.c,
+	 utils/m68332.test, utils/mcf52235.test: Updated documentation.
+
+	* utils/mcf5235.test, utils/mcf5329.test: New.
+	
 2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
 
 	* packages/.cvsignore, packages/gpl.txt, packages/m68k-bdm.nsi:

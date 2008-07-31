@@ -1,5 +1,14 @@
-#! $(PREFIX)/bin/$(TARGET)-bdmctrl
-# Usage: $(PREFIX)/share/m68332.test /dev/bdmicd0 object-file-to-load
+#!/usr/local/bin/bdmctrl
+# 
+# This script is for use with the bdmctrl utility and allows loading
+# boot loading the 68332.
+#
+# NOTE: see other scripts for flash loading examples.
+#
+# Usage ./bdmctrl m68332.test /dev/bdmicd0 object-file-to-load
+#
+# see flashlib/README and bdmctrl/README.bdmctrl for more information
+#
 
 open $1
 

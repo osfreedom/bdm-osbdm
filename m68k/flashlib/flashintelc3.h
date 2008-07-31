@@ -15,24 +15,12 @@
  */
 
 /*
- * To use the flashcfm algorithm:
+ * To use the flashintelc3 algorithm:
  *
- * set the following flash varialbes (flash_set_var)
+ * NOTE: You'll need to setup any chip selects etc.
  *
- * varname            (default)       note
- * IPSBAR             (0x40000000)
- * MCF_CFM_CFMCLKD    (0x1D0002)      ipsbar offset    
- * MCF_CFM_CFMUSTAT   (0x1D0020)      ipsbar offset
- * MCF_CFM_CFMCMD     (0x1D0024)      ipsbar offset
- * FLASHBAR_REG       (0x0C04)
- * FLASH_SIZE         (256 * 1024)
- * FLASH_BACKDOOR     (0x04000000)    ipsbar offset
- *
- * NOTE: The target and flash clock must be setup to the correct flashing
- * frequency prior to invoking this flash algorithm
- *
- * NOTE: Flash detection simply checks flashbar, so flashbar must be configured
- * prior to calling flash_register
+ * NOTE: No need to use an erase wait command for batch erases.  if doing
+ * a sector erase you'll need to do an erase followed by an erase wait!  
  *
  * NOTE: Flash addresses and write memory sizes need to be 4 byte aligned!
  *
@@ -41,4 +29,4 @@
 /* This function will be called by flash_filter and is responsible to register
    the driver
 */
-void init_flashcfm(int num);
+void init_flashintelc3(int num);

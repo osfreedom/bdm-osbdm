@@ -1,5 +1,5 @@
 /*
- * $Id: elf-utils.c,v 1.1 2008/06/16 00:01:21 cjohns Exp $
+ * $Id: elf-utils.c,v 1.2 2008/07/31 01:53:44 cjohns Exp $
  * 
  * Motorola Background Debug Mode Driver
  * Copyright (C) 2008  Chris Johns
@@ -34,7 +34,7 @@
 void
 elf_handle_init (elf_handle* handle)
 {
-  memset (handle, 0, sizeof(*handle));
+  memset (handle, 0, sizeof (*handle));
 }
 
 int
@@ -46,7 +46,7 @@ elf_open (const char* file, elf_handle* handle, elf_output output)
       output ("elf-utils: ELF handle already initialised\n");
     return 0;
   }
-  
+
   if (elf_version (EV_CURRENT) == EV_NONE)
   {
     if (output)
@@ -56,7 +56,7 @@ elf_open (const char* file, elf_handle* handle, elf_output output)
   }
 
   handle->output = output;
-  
+
   if ((handle->fd = open (file, ELF_OPEN_MODE, 0)) < 0)
   {
     if (handle->output)
@@ -76,7 +76,7 @@ elf_open (const char* file, elf_handle* handle, elf_output output)
   handle->file = strdup (file);
   handle->ek = elf_kind (handle->elf);
 
-  /*
+  /* 
    * Check the executable header.
    */
   if (gelf_getehdr (handle->elf, &handle->ehdr) == NULL)
@@ -94,14 +94,14 @@ elf_open (const char* file, elf_handle* handle, elf_output output)
     elf_close (handle);
     return 0;
   }
-  
+
   if ((handle->ehdr.e_type != ET_REL) && (handle->ehdr.e_type != ET_EXEC))
   {
     output ("elf-utils: file type no relocable or executable\n");
     elf_close (handle);
     return 0;
   }
-  
+
   if ((handle->eclass = gelf_getclass (handle->elf)) == ELFCLASSNONE)
   {
     if (handle->output)
@@ -110,7 +110,7 @@ elf_open (const char* file, elf_handle* handle, elf_output output)
     return 0;
   }
 
-  /*
+  /* 
    * No 64-bit Coldfires yet !
    */
   if (handle->eclass != ELFCLASS32)
@@ -154,7 +154,7 @@ elf_close (elf_handle* handle)
 {
   if (!handle->fd)
     return 0;
-  
+
   elf_end (handle->elf);
   close (handle->fd);
   free (handle->file);
@@ -180,10 +180,10 @@ elf_has_symbol_table (elf_handle* handle)
         Elf_Data* data = NULL;
         
         data = elf_getdata (section, data);
-        
+
         if ((data == NULL) || (data->d_size == 0))
           return 0;
-        
+
         return 1;
       }
     }
@@ -198,6 +198,7 @@ elf_get_symbol (elf_handle* handle, const char* label, GElf_Sym* sym)
   while ((section = elf_nextscn (handle->elf, section)) != 0)
   {
     GElf_Shdr shdr;
+
     if (gelf_getshdr (section, &shdr) == &shdr)
     {
       if (shdr.sh_type == SHT_SYMTAB)
@@ -207,7 +208,7 @@ elf_get_symbol (elf_handle* handle, const char* label, GElf_Sym* sym)
         char*     name;
         
         data = elf_getdata (section, data);
-        
+
         if ((data == NULL) || (data->d_size == 0))
           return 0;
 
@@ -222,7 +223,7 @@ elf_get_symbol (elf_handle* handle, const char* label, GElf_Sym* sym)
                               elf_errmsg (elf_errno ()));
             return 0;
           }
-          
+
           if (strcmp (label, name) == 0)
             return 1;
 
@@ -236,178 +237,62 @@ elf_get_symbol (elf_handle* handle, const char* label, GElf_Sym* sym)
 }
 
 int
-elf_get_symbol_value (elf_handle* handle,
-                      const char* label,
-                      uint32_t*   value)
-{
-  GElf_Sym esym;
-  if (elf_get_symbol (handle, label, &esym))
-  {
-    *value = esym.st_value;
-    return 1;
-  }
-  return 0;
-}
-
-int
-elf_get_symbol_address (elf_handle* handle,
-                        const char* label,
-                        uint32_t*   addr)
-{
-  GElf_Sym esym;
-  if (elf_get_symbol (handle, label, &esym))
-  {
-    Elf_Scn* section = NULL;
-    while ((section = elf_nextscn (handle->elf, section)) != 0)
-    {
-      GElf_Shdr shdr;
-      if (gelf_getshdr (section, &shdr) == &shdr)
-      {
-        *addr = esym.st_value;
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
-
-int
-elf_get_section_address (elf_handle* handle,
-                         const char* sname,
-                         uint32_t*   addr)
+elf_get_section_hdr (elf_handle* handle, int secindex, GElf_Shdr* shdr)
 {
   Elf_Scn* section = NULL;
+  int      count = 1;
+
   while ((section = elf_nextscn (handle->elf, section)) != 0)
   {
-    GElf_Shdr shdr;
-    if (gelf_getshdr (section, &shdr) == &shdr)
+    if (count == secindex)
     {
-      const char* name;
-      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
-
-      if (strcmp (name, sname) == 0)
+      if (gelf_getshdr (section, shdr) == shdr)
       {
-        *addr = shdr.sh_addr;
         return 1;
       }
     }
-  }
-  return 0;
-}
-
-int
-elf_get_section_flags (elf_handle* handle,
-                       const char* sname,
-                       uint32_t*   flags)
-{
-  Elf_Scn* section = NULL;
-  while ((section = elf_nextscn (handle->elf, section)) != 0)
-  {
-    GElf_Shdr shdr;
-    if (gelf_getshdr (section, &shdr) == &shdr)
-    {
-      const char* name;
-      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
-
-      if (strcmp (name, sname) == 0)
-      {
-        *flags = shdr.sh_flags;
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
-
-int
-elf_get_section_size (elf_handle* handle,
-                      const char* sname,
-                      uint32_t*   size)
-{
-  Elf_Scn* section = NULL;
-  while ((section = elf_nextscn (handle->elf, section)) != 0)
-  {
-    GElf_Shdr shdr;
-    if (gelf_getshdr (section, &shdr) == &shdr)
-    {
-      const char* name;
-      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
-
-      if (strcmp (name, sname) == 0)
-      {
-        *size = shdr.sh_size;
-        return 1;
-      }
-    }
+    count++;
   }
   return 0;
 }
 
 void*
-elf_get_section_data (elf_handle* handle, const char* sname)
+elf_get_section_data (elf_handle* handle, int secindex, uint32_t* size)
 {
   Elf_Scn* section = NULL;
+  int      count = 1;
+
+  *size = 0;
   while ((section = elf_nextscn (handle->elf, section)) != 0)
   {
-    GElf_Shdr shdr;
-    if (gelf_getshdr (section, &shdr) == &shdr)
+    if (count == secindex)
     {
-      const char* name;
-      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
+      Elf_Data* data = NULL;
+      void*     buffer;
 
-      if (strcmp (name, sname) == 0)
-      {
-        Elf_Data* data = NULL;
-        void*     buffer;
+      data = elf_getdata (section, data);
 
-        data = elf_getdata (section, data);
-          
-        if ((data == NULL) || (data->d_size == 0))
-          return NULL;
+      if (data == NULL)
+        return NULL;
 
-        buffer = malloc (data->d_size);
-        if (!buffer)
-          return NULL;
-
-        memcpy (buffer, data->d_buf, data->d_size);
-
-        return buffer;
-      }
+      *size = (uint32_t) data->d_size;
+      return data->d_buf;
     }
+    count++;
   }
-  return NULL;
+  return 0;
 }
 
-int
-elf_map_over_sections (elf_handle*         handle,
-                       elf_section_handler handler,
-                       const char*         sname)
-{
-  Elf_Scn* section = NULL;
-  while ((section = elf_nextscn (handle->elf, section)) != 0)
-  {
-    GElf_Shdr shdr;
-    if (gelf_getshdr (section, &shdr) == &shdr)
-    {
-      const char* name;
-      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
-
-      if (!sname || (strcmp (sname, name) == 0))
-        if (!handler (handle, name, &shdr))
-          return 0;
-    }
-  }
-  return 1;
-}
-
-const char*
-elf_get_string (elf_handle* handle, const char* label)
+void*
+elf_get_section_data_sym (elf_handle* handle, const char* label)
 {
   GElf_Sym esym;
+
   if (elf_get_symbol (handle, label, &esym))
   {
     Elf_Scn* section = NULL;
     int      count = 1;
+
     while ((section = elf_nextscn (handle->elf, section)) != 0)
     {
       if (count == esym.st_shndx)
@@ -415,17 +300,85 @@ elf_get_string (elf_handle* handle, const char* label)
         Elf_Data* data = NULL;
 
         data = elf_getdata (section, data);
-          
+
         if ((data == NULL) || (data->d_size == 0))
           return NULL;
-        
-        return ((char*) data->d_buf) + esym.st_value;
+
+        return ((uint8_t *) data->d_buf) + esym.st_value;
       }
       count++;
     }
   }
-  
+
   return NULL;
+}
+
+int 
+elf_map_over_sections (elf_handle* handle, elf_section_handler handler,
+                       const char* sname)
+{
+  /*
+   * We need to iterate over the sections, and then for each section we decide
+   * to load, we need to find the program header for that section.  we match
+   * the program header by finding the program header that has the same virtaul
+   * address range.  This yields us with the physical address which is needed
+   * to know where to load the section on the target.  I don't know if this is
+   * the correct way to do this, if not, please fix.
+   */
+  
+  Elf_Scn* section = NULL;
+  int      count = 1;
+  size_t   num_headers = 0;
+
+  if (elf_getphnum (handle->elf, &num_headers) == 0)
+  {
+    if (handle->output)
+      handle->output ("elf-utils: elf_getphnum error\n");
+    return 0;
+  }
+  
+  while ((section = elf_nextscn (handle->elf, section)) != 0)
+  {
+    GElf_Shdr shdr;
+
+    if (gelf_getshdr (section, &shdr) == &shdr) {
+      const char* name;
+      name = elf_strptr (handle->elf, handle->shstrndx, shdr.sh_name);
+
+      if (!sname || (strcmp (sname, name) == 0))
+      {
+        /*
+         * Find a LOAD program header in the same virtual address range.
+         */
+        GElf_Addr vaddr = shdr.sh_addr - shdr.sh_offset;
+        GElf_Phdr phdr;
+        size_t i;
+        
+        for (i = 0; i < num_headers; ++i)
+        {
+          if (gelf_getphdr (handle->elf, i, &phdr) != &phdr)
+          {
+            if (handle->output)
+              handle->output ("elf-utils: gelf_getphdr error\n");
+            return 0;
+          }
+          
+          if(phdr.p_type == PT_LOAD)
+          {
+            if(phdr.p_vaddr <= shdr.sh_addr && 
+               phdr.p_vaddr + phdr.p_memsz > shdr.sh_addr)
+              break;
+          }
+        }
+
+        if(!handler (handle, (i == num_headers) ? 0 : &phdr, &shdr, name, count))
+          return 0;
+      }
+    }
+
+    ++count;
+  }
+  return 1;    
 }
 
 #define PRINT_FORMAT   " %-12s %d\n"
@@ -442,7 +395,7 @@ elf_show_exeheader (elf_handle* handle)
 
   if (!handle->output)
     return;
- 
+
   switch (handle->ek)
   {
     case ELF_K_AR:
@@ -459,7 +412,7 @@ elf_show_exeheader (elf_handle* handle)
   }
 
   handle->output ("%s: %s\n", handle->file, s);
-  
+
   EHDR_PRINT_FIELD (e_type);
   EHDR_PRINT_FIELD (e_machine);
   EHDR_PRINT_FIELD (e_version);
@@ -475,17 +428,17 @@ elf_show_exeheader (elf_handle* handle)
   handle->output (PRINT_FORMAT, "(shstrndx)", (uintmax_t) handle->shstrndx);
   handle->output (PRINT_FORMAT, "(phnum)", (uintmax_t) handle->phnum);
 }
-  
+
 void
 elf_show_symbol (elf_handle* handle, GElf_Sym* esym)
 {
 #define ESYM_PRINT_FIELD(N) do {                               \
     handle->output (PRINT_FORMAT_X ,#N, (uintmax_t) esym->N);  \
   } while (0)
-  
+
   if (!handle->output)
     return;
-  
+
   ESYM_PRINT_FIELD (st_name);
   ESYM_PRINT_FIELD (st_value);
   ESYM_PRINT_FIELD (st_size);

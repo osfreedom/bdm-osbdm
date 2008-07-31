@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.22 2008/06/16 12:57:49 cjohns Exp $
+/* $Id: bdmctrl.c,v 1.23 2008/07/31 01:53:44 cjohns Exp $
  *
  * A utility to control bdm targets.
  *
@@ -18,86 +18,92 @@
  * GNU General Public License for more details.
  */
 
-# include <config.h>
+#include <config.h>
 
-# include <ctype.h>
-# include <limits.h>
-# include <errno.h>
-# include <sys/types.h>
-# include <stdarg.h>
-# include <stdlib.h>
-# include <stdio.h>
-# include <unistd.h>
-# include <string.h>
-# include <stdint.h>
-# include <time.h>
+#include <ctype.h>
+#include <limits.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdint.h>
+#include <time.h>
 
-# include <elf-utils.h>
+#include <elf-utils.h>
 
-# include "BDMlib.h"
-# include "flash_filter.h"
+#include "BDMlib.h"
+#include "flash_filter.h"
 
-# define HAVE_FLASHLIB 1  /* this should be provided by autoconf */
+#define HAVE_FLASHLIB 1                 /* this should be provided by autoconf */
 
 static void do_command (size_t argc, char **argv);
 
-# ifndef STREQ
+#ifndef STREQ
 # define STREQ(a,b) (!strcmp((a),(b)))
-# endif
+#endif
 
-# ifndef NUMOF
+#ifndef NUMOF
 # define NUMOF(ary) (sizeof(ary)/sizeof(ary[0]))
-# endif
+#endif
 
 static int verify;
-static int verbosity=1;
-static int delay=0;
-static int debug_driver=0;
-static int fatal_errors=0;
+static int verbosity = 1;
+static int delay = 0;
+static int debug_driver = 0;
+static int fatal_errors = 0;
 static char *progname;
 static int cpu_type;
-static time_t base_time; /* when bdmctrl was started */
+static time_t base_time;                /* when bdmctrl was started */
 
-static unsigned int patcnt=0; /* number of test patterns */
-static unsigned long *pattern=NULL;
+static unsigned int patcnt = 0;         /* number of test patterns */
+static uint32_t *pattern = NULL;
 
-typedef struct {
+typedef struct
+{
   char *name;
   char *val;
 } var_t;
-static var_t *var=NULL;
-static int num_vars=0;
+static var_t *var = NULL;
+static int num_vars = 0;
 
-static int loaded_elf_cnt=0;
-static elf_handle *loaded_elfs=NULL;
+static int loaded_elf_cnt = 0;
+static elf_handle *loaded_elfs = NULL;
 
-static void wait (int msecs)
+static void
+wait (int msecs)
 {
 #if defined (__MINGW32__)
   Sleep (msecs);
 #else
   struct timeval tv;
+
   tv.tv_sec = msecs / 1000;
   tv.tv_usec = (msecs % 1000) * 1000;
   select (0, NULL, NULL, NULL, &tv);
 #endif    
 }
 
-static void clean_exit (int exit_value)
+static void
+clean_exit(int exit_value)
 {
   int i;
-  for (i=0; i<loaded_elf_cnt; i++)
+
+  for (i = 0; i < loaded_elf_cnt; i++)
     elf_close (&loaded_elfs[i]);
 
-  if (bdmIsOpen()) {
-    bdmSetDriverDebugFlag(0);
-    bdmClose();
+  if (bdmIsOpen ()) {
+    bdmSetDriverDebugFlag (0);
+    bdmClose ();
   }
 
   exit (exit_value);
 }
 
-static void fatal (char *fmt, ...)
+static void
+fatal (char *fmt, ...)
 {
   va_list args;
 
@@ -108,7 +114,8 @@ static void fatal (char *fmt, ...)
   clean_exit (EXIT_FAILURE);
 }
 
-static void warn (char *fmt, ...)
+static void
+warn (char *fmt, ...)
 {
   va_list args;
 
@@ -116,17 +123,35 @@ static void warn (char *fmt, ...)
   vfprintf (stderr, fmt, args);
   va_end (args);
 
-  if (fatal_errors) clean_exit (EXIT_FAILURE);
+  if (fatal_errors)
+    clean_exit (EXIT_FAILURE);
 }
 
-static void set_var (const char *name, const char *val)
+static void
+set_var (const char *name, const char *val)
 {
   int i;
   char *v;
+  
+  /* Set the variable in the flash system */
+  
+#if HAVE_FLASHLIB
 
-  if (!(v=strdup (val))) fatal ("Out of memory\n");
+  if(1)
+  {
+    char *e;
+    uint32_t ival = strtoul(val, &e, 0);
+    if (val != e) {
+      flash_set_var (name, ival);
+    }
+  }
+  
+#endif
 
-  for (i=0; i<num_vars; i++) {
+  if (!(v = strdup (val)))
+    fatal ("Out of memory\n");
+
+  for (i = 0; i < num_vars; i++) {
     if (STREQ (var[i].name, name)) {
       free (var[i].val);
       var[i].val = v;
@@ -134,49 +159,52 @@ static void set_var (const char *name, const char *val)
     }
   }
 
-  if (!(var = realloc (var, (num_vars+1) * sizeof *var)) ||
+  if (!(var = realloc (var, (num_vars + 1) * sizeof *var)) ||
       !(var[num_vars].name = strdup (name)))
     fatal ("Out of memory\n");
 
   var[num_vars++].val = v;
 }
 
-static char *get_var (const char *name)
+static char *
+get_var (const char *name)
 {
   int i;
 
-  for (i=0; i<num_vars; i++) {
+  for (i = 0; i < num_vars; i++) {
     if (STREQ (var[i].name, name)) {
       return var[i].val;
     }
   }
 
   fatal ("Variable %s not defined\n", name);
-  return 0; /* remove warning */
+  return 0;   /* remove warning */
 }
 
 /* Duplicate a string with (rudimentary) variable substitution.
  */
-static char *varstrdup (const char *instr, size_t argc, char **vars)
+static char *
+varstrdup (const char *instr, size_t argc, char **vars)
 {
-  int dlen=0;
-  size_t varnum=0;
+  int dlen = 0;
+  size_t varnum = 0;
   char *dst, *str, *rstr, *s, *p;
 
   rstr = str = strdup (instr); /* make str writable */
   dst = malloc (10);           /* make sure we return a string */
 
-  if (!str || !dst) return NULL;
+  if (!str || !dst)
+    return NULL;
 
-  *dst=0;
+  *dst = 0;
 
   while (*str) {
     s = str;
-    if ((p=strchr (s, '$'))) {
+    if ((p = strchr (s, '$'))) {
       *p++ = 0;
       if (isdigit (*p)) {
         varnum = strtol (p, &str, 0);
-        if (varnum<1 || varnum>=argc)
+        if (varnum < 1 || varnum >= argc)
           fatal ("argument $%d not available\n", varnum);
         p = vars[varnum];
       } else {
@@ -185,9 +213,12 @@ static char *varstrdup (const char *instr, size_t argc, char **vars)
     }
     while (s) {
       int slen = strlen (s);
-      if (s==str) str += slen;
-      if (!(dst = realloc (dst, dlen + slen + 1))) return NULL;
-      strcpy (dst+dlen, s);
+
+      if (s == str)
+        str += slen;
+      if (!(dst = realloc (dst, dlen + slen + 1)))
+        return NULL;
+      strcpy (dst + dlen, s);
       dlen += slen;
       s = p;
       p = NULL;
@@ -204,35 +235,38 @@ static char *varstrdup (const char *instr, size_t argc, char **vars)
    to the arguments can be passed to free(). glbl_argc/glbl_argv are used
    for variable substitution ($0, $1, $2, ...)
  */
-static size_t build_argv (const char *line, char **argv[],
-                          size_t glbl_argc, char *glbl_argv[])
+static size_t
+build_argv (const char *line, char **argv[],
+            size_t glbl_argc, char *glbl_argv[])
 {
   char *linedup, *p;
-  size_t i, tnum=0;
+  size_t i, tnum = 0;
 
   /* Make sure realloc() will work properly
    */
-  *argv=NULL;
+  *argv = NULL;
 
   /* Modifying strings that we get passed is considered harmful. Therefore
      we make a copy to mess around with.
-  */
-  if (!(p=linedup=strdup(line))) fatal ("Out of memory\n");
+   */
+  if (!(p = linedup = strdup (line)))
+    fatal ("Out of memory\n");
 
   /* Split the line
    */
   while (1) {
     /* Allocate space for pointer to new argument. While we're at it,
        we allocate space for trailing NULL pointer, too.
-    */
-    if (!(*argv=realloc(*argv, (tnum+2) * sizeof(**argv))))
+     */
+    if (!(*argv = realloc (*argv, (tnum + 2) * sizeof (**argv))))
       fatal ("Out of memory\n");
 
     /* Skip leading whitespace. Terminate at end of line.
      */
     while (*p && strchr (" \t", *p))
       p++;
-    if (!*p) break;
+    if (!*p)
+      break;
 
     /* Store argument.
      */
@@ -248,9 +282,9 @@ static size_t build_argv (const char *line, char **argv[],
 
   /* Substitute variables ind convert pointers to something that can be
      passed to free()
-  */
-  for (i=0; i<tnum; i++) {
-    if (!((*argv)[i]=varstrdup((*argv)[i], glbl_argc, glbl_argv)))
+   */
+  for (i = 0; i < tnum; i++) {
+    if (!((*argv)[i] = varstrdup ((*argv)[i], glbl_argc, glbl_argv)))
       fatal ("Out of memory\n");
   }
   free (linedup);
@@ -268,13 +302,14 @@ static size_t build_argv (const char *line, char **argv[],
 
 /* mapping register-name => register-number
  */
-typedef struct {
+typedef struct
+{
   char *regname;
   int regnum;
   int issystem;
 } regname_t;
 
-# define REGNAM(nam, issystem) { #nam, BDM_REG_##nam, issystem }
+#define REGNAM(nam, issystem) { #nam, BDM_REG_##nam, issystem }
 
 regname_t regnames[] = {
   REGNAM(A0, 0),   REGNAM(A1, 0),     REGNAM(A2, 0),   REGNAM(A3, 0),
@@ -289,38 +324,40 @@ regname_t regnames[] = {
   REGNAM(ABHR, 1), REGNAM(ABLR, 1),   REGNAM(DBR, 1),  REGNAM(DBMR, 1),
 };
 
-# undef REGNAM
+#undef REGNAM
 
 /* comparison function for regname_t
  */
-static int cmpreg (const void *ap, const void *bp)
+static int
+cmpreg (const void *ap, const void *bp)
 {
-  return strcmp (((const regname_t *)ap)->regname,
-                 ((const regname_t *)bp)->regname);
+  return strcmp (((const regname_t *) ap)->regname,
+                 ((const regname_t *) bp)->regname);
 }
 
 /* Find a register by its name. If found, provide the nuber of the register
    and whether it is a system-register or not.
 */
-static int find_register (const char *regname, int *regnum, int *issystem)
+static int
+find_register (const char *regname, int *regnum, int *issystem)
 {
   regname_t *found, key;
-  const char *s=regname;
+  const char *s = regname;
   char name[20];
-  char *d=name;
+  char *d = name;
 
-  if (*s == '%') s++;
+  if (*s == '%')
+    s++;
 
   /* make uppercase copy of the name
    */
-  while (d-name<((int)sizeof(name)) && (*d++=toupper(*s++)))
-    ;
-  name[sizeof(name)-1] = 0;
+  while (d - name < ((int) sizeof (name)) && (*d++ = toupper (*s++))) ;
+  name[sizeof (name) - 1] = 0;
 
   key.regname = name;
-  if ((found=bsearch (&key, regnames, NUMOF(regnames),
-                      sizeof(regnames[0]), cmpreg))) {
-    *regnum   = found->regnum;
+  if ((found = bsearch (&key, regnames, NUMOF(regnames),
+                        sizeof (regnames[0]), cmpreg))) {
+    *regnum = found->regnum;
     *issystem = found->issystem;
     return 1;
   }
@@ -330,44 +367,53 @@ static int find_register (const char *regname, int *regnum, int *issystem)
 
 /* Read from a register by name
  */
-static void read_register (const char *regname, unsigned long *val)
+static void
+read_register (const char *regname, uint32_t * val)
 {
   int issystem;
   int regnum;
+  unsigned long rval;
 
-  if (!find_register (regname, &regnum, &issystem))
-  {
+  if (!find_register (regname, &regnum, &issystem)) {
     warn ("No such register \"%s\"\n", regname);
     return;
   }
 
   if (issystem) {
-    if (bdmReadSystemRegister(regnum, val) >= 0) return;
+    if (bdmReadSystemRegister (regnum, &rval) >= 0) {
+      *val = (uint32_t) rval;
+      return;
+    }
   } else {
-    if (bdmReadRegister(regnum, val) >= 0) return;
+    if (bdmReadRegister (regnum, &rval) >= 0) {
+      *val = (uint32_t) rval;
+      return;
+    }
   }
 
-  fatal ("Can't read register \"%s\": %s\n", regname, bdmErrorString());
+  fatal ("Can't read register \"%s\": %s\n", regname, bdmErrorString ());
 }
 
 /* Write into a register by name. FIXME: should use a size parameter to
    distinguish between 8/16/32 bit writes.
  */
-static void write_register (const char *regname, unsigned long val)
+static void
+write_register (const char *regname, uint32_t val)
 {
   int issystem;
   int regnum;
 
-  if (!find_register (regname, &regnum, &issystem))
-  {
+  if (!find_register (regname, &regnum, &issystem)) {
     warn ("No such register \"%s\"\n", regname);
     return;
   }
 
   if (issystem) {
-    if (bdmWriteSystemRegister(regnum, val) >= 0) return;
+    if (bdmWriteSystemRegister (regnum, val) >= 0)
+      return;
   } else {
-    if (bdmWriteRegister(regnum, val) >= 0) return;
+    if (bdmWriteRegister (regnum, val) >= 0)
+      return;
   }
 
   fatal ("Can't write 0x%08x into register \"%s\": %s\n",
@@ -376,70 +422,95 @@ static void write_register (const char *regname, unsigned long val)
 
 /* read values of one, two or four bytes into a long
  */
-static int read_value (unsigned long adr, unsigned long *val, char size)
+static int
+read_value (uint32_t adr, uint32_t * val, char size)
 {
-  int ret=-1;
+  int ret = -1;
   unsigned char char_val;
   unsigned short short_val;
+  unsigned long long_val;
 
   switch (size) {
-    case '1': case  1: case 'b': case 'B':
-      ret = bdmReadByte     (adr, &char_val);
+    case '1':
+    case 1:
+    case 'b':
+    case 'B':
+      ret = bdmReadByte (adr, &char_val);
       *val = char_val;
       size = 1;
       break;
-    case '2': case  2: case 'w': case 'W':
-      ret = bdmReadWord     (adr, &short_val);
+    case '2':
+    case 2:
+    case 'w':
+    case 'W':
+      ret = bdmReadWord (adr, &short_val);
       *val = short_val;
       size = 2;
       break;
-    case '4': case  4: case 'l': case 'L':
-      ret = bdmReadLongWord (adr, val);
+    case '4':
+    case 4:
+    case 'l':
+    case 'L':
+      ret = bdmReadLongWord (adr, &long_val);
+      *val = long_val;
       size = 4;
       break;
-    default: fatal ("Unknown size spezifier '%c'\n", size);
+    default:
+      fatal ("Unknown size spezifier '%c'\n", size);
   }
 
-  if (ret<0)
-    fatal ("read_value(0x%08x,xxx,%d): %s\n", adr, size, bdmErrorString());
+  if (ret < 0)
+    fatal ("read_value (0x%08x,xxx,%d): %s\n", adr, size, bdmErrorString ());
 
   return size;
 }
 
 /* write values of one, two or four bytes
  */
-static int write_value (unsigned long adr, unsigned long val, char size)
+static int
+write_value (uint32_t adr, uint32_t val, char size)
 {
-  int ret=-1;
+  int ret = -1;
 
   switch (size) {
-    case '1': case  1: case 'b': case 'B':
-      ret = bdmWriteByte     (adr, val);
+    case '1':
+    case 1:
+    case 'b':
+    case 'B':
+      ret = bdmWriteByte (adr, val);
       size = 1;
       break;
-    case '2': case  2: case 'w': case 'W':
-      ret = bdmWriteWord     (adr, val);
+    case '2':
+    case 2:
+    case 'w':
+    case 'W':
+      ret = bdmWriteWord (adr, val);
       size = 2;
       break;
-    case '4': case  4: case 'l': case 'L':
+    case '4':
+    case 4:
+    case 'l':
+    case 'L':
       ret = bdmWriteLongWord (adr, val);
       size = 4;
       break;
-    default: fatal ("Unknown size spezifier '%c'\n", size);
+    default:
+      fatal ("Unknown size specifier '%c'\n", size);
   }
 
-  if (ret<0)
+  if (ret < 0)
     fatal ("write_value(0x%08x,0x%x,%d): %s\n",
            adr, val, size, bdmErrorString());
 
   return size;
 }
 
-# if !HAVE_FLASHLIB
+#if !HAVE_FLASHLIB
+
 /* Write a buffer to the target.
  */
-unsigned long write_memory (unsigned long adr, unsigned char *buf,
-                            unsigned long cnt)
+uint32_t
+write_memory (uint32_t adr, unsigned char *buf, uint32_t cnt)
 {
   if (bdmWriteMemory (adr, buf, cnt) < 0)
     fatal ("\nCan not download 0x%08x bytes to addr 0x%08lx: %s\n",
@@ -447,29 +518,40 @@ unsigned long write_memory (unsigned long adr, unsigned char *buf,
   return cnt;
 }
 
-int flash_plugin (unsigned long adr, unsigned long len, char *argv[])
+int
+flash_plugin (uint32_t adr, uint32_t len, char *argv[])
 {
   fatal ("No flash support available\n");
   return 0;
 }
 
-int flash_register (unsigned long adr)
+int
+flash_register (uint32_t adr)
 {
   fatal ("No flash support available\n");
   return 0;
 }
 
-int flash_erase (unsigned long adr, long sec_offs)
+int
+flash_erase (uint32_t adr, int32_t sec_offs)
 {
-    fatal ("No flash support available\n");
-    return 0;
+  fatal ("No flash support available\n");
+  return 0;
 }
-# endif
+
+int
+flash_blank_chk (uint32_t adr, int32_t sec_adr)
+{
+  fatal ("No flash support available\n");
+  return 0;
+}
+
+#endif
 
 /* Read a buffer from the target.
  */
-static void read_memory (unsigned long adr, unsigned char *buf,
-                         unsigned long cnt)
+static void
+read_memory (uint32_t adr, unsigned char *buf, uint32_t cnt)
 {
   if (bdmReadMemory (adr, buf, cnt) < 0)
     fatal ("\nCan not upload 0x%08x bytes from addr 0x%08lx: %s\n",
@@ -479,10 +561,11 @@ static void read_memory (unsigned long adr, unsigned char *buf,
 /* Evaluate (rudimentary) a string. For now, no real evaluation is done.
    Only numbers, registers and symbols can be distinguished.
  */
-static unsigned long eval_string (char *val)
+static uint32_t
+eval_string (char *val)
 {
-  unsigned long v;
-  int           i;
+  uint32_t v;
+  int i;
 
   if (isdigit (*val))
     return strtoul (val, NULL, 0);
@@ -495,12 +578,13 @@ static unsigned long eval_string (char *val)
   /* search opened bfd's for the symbol. The bfd's are searched in reverse
      order, so loading a new bfd will override symbols with same name from
      bfd's that were loaded before.
-  */
+   */
   for (i = 0; i < loaded_elf_cnt; i++) {
-    elf_handle* elf = &loaded_elfs[loaded_elf_cnt-i-1];
-    uint32_t    addr;
-    if (elf_get_symbol_address (elf, val, &addr))
-      return addr;
+    elf_handle *elf = &loaded_elfs[loaded_elf_cnt - i - 1];
+    GElf_Sym sym;
+
+    if (elf_get_symbol (elf, val, &sym))
+      return sym.st_value;
   }
 
   fatal ("Can't find symbol \"%s\"\n", val);
@@ -509,82 +593,91 @@ static unsigned long eval_string (char *val)
 
 /* check one register
  */
-static void check_one_register (char *regname)
+static void
+check_one_register (char *regname)
 {
   unsigned int i;
-  unsigned long reg_value;
-  unsigned long orig_value;
+  uint32_t reg_value;
+  uint32_t orig_value;
 
-  read_register (regname, &orig_value); /* read original value */
+  read_register (regname, &orig_value);  /* read original value */
 
-  for (i=0; i<patcnt; i++) {
+  for (i = 0; i < patcnt; i++) {
     write_register (regname, pattern[i]);
     read_register (regname, &reg_value);
     if (reg_value != pattern[i])
       warn ("register %s written 0x%08x, read back 0x%08x\n");
   }
 
-  write_register (regname, orig_value); /* restore original value */
+  write_register (regname, orig_value);  /* restore original value */
 
-  if (verbosity) printf (" %s", regname);
+  if (verbosity)
+    printf(" %s", regname);
 }
 
 /* load a bfd section into target
  */
 
-static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
+static int
+load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr, 
+              const char *sname, int sindex)
 {
   if ((shdr->sh_type == SHT_PROGBITS) &&
       (shdr->sh_flags & (SHF_WRITE | SHF_ALLOC))) {
+
+    unsigned char rbuf[1 * 1024];
+    uint32_t off = 0;
+    unsigned char *data;
+    uint32_t size = 0;
+    uint32_t dfc = 0;
+    uint32_t paddr = (uint32_t) shdr->sh_addr;
     
-    unsigned char  rbuf[1*1024];
-    uint32_t       off = 0;
-    unsigned char* data;
-    
-#if FIX_THIS_FOR_CPU32
-    unsigned long dfc;
-    unsigned long ret;
-    read_register ("dfc", &dfc);
-    write_register ("dfc", flags & SEC_CODE ? 6 : 5);
-#endif
+    if(phdr) {
+      paddr = phdr->p_paddr + (shdr->sh_addr - phdr->p_vaddr);
+    }
+
+    if (cpu_type == BDM_CPU32) {
+      read_register ("dfc", &dfc);
+      write_register ("dfc", (shdr->sh_flags & SHF_EXECINSTR) ? 6 : 5);
+    }
 
     if (verbosity) {
-      printf (" fl:%15s 0x%08lx..0x%08lx (0x%08lx): 0x%08lx:    ",
-              sname, shdr->sh_addr, shdr->sh_addr + shdr->sh_size,
-              shdr->sh_size, shdr->sh_offset);
+      printf (" fl:%15s 0x%08lx..0x%08lx (0x%08lx): 0x%08lx:   ",
+              sname, (long unsigned int) paddr,
+              (long unsigned int) (paddr + shdr->sh_size),
+              (long unsigned int) shdr->sh_size,
+              (long unsigned int) 0);
       fflush (stdout);
     }
 
-    data = elf_get_section_data (elf, sname);
-
-    if (!data)
-    {
+    data = elf_get_section_data (elf, sindex, &size);
+    if (size && !data) {
       printf (" cannot load data for section: %s", sname);
       return 0;
     }
-    
-    for (off = 0; off < shdr->sh_size; off += sizeof(rbuf)) {
-      unsigned int cnt = shdr->sh_size - off;
-      int          ret;
-      
-      if (cnt > sizeof(rbuf)) cnt = sizeof(rbuf);
 
-      if ((ret = write_memory (shdr->sh_addr + off,
-                               data + off, cnt)) != cnt) {
-        if (verbosity) printf ("\b\bFAIL\n");
+    for (off = 0; off < shdr->sh_size; off += sizeof (rbuf)) {
+      unsigned int cnt = shdr->sh_size - off;
+      int ret;
+
+      if (cnt > sizeof (rbuf))
+        cnt = sizeof (rbuf);
+
+      if ((ret = write_memory (paddr + off, data + off, cnt)) != cnt) {
+        if (verbosity)
+          printf ("\b\bFAIL\n");
         warn ("%swrite_memory(0x%x, xxx, 0x%x)==%d failed\n",
-              verbosity ? "" : "\n", shdr->sh_addr + off, cnt, ret);
-        free (data);
+              verbosity ? "" : "\n", paddr + off, cnt, ret);
         return 0;
       }
 
       if (verify) {
-        read_memory (shdr->sh_addr + off, rbuf, cnt);
+        read_memory (paddr + off, rbuf, cnt);
         if (memcmp (data + off, rbuf, cnt)) {
-          if (verbosity) printf ("\b\bFAIL\n");
+          if (verbosity)
+            printf ("\b\bFAIL\n");
           warn ("%sRead back contents from 0x%08lx don't match\n",
-                verbosity ? "" : "\n", shdr->sh_addr + off);
-          free (data);
+                verbosity ? "" : "\n", paddr + off);
           return 0;
         }
       }
@@ -595,13 +688,12 @@ static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
       }
     }
 
-    free (data);
+    if (verbosity && off >= shdr->sh_size)
+      printf ("\n");
 
-    if (verbosity && off >= shdr->sh_size) printf ("\n");
-    
-#if FIX_THIS_FOR_CPU32
-    write_register ("dfc", dfc);
-#endif
+    if (cpu_type == BDM_CPU32) {
+      write_register ("dfc", dfc);
+    }
   }
 
   return 1;
@@ -609,30 +701,50 @@ static int load_section (elf_handle* elf, const char* sname, GElf_Shdr* shdr)
 
 /* invert portions of a longword and check whether the correct portions
    were actually inverted.
- */ 
-static void check_alignment (unsigned long adr, char size)
+ */
+static void
+check_alignment (uint32_t adr, char size)
 {
   unsigned i;
-  unsigned long readback;
-  unsigned long mask=0x0ff;
-  unsigned long off=0;
-  unsigned long pat=pattern[0];
+  uint32_t readback;
+  uint32_t mask = 0x0ff;
+  uint32_t off = 0;
+  uint32_t pat = pattern[0];
 
   switch (size) {
-    case 1: case '1': case 'B': case 'b': off=3; mask=0x0ff;       break;
-    case 2: case '2': case 'W': case 'w': off=2; mask=0x0ffff;     break;
-    case 4: case '4': case 'L': case 'l': off=0; mask=0x0ffffffff; break;
-    default: fatal ("Unknown size specifier %c\n", size);
+    case 1:
+    case '1':
+    case 'B':
+    case 'b':
+      off = 3;
+      mask = 0x0ff;
+      break;
+    case 2:
+    case '2':
+    case 'W':
+    case 'w':
+      off = 2;
+      mask = 0x0ffff;
+      break;
+    case 4:
+    case '4':
+    case 'L':
+    case 'l':
+      off = 0;
+      mask = 0x0ffffffff;
+      break;
+    default:
+      fatal ("Unknown size specifier %c\n", size);
   }
 
   /* write pattern
    */
-  write_value(adr, pat, 4);
+  write_value (adr, pat, 4);
 
-  for (i=0; i<4; i+=size) {
-    pat ^= (mask << (i*8));
+  for (i = 0; i < 4; i += size) {
+    pat ^= (mask << (i * 8));
 
-    write_value (adr+off-i, (pat >> (i*8)) & mask, size);
+    write_value (adr + off - i, (pat >> (i * 8)) & mask, size);
 
     read_value (adr, &readback, 4);
 
@@ -645,17 +757,18 @@ static void check_alignment (unsigned long adr, char size)
 /* Split a line by whitespace, do variable substitutions and execute the
    command
  */
-static void exec_line (const char *line, size_t glbl_argc, char **glbl_argv)
+static void
+exec_line (const char *line, size_t glbl_argc, char **glbl_argv)
 {
   int i, ac;
   char **av;
 
-  ac = build_argv (line, &av, glbl_argc-1, glbl_argv+1);
+  ac = build_argv (line, &av, glbl_argc - 1, glbl_argv + 1);
 
   if (ac) {
     do_command (ac, av);
 
-    for (i=0; i<ac; i++)
+    for (i = 0; i < ac; i++)
       free (av[i]);
     free (av);
   }
@@ -668,28 +781,29 @@ static void exec_line (const char *line, size_t glbl_argc, char **glbl_argv)
 /* Register test patterns for the "check-mem" and "check-register" commands.
    if argv==NULL, argc random patterns are generated.
  */
-static void cmd_patterns (size_t argc, char *argv[])
+static void
+cmd_patterns (size_t argc, char *argv[])
 {
   unsigned int i;
 
-  if (argc==3 && argv && STREQ (argv[1], "random")) {
-    warn ("command \"patterns random CNT\" deprecated." \
+  if (argc == 3 && argv && STREQ (argv[1], "random")) {
+    warn ("command \"patterns random CNT\" deprecated."
           " Use \"random-patterns CNT\" instead.\n");
     argc = strtoul (argv[2], NULL, 0);
     argv = 0;
   }
 
-  if (!(pattern = realloc (pattern, argc*sizeof(*pattern))))
+  if (!(pattern = realloc (pattern, argc * sizeof (*pattern))))
     fatal ("Out of memory\n");
 
   if (argv) {
     argc--;
-    for (i=0; i<argc; i++) {
-      pattern[i] = eval_string (argv[i+1]);
+    for (i = 0; i < argc; i++) {
+      pattern[i] = eval_string (argv[i + 1]);
     }
   } else {
-    for (i=0; i<2*argc; i++) {
-      ((unsigned short*)pattern)[i] = (rand() >> 3) & 0x0ffff;
+    for (i = 0; i < 2 * argc; i++) {
+      ((unsigned short *) pattern)[i] = (rand() >> 3) & 0x0ffff;
     }
   }
 
@@ -697,8 +811,8 @@ static void cmd_patterns (size_t argc, char *argv[])
 
   if (verbosity) {
     printf ("\n");
-    for (i=0; i<patcnt; i++) {
-      printf (" pattern %d: 0x%08lx\n", i, pattern[i]);
+    for (i = 0; i < patcnt; i++) {
+      printf (" pattern %d: 0x%08lx\n", i, (long unsigned int) pattern[i]);
     }
   }
 }
@@ -707,188 +821,208 @@ static void cmd_patterns (size_t argc, char *argv[])
    bits 3..18 of the generated numbers since the lower bits are less random
    and bit 31 would always be zero on a typical host.
  */
-static void cmd_patterns_rnd (size_t argc, char *argv[])
+static void
+cmd_patterns_rnd (size_t argc, char *argv[])
 {
-  cmd_patterns (strtoul (argv[1], NULL, 0), NULL);
+  cmd_patterns (strtoul(argv[1], NULL, 0), NULL);
 }
 
 /* check registers
  */
-static void cmd_check_reg (size_t argc, char **argv)
+static void
+cmd_check_reg (size_t argc, char **argv)
 {
   unsigned int i;
 
   if (!patcnt)
-    cmd_patterns (37, NULL);  /* generate prime number of test patterns */
+    cmd_patterns (37, NULL);             /* generate prime number of test patterns */
 
-  if (verbosity) printf ("\n");
+  if (verbosity)
+    printf ("\n");
 
-  for (i=1; i<argc; i++)
+  for (i = 1; i < argc; i++)
     check_one_register (argv[i]);
 
-  if (verbosity) printf (" OK\n");
+  if (verbosity)
+    printf (" OK\n");
 }
 
 /* dump register
  */
-static void cmd_dump_reg (size_t argc, char **argv)
+static void
+cmd_dump_reg (size_t argc, char **argv)
 {
   unsigned int i;
-  unsigned long reg_value;
+  uint32_t reg_value;
 
-  if (verbosity) printf ("\n");
+  if (verbosity)
+    printf ("\n");
 
-  for (i=1; i<argc; i++) {
+  for (i = 1; i < argc; i++) {
     read_register (argv[i], &reg_value);
-    printf (" %7s: 0x%08lx\n", argv[i], reg_value);
+    printf (" %7s: 0x%08lx\n", argv[i], (long unsigned int) reg_value);
   }
 
-  if (verbosity) printf (" OK\n");
+  if (verbosity)
+    printf(" OK\n");
 }
 
 /* write a value to a specific address
  */
-static void cmd_write (size_t argc, char **argv)
+static void
+cmd_write (size_t argc, char **argv)
 {
   char *dst;
-  unsigned long val;
+  uint32_t val;
 
   dst = argv[1];
   val = eval_string (argv[2]);
 
   if (verbosity) {
-    printf ("0x%08lx to %s", val, dst);
+    printf ("0x%08lx to %s", (long unsigned int) val, dst);
     fflush (stdout);
   }
 
-  if (*dst=='%') {
+  if (*dst == '%') {
     write_register (dst, val);
   } else {
-    write_value (eval_string(dst), val, argv[3][0]);
+    write_value (eval_string (dst), val, argv[3][0]);
   }
 
-  if (verbosity) printf (" OK\n");
+  if (verbosity)
+    printf (" OK\n");
 }
 
 /* write a value to a control register
  */
-static void cmd_write_ctrl (size_t argc, char **argv)
+static void
+cmd_write_ctrl (size_t argc, char **argv)
 {
-  unsigned long val;
+  uint32_t val;
   int dst;
 
   dst = (int) eval_string (argv[1]);
   val = eval_string (argv[2]);
 
   if (verbosity) {
-    printf ("0x%08lx to ctrl-reg 0x%04x", val, dst);
+    printf ("0x%08lx to ctrl-reg 0x%04x", (long unsigned int) val, dst);
     fflush (stdout);
   }
 
-  if(bdmWriteControlRegister(dst, val) < 0)
+  if (bdmWriteControlRegister (dst, val) < 0)
     fatal ("Can't write 0x%08x into control-register 0x%04x: %s\n",
            val, dst, bdmErrorString());
 
-  if (verbosity) printf (" OK\n");
+  if (verbosity)
+    printf (" OK\n");
 }
 
 /* dump a memory region
  */
-static void cmd_dump_mem (size_t argc, char **argv)
+static void
+cmd_dump_mem (size_t argc, char **argv)
 {
-  unsigned long i;
-  unsigned long src;
-  unsigned long val;
-  unsigned long len;
+  uint32_t i;
+  uint32_t src;
+  uint32_t val;
+  uint32_t len;
   int rlen;
-  FILE *file=stdout;
+  FILE *file = stdout;
 
   src = eval_string (argv[1]);
   len = eval_string (argv[2]);
 
-  if (argc==5 && !(file = fopen (argv[4], "w")))
+  if (argc == 5 && !(file = fopen (argv[4], "w")))
     fatal ("Can't open \"%s\":%s\n", argv[4], strerror(errno));
 
-  for (i=0; i<len; i+=rlen) {
-    if (!(i%16)) fprintf (file, "\n 0x%08lx: ", src+i);
-    rlen = read_value (src+i, &val, argv[3][0]);
-    fprintf (file, " 0x%0*lx", 2*rlen, val);
+  for (i = 0; i < len; i += rlen) {
+    if (!(i % 16))
+      fprintf (file, "\n 0x%08lx: ", (long unsigned int) (src + i));
+    rlen = read_value (src + i, &val, argv[3][0]);
+    fprintf (file, " 0x%0*lx", 2 * rlen, (long unsigned int) val);
     fflush (file);
   }
 
-  if (file != stdout) fclose (file);
+  if (file != stdout)
+    fclose (file);
 
   printf ("\nOK\n");
 }
 
 /* check a memory region
  */
-static void cmd_check_mem (size_t argc, char **argv)
+static void
+cmd_check_mem (size_t argc, char **argv)
 {
-  unsigned long base;
-  unsigned long size;
-  unsigned long off;
-  unsigned long *wbuf;
-  unsigned long *rbuf;
+  uint32_t base;
+  uint32_t size;
+  uint32_t off;
+  uint32_t *wbuf;
+  uint32_t *rbuf;
   unsigned char *sav;
 
   if (!patcnt)
-    cmd_patterns (37, NULL);  /* generate prime number of test patterns */
+    cmd_patterns (37, NULL);             /* generate prime number of test patterns */
 
   base = eval_string (argv[1]);
   size = eval_string (argv[2]);
 
-  sav  = malloc (size+4);
-  wbuf = malloc (size+4);
-  rbuf = malloc (size+4);
-    
-  if (!sav || !wbuf || !rbuf) fatal ("Out of memory\n");
+  sav = malloc (size + 4);
+  wbuf = malloc (size + 4);
+  rbuf = malloc (size + 4);
+
+  if (!sav || !wbuf || !rbuf)
+    fatal ("Out of memory\n");
 
   /* Fill buffer with a known pattern.
    */
-  for (off=0; off<size/4; off++) {
+  for (off = 0; off < size / 4; off++) {
     wbuf[off] = pattern[off % patcnt];
   }
 
-  read_memory (base, sav, size);           /* save original contents */
-  write_memory (base, (unsigned char *)wbuf, size); /* write pattern */
-  read_memory (base, (unsigned char *)rbuf, size);  /* read it back */
+  read_memory (base, sav, size);                     /* save original contents */
+  write_memory (base, (unsigned char *) wbuf, size); /* write pattern */
+  read_memory (base, (unsigned char *) rbuf, size);  /* read it back */
 
   if (memcmp (wbuf, rbuf, size))
     warn (" Readback failed at 0x%08lx\n", base);
 
-  for (off=0; off<size; off+=4) {
-    check_alignment (base+off, 'b');
-    check_alignment (base+off, 'w');
+  for (off = 0; off < size; off += 4) {
+    check_alignment (base + off, 'b');
+    check_alignment (base + off, 'w');
   }
 
-  write_memory (base, sav, size); /* restore original contents */
+  write_memory (base, sav, size);        /* restore original contents */
 
   free (sav);
   free (wbuf);
   free (rbuf);
 
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* load binary into target
  */
-static void cmd_load (size_t argc, char **argv)
+static void
+cmd_load (size_t argc, char **argv)
 {
   elf_handle elf;
 
-  if (verbosity) printf ("\n");
+  if (verbosity)
+    printf ("\n");
 
   verify = 0;
   if (STREQ (argv[1], "-v")) {
-    verify=1;
+    verify = 1;
     argv++;
   }
 
-  if (argc < 2) fatal ("Wrong number of arguments\n");
+  if (argc < 2)
+    fatal ("Wrong number of arguments\n");
 
   elf_handle_init (&elf);
-  
+
   if (!elf_open (argv[1], &elf, printf)) {
     warn ("can not open %s: %s\n", argv[1], strerror (errno));
     return;
@@ -898,143 +1032,179 @@ static void cmd_load (size_t argc, char **argv)
      the search order for the symbols should be adjusted. The question is
      how to distinguish foo/bar from foo/baz/../bar. On unix, dev/inode
      could be used for this. But how to do it on windows?
-  */
-  if (!(loaded_elfs = realloc(loaded_elfs,
-                              (loaded_elf_cnt + 1) * sizeof(elf_handle))))
+   */
+  if (!(loaded_elfs = realloc (loaded_elfs,
+                               (loaded_elf_cnt + 1) * sizeof (elf_handle))))
     fatal ("Out of memory\n");
+
   loaded_elfs[loaded_elf_cnt++] = elf;
 
   elf_map_over_sections (&elf, load_section, argv[2]);
 
   write_register ("rpc", elf.ehdr.e_entry);
 
-  if (verbosity) printf ("PC set to default entry address: 0x%08lx\n",
-                         elf.ehdr.e_entry);
+  if (verbosity)
+    printf ("PC set to default entry address: 0x%08lx\n",
+            (long unsigned int) elf.ehdr.e_entry);
 }
 
 /* execute code withhin target
  */
-static void cmd_execute (size_t argc, char **argv)
+static void
+cmd_execute (size_t argc, char **argv)
 {
-  unsigned long addr;
+  uint32_t addr;
 
-  if (argc>=2) write_register ("rpc", eval_string (argv[1]));
+  if (argc >= 2)
+    write_register ("rpc", eval_string (argv[1]));
 
   read_register ("rpc", &addr);
 
-  if (verbosity) printf ("Run at 0x%08lx\n", addr);
+  if (verbosity)
+    printf ("Run at 0x%08lx\n", (long unsigned int) addr);
 
-  if (bdmGo () < 0) fatal ("Can not run the taget at 0x%08lx\n", addr);
+  if (bdmGo () < 0)
+    fatal ("Can not run the taget at 0x%08lx\n", addr);
 }
 
 /* single step target
  */
-static void cmd_step (size_t argc, char **argv)
+static void
+cmd_step (size_t argc, char **argv)
 {
-  unsigned long addr;
+  uint32_t addr;
 
-  if (argc>=2) write_register ("rpc", eval_string (argv[1]));
+  if (argc >= 2)
+    write_register ("rpc", eval_string (argv[1]));
 
-  read_register ("rpc", &addr);
+  read_register("rpc", &addr);
 
-  if (verbosity) printf ("Step at 0x%08lx\n", addr);
+  if (verbosity)
+    printf("Step at 0x%08lx\n", (long unsigned int) addr);
 
-  if (bdmStep () < 0) fatal ("Can not step the taget at 0x%08lx\n", addr);
+  if (bdmStep () < 0)
+    fatal ("Can not step the taget at 0x%08lx\n", addr);
 }
 
 /* set a variable
  */
-static void cmd_set (size_t argc, char *argv[])
+static void
+cmd_set (size_t argc, char *argv[])
 {
+  char *val;
   set_var (argv[1], argv[2]);
 
-  if (verbosity) printf ("OK\n");
+  val = get_var (argv[1]);
+  printf ("%s = %s ", argv[1], (val) ? val : "null");
+  
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* read a line from stdin and assign arguments to variables
  */
-static void cmd_read (size_t argc, char *argv[])
+static void
+cmd_read (size_t argc, char *argv[])
 {
   int i, ac;
   char *p, **av, buf[1024];
 
-  if (!fgets (buf, 1020, stdin)) fatal ("Can't read stdin\n");
-  buf[1020]=0;
-  if ((p=strchr(buf, '\n'))) *p=0;
+  if (!fgets (buf, 1020, stdin))
+    fatal ("Can't read stdin\n");
+  buf[1020] = 0;
+  if ((p = strchr (buf, '\n')))
+    *p = 0;
 
   ac = build_argv (buf, &av, 0, NULL);
   if (ac) {
-    for (i=1; i<argc; i++) {
-      if (i>ac) fatal ("Not enough arguments specified\n");
-      set_var (argv[i], av[i-1]);
-      free (av[i-1]);
+    for (i = 1; i < argc; i++) {
+      if (i > ac)
+        fatal ("Not enough arguments specified\n");
+      set_var (argv[i], av[i - 1]);
+      free (av[i - 1]);
     }
     free (av);
   }
 
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* exit bdmctrl
  */
-static void cmd_exit (size_t argc, char *argv[])
+static void
+cmd_exit (size_t argc, char *argv[])
 {
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
   clean_exit (EXIT_SUCCESS);
 }
 
 /* reset the target
  */
-static void cmd_reset (size_t argc, char *argv[])
+static void
+cmd_reset (size_t argc, char *argv[])
 {
-  if (bdmReset() < 0) fatal ("bdmReset(): %s\n", bdmErrorString());
+  if (bdmReset () < 0)
+    fatal ("bdmReset (): %s\n", bdmErrorString ());
 
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* Wait until target is stopped or hlated
  */
-static void cmd_wait (size_t argc, char **argv)
+static void
+cmd_wait (size_t argc, char **argv)
 {
-  while (!((bdmStatus ()) & (BDM_TARGETSTOPPED|BDM_TARGETHALT)))
+  while (!((bdmStatus ()) & (BDM_TARGETSTOPPED | BDM_TARGETHALT)))
     wait (250);
 
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* print out seconds since start
  */
-static void cmd_time (size_t argc, char **argv)
+static void
+cmd_time (size_t argc, char **argv)
 {
   printf (" %ld seconds\n", time(NULL) - base_time);
 }
 
 /* sleep for a while
  */
-static void cmd_sleep (size_t argc, char **argv)
+static void
+cmd_sleep (size_t argc, char **argv)
 {
   wait (strtoul (argv[1], NULL, 0));
-  if (verbosity) printf ("OK\n");
+  if (verbosity)
+    printf ("OK\n");
 }
 
 /* output a line of text
  */
-static void cmd_echo (size_t argc, char **argv)
+static void
+cmd_echo (size_t argc, char **argv)
 {
   int i;
-  for (i=1; i<argc; i++)
-    printf ("%s%s", i>1 ? " " : "", argv[i]);
+
+  for (i = 1; i < argc; i++)
+    printf ("%s%s", i > 1 ? " " : "", argv[i]);
   printf ("\n");
 }
 
 /* autodetect flash hardware
  */
-static void cmd_flash (size_t argc, char **argv)
+static void
+cmd_flash (size_t argc, char **argv)
 {
   char name[1024];
-  unsigned long adr=strtoul (argv[1], NULL, 0);
+  uint32_t adr = strtoul (argv[1], NULL, 0);
+
   if (flash_register (name, adr, (argc > 2) ? argv[2] : NULL)) {
-    if (verbosity) printf ("%s\n", name);
+    if (verbosity)
+      printf ("%s\n", name);
   } else {
     warn ("Could not detect flash hardware on 0x%x\n", adr);
   }
@@ -1042,32 +1212,36 @@ static void cmd_flash (size_t argc, char **argv)
 
 /* load target flash driver
  */
-static void cmd_flashplug (size_t argc, char **argv)
+static void
+cmd_flashplug (size_t argc, char **argv)
 {
-  unsigned long adr = strtoul (argv[1], NULL, 0);
-  unsigned long len = strtoul (argv[2], NULL, 0);
+  uint32_t adr = strtoul (argv[1], NULL, 0);
+  uint32_t len = strtoul (argv[2], NULL, 0);
 
-  flash_plugin (verbosity ? printf : NULL, adr, len, argv+3);
-  if (verbosity) printf ("\n");
+  flash_plugin (verbosity ? printf : NULL, adr, len, argv + 3);
+  if (verbosity)
+    printf ("\n");
 }
 
 /* erase flash hardware
  */
-static void cmd_erase (size_t argc, char **argv)
+static void
+cmd_erase (size_t argc, char **argv)
 {
   int ret;
-  unsigned long adr = strtoul (argv[1], NULL, 0);
+  uint32_t adr = strtoul (argv[1], NULL, 0);
 
   if (STREQ (argv[2], "wait")) {
-    warn ("command \"erase BASE wait\" deprecated."\
+    warn ("command \"erase BASE wait\" deprecated."
           " Use \"erase-wait BASE\" instead.\n");
     ret = flash_erase_wait (adr);
   } else {
-    ret = flash_erase (adr, strtol (argv[2], NULL, 0));
+    ret = flash_erase (adr, strtol(argv[2], NULL, 0));
   }
 
   if (ret) {
-    if (verbosity) printf ("OK\n");
+    if (verbosity)
+      printf ("OK\n");
   } else {
     warn ("FAIL\n");
   }
@@ -1075,21 +1249,17 @@ static void cmd_erase (size_t argc, char **argv)
 
 /* blank check flash hardware
  */
-static void cmd_blank_chk (size_t argc, char **argv)
+static void
+cmd_blank_chk (size_t argc, char **argv)
 {
   int ret;
-  unsigned long adr = strtoul (argv[1], NULL, 0);
+  uint32_t adr = strtoul (argv[1], NULL, 0);
 
-  if (STREQ (argv[2], "wait")) {
-    warn ("command \"erase BASE wait\" deprecated."\
-          "Use \"erase-wait BASE\" instead.\n");
-    ret = flash_erase_wait (adr);
-  } else {
-    ret = flash_erase (adr, strtol (argv[2], NULL, 0));
-  }
+  ret = flash_blank_chk (adr, strtol (argv[2], NULL, 0));
 
   if (ret) {
-    if (verbosity) printf ("OK\n");
+    if (verbosity)
+      printf ("OK\n");
   } else {
     warn ("FAIL\n");
   }
@@ -1097,10 +1267,12 @@ static void cmd_blank_chk (size_t argc, char **argv)
 
 /* wait for flash hardware to finish erase operation
  */
-static void cmd_erase_wait (size_t argc, char **argv)
+static void
+cmd_erase_wait(size_t argc, char **argv)
 {
   if (flash_erase_wait (strtoul (argv[1], NULL, 0))) {
-    if (verbosity) printf ("OK\n");
+    if (verbosity)
+      printf ("OK\n");
   } else {
     warn ("FAIL\n");
   }
@@ -1108,36 +1280,45 @@ static void cmd_erase_wait (size_t argc, char **argv)
 
 /* read commands from a file and execute them
  */
-static void cmd_source (size_t argc, char **argv)
+static void
+cmd_source (size_t argc, char **argv)
 {
   char buf[1024];
-  FILE *file=stdin;
+  FILE *file = stdin;
 
-  if (argc>=2 && !(file=fopen(argv[1], "r")))
-    fatal ("%s: %s: %s\n", progname, argv[1], strerror(errno));
+  if (argc >= 2 && !(file = fopen (argv[1], "r")))
+    fata l("%s: %s: %s\n", progname, argv[1], strerror (errno));
 
   while (fgets (buf, 1020, file)) {
     char *p;
-    buf[1020]=0;
-    if ((p=strchr(buf, '\n'))) *p=0;
-    if ((p=strchr(buf, '#'))) *p=0;
+
+    buf[1020] = 0;
+    if ((p = strchr (buf, '\n')))
+      *p = 0;
+    if ((p = strchr (buf, '#')))
+      *p = 0;
     exec_line (buf, argc, argv);
   }
 
-  fclose (file);
+  fclose(file);
 }
 
 /* Open BDM device
  */
-static void cmd_open (size_t argc, char **argv)
+static void
+cmd_open (size_t argc, char **argv)
 {
   /* open BDM port and set basic options
    */
-  if (bdmOpen(argv[1])<0)
-    fatal ("bdmOpen(\"%s\"): %s\n", argv[1], bdmErrorString());
+  if (bdmOpen (argv[1]) < 0)
+    fatal ("bdmOpen (\"%s\"): %s\n", argv[1], bdmErrorString ());
 
-  if (debug_driver)  bdmSetDriverDebugFlag(debug_driver);
-  if (delay)         bdmSetDelay(delay);
+  if (debug_driver) {
+    bdmSetDriverDebugFlag (1);
+    bdmSetDebugFlag (1);  
+  }
+  if (delay)
+    bdmSetDelay (delay);
 
   /* print information we can retrieve from driver
    */
@@ -1145,37 +1326,41 @@ static void cmd_open (size_t argc, char **argv)
     unsigned int driver_version;
     int iface;
 
-    if (bdmGetDrvVersion(&driver_version) < 0)
-      fatal ("bdmGetDrvVersion(): %s\n", bdmErrorString());
+    if (bdmGetDrvVersion (&driver_version) < 0)
+      fatal("bdmGetDrvVersion (): %s\n", bdmErrorString ());
 
-    printf("BDM Driver Version: %x.%d\n", 
-           driver_version >> 8, driver_version & 0xff);
+    printf ("BDM Driver Version: %x.%d\n",
+            driver_version >> 8, driver_version & 0xff);
 
-    if (bdmGetProcessor(&cpu_type) < 0)
-      fatal ("bdmGetProcessor(): %s\n", bdmErrorString());
+    if (bdmGetProcessor (&cpu_type) < 0)
+      fatal("bdmGetProcessor (): %s\n", bdmErrorString ());
 
-    switch(cpu_type) {
-      case BDM_CPU32:    printf("Processor: CPU32\n");    break;
-      case BDM_COLDFIRE: printf("Processor: Coldfire\n"); break;
+    switch (cpu_type) {
+      case BDM_CPU32:
+        printf ("Processor: CPU32\n");
+        break;
+      case BDM_COLDFIRE:
+        printf ("Processor: Coldfire\n");
+        break;
       default:
         fatal ("Unsupported processor type %d!\n", cpu_type);
     }
 
-    if (bdmGetInterface(&iface) < 0)
-      fatal ("bdmGetInterface(): %s", bdmErrorString());
+    if (bdmGetInterface (&iface) < 0)
+      fatal("bdmGetInterface (): %s", bdmErrorString ());
 
-    switch(iface) {
+    switch (iface) {
       case BDM_COLDFIRE_PE:
-        printf("Interface: P&E Coldfire\n");
+        printf ("Interface: P&E Coldfire\n");
         break;
       case BDM_COLDFIRE_TBLCF:
-        printf("Interface: TBLCF USB Coldfire\n");
-      break;
+        printf ("Interface: TBLCF USB Coldfire\n");
+        break;
       case BDM_CPU32_PD:
-        printf("Interface: Eric's CPU32\n");
+        printf ("Interface: Eric's CPU32\n");
         break;
       case BDM_CPU32_ICD:
-        printf("Interface: ICD (P&E) CPU32\n");
+        printf ("Interface: ICD (P&E) CPU32\n");
         break;
       default:
         fatal ("Unknown or unsupported interface type %d!\n", iface);
@@ -1185,6 +1370,9 @@ static void cmd_open (size_t argc, char **argv)
 
 /* Known commands and their implementations.
  */
+
+/* *INDENT-OFF* */ 
+
 static struct command_s {
   char *name;
   char *args;
@@ -1259,8 +1447,8 @@ static struct command_s {
     "Read a line from stdin, split it into arguments and assign the\n"
     "arguments to specified variables.\n"
   },
-  { "sleep",           "SEC",                 0, 2,       2, cmd_sleep,
-    "Sleep for SEC seconds.\n"
+  { "sleep",           "MSEC",                0, 2,       2, cmd_sleep,
+    "Sleep for MSEC milli-seconds.\n"
   },
   { "wait",            "",                    1, 1,       1, cmd_wait,
     "Wait until target is halted/stopped.\n"
@@ -1312,6 +1500,7 @@ static struct command_s {
   },
   { "erase",           "BASE OFF",            1, 2,       3, cmd_erase,
     "Submit erase command to sector with OFF on flash chip at BASE.\n"
+    "OFF is sector offset relative to the base of the chip.\n"
     "OFF==-1 indicates erase the whole chip.  For 29Fxxx and 49Fxxx types\n"
     "of chips multiple erase commands can be issued simultanously before\n"
     "the erase-wait command is issued.\n"
@@ -1321,25 +1510,29 @@ static struct command_s {
   },
   { "blank-chk",       "BASE OFF",            1, 2,       3, cmd_blank_chk,
     "perform a blank check on the chip at BASE.\n"
+    "OFF is sector offset relative to the base of the chip.\n"
     "OFF==-1 indicates erase the whole chip.  Otherwise indicates page.\n"
   },
 };
 
+/* *INDENT-ON* */ 
+
 /* search a command and execute it
  */
-static void do_command (size_t argc, char **argv)
+static void
+do_command(size_t argc, char **argv)
 {
   unsigned int i;
 
-  for (i=0; i<NUMOF(command); i++) {
+  for (i = 0; i < NUMOF (command); i++) {
     if (STREQ (argv[0], command[i].name) && command[i].func) {
-      if (argc<command[i].min || argc>command[i].max)
-        fatal ("Wrong number of arguments (%d) to \"%s\"\n",
-               argc, argv[0]);
-      if (command[i].need_device && !bdmIsOpen())
+      if (argc < command[i].min || argc > command[i].max)
+        fatal ("Wrong number of arguments (%d) to \"%s\"\n", argc, argv[0]);
+      if (command[i].need_device && !bdmIsOpen ())
         fatal ("Device must be specified before \"%s\" can be used\n",
                argv[0]);
-      if (verbosity) printf ("%s: ", argv[0]);
+      if (verbosity)
+        printf ("%s: ", argv[0]);
       fflush (stdout);
       command[i].func (argc, argv);
       return;
@@ -1349,7 +1542,8 @@ static void do_command (size_t argc, char **argv)
   fatal ("%s: unknown command\n", argv[0]);
 }
 
-static void usage(char *progname, char *fmt, ...)
+static void
+usage (char *progname, char *fmt, ...)
 {
   unsigned int i;
 
@@ -1361,31 +1555,30 @@ static void usage(char *progname, char *fmt, ...)
     va_end (args);
   }
 
-  fprintf(stderr,
-          "Usage: %s [options] [<script> [arguments [...]]]\n"
-          " where options are one ore more of:\n"
-          "   -h <cmd>   Get additional description for command <cmd>.\n"
-          "   -d <level> Choose driver debug level (default=0).\n"
-          "   -v <level> Choose verbosity level (default=1).\n"
-          "   -D <delay> Delay count for BDM clock generation (default=0).\n"
-          "   -c <cmd>   Split <cmd> into args and execute resulting command.\n"
-          "   -f         Turn warnings into fatal errors.\n"
-          "\n"
-          " available commands are:\n",
-          progname);
+  fprintf (stderr,
+           "Usage: %s [options] [<script> [arguments [...]]]\n"
+           " where options are one ore more of:\n"
+           "   -h <cmd>   Get additional description for command <cmd>.\n"
+           "   -d <0/1>   Output driver debug.\n"
+           "   -v <level> Choose verbosity level (default=1).\n"
+           "   -D <delay> Delay count for BDM clock generation (default=0).\n"
+           "   -c <cmd>   Split <cmd> into args and execute resulting command.\n"
+           "   -f         Turn warnings into fatal errors.\n"
+           "\n" " available commands are:\n", progname);
 
-  for (i=0; i<NUMOF(command); i++) {
+  for (i = 0; i < NUMOF (command); i++) {
     fprintf (stderr, "   %s %s\n", command[i].name, command[i].args);
   }
 
-  exit(EXIT_FAILURE);
+  exit (EXIT_FAILURE);
 }
 
-static void help_command (char *progname, char *cmd)
+static void
+help_command (char *progname, char *cmd)
 {
   unsigned int i;
 
-  for (i=0; i<NUMOF(command); i++) {
+  for (i = 0; i < NUMOF (command); i++) {
     if (STREQ (cmd, command[i].name)) {
       fprintf (stderr, "%s %s\n\n%s",
                command[i].name, command[i].args, command[i].helptext);
@@ -1396,44 +1589,59 @@ static void help_command (char *progname, char *cmd)
   usage (progname, "unknown command '%s'.\n", cmd);
 }
 
-int main (int argc, char *argv[])
+int
+main (int argc, char *argv[])
 {
-  int opt, need_stdin=1;
+  int opt, need_stdin = 1;
 
   progname = argv[0];
 
-  srand (base_time = time (NULL));
-  qsort (regnames, NUMOF(regnames), sizeof(regnames[0]), cmpreg);
+  srand (base_time = time(NULL));
+  qsort (regnames, NUMOF (regnames), sizeof (regnames[0]), cmpreg);
 
   /* parse options
    */
-  while ((opt=getopt (argc, argv, "fd:D:v:h:c:")) >= 0) {
+  while ((opt = getopt (argc, argv, "fd:D:v:h:c:")) >= 0) {
     switch (opt) {
-      case 'h': help_command (progname, optarg); break;
-      case 'd': debug_driver = strtol (optarg, NULL, 10); break;
-      case 'D': delay        = strtol (optarg, NULL, 10); break;
-      case 'v': verbosity    = strtol (optarg, NULL, 10); break;
-      case 'c': exec_line (optarg, 1, argv); need_stdin=0; break;
-      case 'f': fatal_errors = 1; break;
-      default:  usage (progname, NULL);
+      case 'h':
+        help_command (progname, optarg);
+        break;
+      case 'd':
+        debug_driver = strtol (optarg, NULL, 10);
+        break;
+      case 'D':
+        delay = strtol (optarg, NULL, 10);
+        break;
+      case 'v':
+        verbosity = strtol (optarg, NULL, 10);
+        break;
+      case 'c':
+        exec_line (optarg, 1, argv);
+        need_stdin = 0;
+        break;
+      case 'f':
+        fatal_errors = 1;
+        break;
+      default:
+        usage (progname, NULL);
     }
   }
 
-  if (optind<argc) {
+  if (optind < argc) {
     /* Non-option arguments are present, run "source" command on them
      */
-    optind--; /* fake argv[0] which normally would be "source" command */
-    cmd_source (argc-optind, argv+optind);
+    optind--;     /* fake argv[0] which normally would be "source" command */
+    cmd_source (argc - optind, argv + optind);
   } else {
     /* No more args present. Read commands from stdin unless at least
        one command was already executed.
-    */
+     */
     if (need_stdin) {
-      char *av[]={"source", NULL};
+      char *av[] = { "source", NULL };
       cmd_source (1, av);
     }
   }
 
   clean_exit (EXIT_SUCCESS);
-  exit (0);      /* omit compiler warning */
+  exit (0);                              /* omit compiler warning */
 }

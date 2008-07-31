@@ -13,7 +13,7 @@ AC_PREREQ(2.59)
 AC_INIT([m68k-bdm],[1.4.0],[bdm-devel@lists.sourceforge.net])
 AC_CONFIG_AUX_DIR(config)
 AC_CANONICAL_TARGET([])
-AM_INIT_AUTOMAKE([-Wall dist-bzip2 dist-zip])
+AM_INIT_AUTOMAKE([-Wall -Wno-portability -Wno-unsupported dist-bzip2 dist-zip])
 
 AC_CONFIG_HEADERS(config.h:config.h.in)
 
@@ -291,6 +291,17 @@ dnl
 dnl Configure libelf
 dnl
 AC_CONFIG_SUBDIRS(libelf)
+
+dnl
+dnl Check if a m68k GCC compiler is present and can be used.
+dnl
+
+AC_PATH_PROGS([flash_plugin_cc],
+              [m68k-elf-gcc m68k-rtems4.9-gcc m68k-rtems4.8-gcc],
+              [none],
+              [/usr/local/bin:/opt/rtems-4.9/bin:/opt/rtems-4.8/bin])
+AM_CONDITIONAL(BUILD_FLASH_PLUGINS, test x${flash_plugin_cc} != xnone)
+AC_SUBST(FLASH_PLUGIN_GCC, ${flash_plugin_cc})
 
 dnl
 dnl Output the Makefiles and config.h.

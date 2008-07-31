@@ -1,4 +1,4 @@
-/* $Id: flash_filter.c,v 1.5 2008/06/16 00:01:21 cjohns Exp $
+/* $Id: flash_filter.c,v 1.6 2008/07/31 01:53:44 cjohns Exp $
  *
  * Flash filtering layer.
  *
@@ -27,53 +27,57 @@
    CCJ : Remove BFD support and replaced with libelf.
  */
 
-# include "flash29.h"
-# include "flashcfm.h"
-# include "flash_filter.h"
+#include "flash29.h"
+#include "flashcfm.h"
+#include "flashintelc3.h"
+#include "flash_filter.h"
 
-# if HOST_FLASHING
-#  include <stdint.h>
-#  include <stdio.h>
-#  include <limits.h>
-#  include <stdio.h>
-#  include <stdlib.h>
-#  include <string.h>
-#  include <elf-utils.h>
-#  include <BDMlib.h>
-# endif
+#if HOST_FLASHING
+# include <stdint.h>
+# include <stdio.h>
+# include <limits.h>
+# include <stdio.h>
+# include <stdlib.h>
+# include <string.h>
+# include <elf-utils.h>
+# include <BDMlib.h>
+#endif
 
 /* Interface to flash modules.
  */
-typedef struct {
+typedef struct
+{
   void (*init) (int);
   int struct_size;
   char *driver_magic;
-  int (*download_struct) (void *, unsigned long);
-  int (*search_chip) (void *, char *, unsigned long);
-  void (*erase) (void *, long);
-  int (*blank_chk) (void *, long);
+  int (*download_struct) (void *, uint32_t);
+  uint32_t (*search_chip) (void *, char *, uint32_t);
+  void (*erase) (void *, int32_t);
+  int (*blank_chk) (void *, int32_t);
   int (*erase_wait) (void *);
-  int (*prog) (void *, unsigned long, unsigned char *, unsigned long);
+  uint32_t (*prog) (void *, uint32_t, unsigned char *, uint32_t);
   char *(*prog_entry) (void);
   unsigned char *p_code;
-  unsigned long p_entry;
-  unsigned long p_len;
-  unsigned long ram;
-  unsigned long len;
+  uint32_t p_entry;
+  uint32_t p_len;
+  uint32_t ram;
+  uint32_t len;
 } alg_t;
 
 /* Known flashing algorithms
  */
 alg_t algorithm[] = {
-  { init_flash29 },
-  { init_flashcfm },
+  {init_flash29},
+  {init_flashcfm},
+  {init_flashintelc3},
 };
 
 /* Description of memory areas.
  */
-typedef struct area_s {
-  unsigned long adr;
-  unsigned long size;
+typedef struct area_s
+{
+  uint32_t adr;
+  uint32_t end;                         /* last byte inclusive */
   alg_t *alg;
   void *chip_descriptor;
   struct area_s *next;
@@ -81,7 +85,7 @@ typedef struct area_s {
 
 /* Memory areas. Assume RAM for unregistered areas.
  */
-static area_t ram_area = { 0, ULONG_MAX, NULL, NULL, NULL, };
+static area_t ram_area = { 0, ~0, NULL, NULL, NULL, };
 static area_t *area = NULL;
 
 /* Maximum size of a chip_descriptor. Since the chip-descriptor is algorithm's
@@ -89,31 +93,38 @@ static area_t *area = NULL;
    know which algorithm to use. Therefore we need to allocate a maximum size
    for autodetection.
  */
-static int maxsiz=0;
+static int maxsiz = 0;
+
+/* Variables.
+ */
+typedef struct variable_s
+{
+  struct variable_s *next;
+  const char *name;
+  uint32_t value;
+} variable_t;
+
+static variable_t *s_variables = 0;
 
 /* Initialize all known algorithms, determine maximum size of chip descriptors
    and register RAM for whole address range.
  */
-static void init (void)
+static void
+init (void)
 {
   int i;
 
-  for (i=0; i<NUMOF(algorithm); i++) {
-    if (algorithm[i].p_code)
-      free(algorithm[i].p_code);
-    algorithm[i].ram = 0;
-    algorithm[i].len = 0;
-  }
-  
-  if (area) return; /* Already initialized */
+  if (area)
+    return;                             /* Already initialized */
 
-  for (i=0; i<NUMOF(algorithm); i++) {
+  for (i = 0; i < NUMOF(algorithm); i++) {
+    algorithm[i].p_code = 0;
     algorithm[i].init(i);
     if (maxsiz < algorithm[i].struct_size)
       maxsiz = algorithm[i].struct_size;
   }
-    
-  area = &ram_area; /* register RAM fallback for whole address range */
+
+  area = &ram_area;  /* register RAM fallback for whole address range */
 }
 
 /* This is the callback for the init functions of the basic flash modules.
@@ -121,120 +132,123 @@ static void init (void)
    Doing it this way keeps algorithm's private data private and minimizes
    pollution of namespace.
  */
-void register_algorithm (
-  int num,
-  char *driver_magic,
-  int struct_size,
-  int (*download_struct) (void *, unsigned long),
-  int (*search_chip) (void *, char *, unsigned long),
-  void (*erase) (void *, long),
-  int (*blank_chk) (void *, long),
-  int (*erase_wait) (void *),
-  int (*prog) (void *, unsigned long, unsigned char *, unsigned long),
-  char *(*prog_entry)(void)
-                         )
+void
+register_algorithm(int num,
+                   char *driver_magic,
+                   int struct_size,
+                   int (*download_struct) (void *, uint32_t),
+                   uint32_t (*search_chip) (void *, char *, uint32_t),
+                   void (*erase) (void *, int32_t),
+                   int (*blank_chk) (void *, int32_t),
+                   int (*erase_wait) (void *),
+                   uint32_t (*prog) (void *, uint32_t, unsigned char *,
+                                     uint32_t), char *(*prog_entry) (void))
 {
-  algorithm[num].driver_magic     = strdup (driver_magic); /* FIXME */
-  algorithm[num].struct_size      = struct_size;
-  algorithm[num].download_struct  = download_struct;
-  algorithm[num].search_chip      = search_chip;
-  algorithm[num].erase            = erase;
-  algorithm[num].blank_chk        = blank_chk;
-  algorithm[num].erase_wait       = erase_wait;
-  algorithm[num].prog             = prog;
-  algorithm[num].prog_entry       = prog_entry;
+  algorithm[num].driver_magic = strdup(driver_magic);   /* FIXME */
+  algorithm[num].struct_size = struct_size;
+  algorithm[num].download_struct = download_struct;
+  algorithm[num].search_chip = search_chip;
+  algorithm[num].erase = erase;
+  algorithm[num].blank_chk = blank_chk;
+  algorithm[num].erase_wait = erase_wait;
+  algorithm[num].prog = prog;
+  algorithm[num].prog_entry = prog_entry;
+
+  algorithm[num].p_code = NULL;
+  algorithm[num].p_entry = 0;
+  algorithm[num].p_len = 0;
+  algorithm[num].ram = 0;
+  algorithm[num].len = 0;
 }
 
 /* Search memory area where ADR belongs to.
  */
-static area_t *search_area (adr)
+static area_t *
+search_area (adr)
 {
   area_t *a;
 
-  for (a=area; a; a=a->next)
-    if (a->adr<=adr && a->adr+a->size>adr) return a;
+  for (a = area; a; a = a->next)
+    if (a->adr <= adr && a->end >= adr)
+      return a;
 
   return NULL;
 }
 
-/* FIXME: This is a quick-n-dirty ad-hoc to get a start. In the long run,
-   we need to delegate memory allocation to the caller because we have no
-   guarrantee that dynamic memory is available in target-only operation mode.
- */
-static void *mymalloc (int size)
-{
-  return malloc (size);
-}
-
-# if HOST_FLASHING
+#if HOST_FLASHING
 
 /* register target flash plugins. The adr/len defines a RAM area on the
    target that can be used to download plugin and contents.
  */
-int elf_flash_plugin_load (int (*prfunc) (const char *format, ...),
-                           unsigned long adr, unsigned long len,
-                           const char* fname)
+int
+elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
+                      uint32_t adr, uint32_t len, const char *fname)
 {
-  elf_handle  handle;
-  const char* dmagic;
-  int         i;
-  
-  elf_handle_init (&handle);
+  elf_handle handle;
+  const char *dmagic;
+  int i;
+
+  elf_handle_init(&handle);
 
   if (!elf_open (fname, &handle, prfunc))
   {
-    prfunc ("open %s failed", fname);
+    if (prfunc)
+      prfunc ("open %s failed", fname);
     return 0;
   }
 
-  dmagic = elf_get_string (&handle, "driver_magic");
+  dmagic = elf_get_section_data_sym(&handle, "driver_magic");
 
   if (!dmagic)
   {
-    prfunc ("no 'driver_magic' symbol found");
+    if (prfunc)
+      prfunc ("no 'driver_magic' symbol found");
     elf_close (&handle);
     return 0;
   }
 
-	for (i = 0; i < NUMOF (algorithm); i++)
+  for (i = 0; i < NUMOF(algorithm); i++)
   {
     uint32_t value;
-    
-    if (!STREQ (dmagic, algorithm[i].driver_magic))
+    GElf_Sym entrysym;
+    GElf_Shdr shdr;
+    void *data;
+    uint32_t size;
+
+    if (!STREQ(dmagic, algorithm[i].driver_magic))
       continue;
 
-    if (!elf_get_symbol_value (&handle,
-                               algorithm[i].prog_entry (),
-                               &value))
+    if (!elf_get_symbol(&handle, algorithm[i].prog_entry(), &entrysym))
     {
       if (prfunc)
-        prfunc ("%s: no entry point found: %s",
-                dmagic, algorithm[i].prog_entry ());
-      elf_close (&handle);
+        prfunc("could not find prog entry symbol %s",
+               algorithm[i].prog_entry());
+      elf_close(&handle);
       return 0;
     }
 
-    algorithm[i].p_entry = value;
-    
-    if (!elf_get_section_size (&handle, ".text", &value))
+    if (!elf_get_section_hdr(&handle, entrysym.st_shndx, &shdr))
     {
       if (prfunc)
-        prfunc ("%s: no .text section size found", dmagic);
-      elf_close (&handle);
+        prfunc("could not get section header for prog entry");
+      elf_close(&handle);
       return 0;
     }
-    
-    algorithm[i].p_len  = value;
-    algorithm[i].p_code = elf_get_section_data (&handle, ".text");
 
-    if (!algorithm[i].p_code)
+    data = elf_get_section_data(&handle, entrysym.st_shndx, &size);
+    if (!data)
     {
       if (prfunc)
-        prfunc ("%s: could not load .text section", dmagic);
-      elf_close (&handle);
+        prfunc("could not get section data for prog entry");
+      elf_close(&handle);
       return 0;
     }
-      
+
+    algorithm[i].p_entry = entrysym.st_value;
+    algorithm[i].p_len = size;
+    algorithm[i].p_code = malloc(size);
+    memcpy(algorithm[i].p_code, data, size);
+
     algorithm[i].ram = adr;
     algorithm[i].len = len;
     break;
@@ -242,63 +256,66 @@ int elf_flash_plugin_load (int (*prfunc) (const char *format, ...),
 
   if (prfunc)
   {
-    if (i < NUMOF (algorithm))
-      prfunc ("%s loaded, size:%d", dmagic, algorithm[i].p_len);
+    if (i < NUMOF(algorithm))
+      prfunc("%s loaded, size:%d", dmagic, algorithm[i].p_len);
     else
-      prfunc ("no algorithm %s found", dmagic);
+      prfunc("no algorithm %s found", dmagic);
   }
 
-  elf_close (&handle);
-  
+  elf_close(&handle);
   return 1;
 }
 
-int srec_flash_plugin_load (int (*prfunc) (const char *format, ...),
-                            unsigned long adr, unsigned long len,
-                            const char* fname)
+int
+srec_flash_plugin_load(int (*prfunc) (const char *format, ...),
+                       uint32_t adr, uint32_t len, const char *fname)
 {
   return 0;
 }
 
-int flash_plugin (int (*prfunc) (const char *format, ...),
-                  unsigned long adr, unsigned long len, char *argv[])
+int
+flash_plugin(int (*prfunc) (const char *format, ...),
+             uint32_t adr, uint32_t len, char *argv[])
 {
   int cnt;
-  
+
   init();
 
   for (cnt = 0; argv[cnt]; cnt++)
   {
-    if (!elf_flash_plugin_load (prfunc, adr, len, argv[cnt]))
-      if (!srec_flash_plugin_load (prfunc, adr, len, argv[cnt]))
+    if (!elf_flash_plugin_load(prfunc, adr, len, argv[cnt]))
+      if (!srec_flash_plugin_load(prfunc, adr, len, argv[cnt]))
         if (prfunc)
-          prfunc ("no suitable loader found: %s", argv[cnt]);
+          prfunc("no suitable loader found: %s", argv[cnt]);
   }
-
+  return 0;
 }
 
-# endif
+#endif
 
-static int prog_clone (area_t *area,
-                       unsigned long adr, unsigned char *data,
-                       unsigned long size)
+static int
+prog_clone(area_t * area, uint32_t adr, unsigned char *data, uint32_t size)
 {
-# if HOST_FLASHING
-  char driver_magic[1024]; /* FIXME: should be dynamically */
-  unsigned long mem;
-  unsigned long len;
-  static unsigned long entry=0;
-  static unsigned long content=0;
-  static area_t *last_area=NULL;
-  unsigned long sp, ra;
-  unsigned long sent=0;
-  unsigned long num;
+#if HOST_FLASHING
+  char driver_magic[1024];              /* FIXME: should be dynamically */
+  uint32_t mem;
+  uint32_t len;
+  static uint32_t entry = 0;
+  static uint32_t content = 0;
+  static area_t *last_area = NULL;
+  uint32_t sp, ra;
+  uint32_t sent = 0;
+  uint32_t num;
+  unsigned long wrote_num = 0;
+  int cpu_type;
 
-  if (!area->alg) return 0;
+  if (!area->alg)
+    return 0;
+  if (bdmGetProcessor(&cpu_type) < 0)
+    return 0;
 
   if (!area->alg->p_code) {
-    /* No plugin loaded -> use host-only mode.
-     */
+    /* No plugin loaded -> use host-only mode. */
     return area->alg->prog (area->chip_descriptor, adr, data, size);
   }
 
@@ -306,58 +323,75 @@ static int prog_clone (area_t *area,
   len = area->alg->len;
 
   if (area != last_area) {
-    /* Download plugin and chip descriptor into target.
-     */
+    /* Download plugin and chip descriptor into target. */
     entry = area->alg->download_struct (area->chip_descriptor, mem);
-    bdmWriteMemory (entry, area->alg->p_code, area->alg->p_len); /*FIXME*/
+    bdmWriteMemory (entry, area->alg->p_code, area->alg->p_len);
     content = entry + area->alg->p_len;
     last_area = area;
   }
 
-  while (sent<size) {
-    sp=mem+len;
+  while (sent < size) {
+    sp = mem + len;
 
-    num = sp-0x200-content; /* FIXME: stack size should be determined
-                               dynamically */
-    if (num > size-sent)
-      num = size-sent;
+    num = sp - 0x200 - content; /* FIXME: stack size should be
+                                   determined dynamically */
+    if (num > size - sent)
+      num = size - sent;
 
-    /* Set up stack frame.
-     *BE CARFEUL WITH THE LONGWORD WRITES, THEY MUST BE LONGWORD ALIGNED
+    /* Set up stack frame. 
+     * Be careful with the longword writes, they must be longword aligned! 
      */
-    //sp-=4; bdmWriteWord     (sp, 0x4afa);  /* BGND instruction */
-    sp-=4; ra = sp; bdmWriteWord (sp, 0x4ac8);  /* HALT instruction */
-    sp-=4; bdmWriteLongWord (sp, num);     /* amount of data to flash */
-    sp-=4; bdmWriteLongWord (sp, content); /* adr of memory contents */
-    sp-=4; bdmWriteLongWord (sp, adr);     /* destination adr */
-    sp-=4; bdmWriteLongWord (sp, mem);     /* chip descriptor */
-    sp-=4; bdmWriteLongWord (sp, ra);      /* return address to BGND */
+    switch (cpu_type) {
+      case BDM_CPU32:
+        sp -= 4;
+        ra = sp;
+        bdmWriteWord (sp, 0x4afa);       /* BGND instruction */
+        break;
+      case BDM_COLDFIRE:
+        sp -= 4;
+        ra = sp;
+        bdmWriteWord (sp, 0x4ac8);       /* HALT instruction */
+        break;
+      default:
+        return 0;
+    }
 
-    /* Download contents.
-     */
+    sp -= 4;
+    bdmWriteLongWord (sp, num);          /* amount of data to flash */
+    sp -= 4;
+    bdmWriteLongWord (sp, content);      /* adr of memory contents */
+    sp -= 4;
+    bdmWriteLongWord (sp, adr);          /* destination adr */
+    sp -= 4;
+    bdmWriteLongWord (sp, mem);          /* chip descriptor */
+    sp -= 4;
+    bdmWriteLongWord (sp, ra);           /* return address to BGND */
+
+    /* Download contents. */
     bdmWriteMemory (content, data, num);
 
-    /* Set stack pointer and program counter.
-     */
-    bdmWriteRegister       (BDM_REG_A7,  sp);
-    bdmWriteSystemRegister (BDM_REG_RPC, entry + area->alg->p_entry);
+    /* Set stack pointer and program counter. */
+    bdmWriteRegister(BDM_REG_A7, sp);
+    bdmWriteSystemRegister(BDM_REG_RPC, entry + area->alg->p_entry);
 
-    /* Execute
-     */
-    bdmGo ();
-    while (!((bdmStatus ()) & (BDM_TARGETSTOPPED|BDM_TARGETHALT)))
-      ;
-    bdmReadRegister (BDM_REG_D0, &num);
+    /* Execute */
+    bdmGo();
+    while (!((bdmStatus ()) & (BDM_TARGETSTOPPED | BDM_TARGETHALT))) ;
+    
+    bdmReadRegister (BDM_REG_D0, &wrote_num);
 
+    if (num != (uint32_t) wrote_num) {
+      printf ("Returned 0x%08x\n", wrote_num);   
+      break;                            /* write failed */
+    }
+    
     sent += num;
     data += num;
     adr += num;
-
-    if (!num) break; /* write failed */
   }
-# else
+#else
   /* FIXME: to be done */
-# endif
+#endif
 
   return sent;
 }
@@ -367,81 +401,79 @@ static int prog_clone (area_t *area,
    is resolved by shrinking/splitting the RAM fallback area. Returns 1 on
    success, 0 otherwise.
  */
-int flash_register (char *description, unsigned long adr, char *hint_driver)
+int
+flash_register(char *description, uint32_t adr, char *hint_driver)
 {
   int i;
-  unsigned int size;
-  area_t *bold, *new, *aold; /* order is _b_efore, new, _a_fter */
+  uint32_t size;
+  area_t *bold, *new, *aold;            /* order is _b_efore, new, _a_fter */
   void *chip;
 
   init();
-  if (!(chip = mymalloc (maxsiz))) return 0;
+  if (!(chip = malloc (maxsiz)))
+    return 0;
 
-  /* Search area where the address belongs to. The result should be the
-     RAM fallback.
-  */
-  bold = search_area (adr);
+  /* Search area where the address belongs to. The result should be the RAM
+     fallback. */
+  bold = search_area(adr);
 
-  for (i=0; i<NUMOF(algorithm); i++) {
-    if(hint_driver != NULL)
-    {
-      if(!STREQ(hint_driver, algorithm[i].driver_magic))
+  for (i = 0; i < NUMOF(algorithm); i++) {
+    if (hint_driver != NULL) {
+      if (!STREQ(hint_driver, algorithm[i].driver_magic))
         continue;
     }
-        
-    if ((size = algorithm[i].search_chip (chip, description, adr))) {
-      if (bold->adr+bold->size > adr+size) {
-        /* End of old area is bigger than end of new area -> add new
-           area of old style behind new area.
-        */
-        if (!(aold = mymalloc(sizeof (*aold))))
+
+    if ((size = algorithm[i].search_chip(chip, description, adr))) {
+      if (bold->end > adr + (size - 1)) {
+        /* End of old area is bigger than end of new area -> add new area of
+           old style behind new area. */
+        if (!(aold = malloc(sizeof(*aold))))
           break;
         *aold = *bold;
-        aold->adr  = adr+size;
-        aold->size = (bold->adr + bold->size) - (adr + size);
+        aold->adr = adr + size;
         aold->next = bold->next;
         bold->next = aold;
       }
       if (bold->adr < adr) {
-        /* start of old area is less than start of new area -> add new
-           area of old style in front of new area.
-        */
-        if (!(new = mymalloc (sizeof (*new))))
-          break;
-        new->next  = bold->next;      /* insert new area into chain */
+        /* start of old area is less than start of new area -> add new area
+           of old style in front of new area. */
+        if (!(new = malloc(sizeof(*new))))
+          return 0;
+        new->next = bold->next;         /* insert new area into chain */
         bold->next = new;
-        bold->size = adr - bold->adr;  /* shrink old area */
+        bold->end = adr - 1;            /* shrink old area */
       } else {
-        new = bold; /* same start address -> just replace old area */
+        new = bold;                     /* same start address -> just replace old area */
       }
 
-      /* fill new area with contents
-       */
-      new->adr  = adr;
-      new->size = size;
-      new->alg  = &algorithm[i];
+      /* fill new area with contents */
+      new->adr = adr;
+      new->end = adr + (size - 1);
+      new->alg = &algorithm[i];
       new->chip_descriptor = chip;
 
       return 1;
     }
   }
 
-  free (chip);
+  free(chip);
   return 0;
 }
 
 /* Search area of address and call its erase algorithm.
  */
-int flash_erase (unsigned long adr, long sector_offset)
+int
+flash_erase(uint32_t adr, int32_t sector_offset)
 {
   area_t *a;
   alg_t *alg;
 
-  if (!(a=search_area(adr))) return 0;
+  if (!(a = search_area(adr)))
+    return 0;
 
   if (alg = a->alg) {
     if (alg->erase) {
-      alg->erase (a->chip_descriptor, sector_offset);
+      alg->erase(a->chip_descriptor, sector_offset);
       return 1;
     }
   }
@@ -451,16 +483,18 @@ int flash_erase (unsigned long adr, long sector_offset)
 
 /* Search area of address and call its blank check algorithm.
  */
-int flash_blank_chk (unsigned long adr, long sector_offset)
+int
+flash_blank_chk(uint32_t adr, int32_t sector_offset)
 {
   area_t *a;
   alg_t *alg;
 
-  if (!(a=search_area(adr))) return 0;
+  if (!(a = search_area(adr)))
+    return 0;
 
   if (alg = a->alg) {
     if (alg->blank_chk) {
-      return alg->blank_chk (a->chip_descriptor, sector_offset);
+      return alg->blank_chk(a->chip_descriptor, sector_offset);
     }
   }
 
@@ -469,16 +503,18 @@ int flash_blank_chk (unsigned long adr, long sector_offset)
 
 /* Search area of address and call its erase_wait algorithm.
  */
-int flash_erase_wait (unsigned long adr)
+int
+flash_erase_wait(uint32_t adr)
 {
   area_t *a;
   alg_t *alg;
 
-  if (!(a=search_area(adr))) return 0;
+  if (!(a = search_area(adr)))
+    return 0;
 
   if (alg = a->alg) {
     if (alg->erase_wait) {
-      return alg->erase_wait (a->chip_descriptor);
+      return alg->erase_wait(a->chip_descriptor);
     }
   }
 
@@ -487,40 +523,93 @@ int flash_erase_wait (unsigned long adr)
 
 /* Write to memory through registered algorithms.
  */
-unsigned long write_memory (unsigned long adr, unsigned char *data,
-                            unsigned long cnt)
+uint32_t
+write_memory(uint32_t adr, unsigned char *data, uint32_t cnt)
 {
-  int ret;
-  unsigned long wrote=0;
+  uint32_t ret;
+  uint32_t wrote = 0;
 
   init();
 
   while (wrote < cnt) {
-    area_t *area = search_area (adr+wrote);
+    area_t *area = search_area(adr + wrote);
 
-    /* That much fits into this area.
-     */
-    unsigned long size = area->size - ((adr+wrote) - area->adr);
+    /* That much fits into this area. */
+    uint32_t size = (area->end - (adr + wrote)) + 1;
 
-    /* Limit size if it is more than we actually want to write.
-     */
-    if (size > cnt-wrote) size = cnt-wrote;
+    /* Limit size if it is more than we actually want to write. */
+    if (size > cnt - wrote)
+      size = cnt - wrote;
 
     if (area->alg && area->alg->prog) {
-      ret = prog_clone (area, adr, data, size);
+      ret = prog_clone(area, adr, data, size);
       wrote += ret;
-      if (ret != size) return wrote;
-    } else {
-      /* no programming algorithm defined, assume RAM
-       */
-# if HOST_FLASHING
-      if (bdmWriteMemory (adr, data, size) < 0)
+      if (ret != size)
         return wrote;
-# else
-      memcpy ((unsigned char *)adr, data, size);
-# endif
+    } else {
+      /* no programming algorithm defined, assume RAM */
+#if HOST_FLASHING
+      if (bdmWriteMemory(adr, data, size) < 0)
+        return wrote;
+#else
+      memcpy((unsigned char *) adr, data, size);
+#endif
       wrote += size;
     }
   }
   return wrote;
+}
+
+int 
+flash_set_var(const char *name, uint32_t value)
+{
+  /* find and update existing var */
+  variable_t *var = s_variables;
+  while(var) {
+    if(strcmp(var->name, name) == 0) {
+      var->value = value;
+      return 1;
+    }
+    var = var->next;
+  }
+
+  /* add a new var */
+  var = (variable_t *) malloc(sizeof(variable_t));
+  if(!var)
+    return 0;
+  var->name = strdup(name);
+  if(!var->name)
+    return 0;
+  var->value = value;
+  var->next = s_variables;
+  s_variables = var;
+  
+  return 1;
+}
+
+int 
+flash_get_var(const char *name, uint32_t *value, uint32_t value_default)
+{
+  variable_t *var = s_variables;
+  while(var) {
+    if(strcmp(var->name, name) == 0) {
+      *value = var->value;
+      return 1;
+    }
+    var = var->next;
+  }
+  *value = value_default;
+  return 0;
+}
+
+int 
+flash_spin(int c)
+{
+#if HOST_FLASHING
+  const char spin[] = {'|', '/', '-', '\\'};
+  int n = c / 100;
+  printf("\b%c", spin[n % 4]);
+  fflush(stdout);  
+#endif
+  return ++c;
 }

@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.13 2008/06/16 12:57:49 cjohns Exp $
+## $Id: Makefile.am,v 1.14 2008/07/31 01:53:44 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -84,4 +84,4 @@ bdmmon_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
 	$(TBLCF_USB_LIB)
 
-EXTRA_DIST = README.bdmctrl m68332.test
+EXTRA_DIST = README.bdmctrl m68332.test mcf52235.test mcf5235.test mcf5329.test

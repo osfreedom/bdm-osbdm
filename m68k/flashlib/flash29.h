@@ -1,4 +1,4 @@
-/* $Id: flash29.h,v 1.1 2003/12/29 22:53:56 joewolf Exp $
+/* $Id: flash29.h,v 1.2 2008/07/31 01:53:44 cjohns Exp $
  *
  * Header for 29Fxxx and 49Fxxx flash driver.
  *
@@ -21,7 +21,7 @@
 /* This function will be called by flash_filter and is responsible to register
    the driver
 */
-void init_flash29 (int num);
+void init_flash29(int num);
 
 /* following #define's should probably be set by configure
  */
@@ -31,17 +31,17 @@ void init_flash29 (int num);
    to 1 approximately doubles the programming speed on a 20MHz 68332 with
    Am29F400 in 16-bit-mode.
 */
-# define FLASH_OPTIMIZE_FOR_SPEED 0
+#define FLASH_OPTIMIZE_FOR_SPEED 0
 
 /* When FLASH_OPTIMIZE_FOR_SPEED==1, selecting only required bus widths can
    reduce size of generated code
 */
-# define FLASH_BUS_WIDTH1 1
-# define FLASH_BUS_WIDTH2 1
-# define FLASH_BUS_WIDTH4 1
+#define FLASH_BUS_WIDTH1 1
+#define FLASH_BUS_WIDTH2 1
+#define FLASH_BUS_WIDTH4 1
 
-# if FLASH_OPTIMIZE_FOR_SPEED
+#if FLASH_OPTIMIZE_FOR_SPEED
 # if ( !FLASH_BUS_WIDTH1 && !FLASH_BUS_WIDTH2 && !FLASH_BUS_WIDTH4 )
-# error At least one bus width must be defined when FLASH_OPTIMIZE_FOR_SPEED!=0
+#  error At least one bus width must be defined when FLASH_OPTIMIZE_FOR_SPEED!=0
 # endif
-# endif
+#endif
