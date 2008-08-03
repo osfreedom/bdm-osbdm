@@ -10,7 +10,7 @@ PWARN="-pedantic -Wall -Wcast-align -Wstrict-prototypes -Wmissing-prototypes"
 POPT="-O2 -fomit-frame-pointer"
 PREL="-mpcrel"
 PDEF="-DHOST_FLASHING=0"
-PTGT="-cpu=$CPU"
+PTGT="-mcpu=$CPU"
 
 OPT="$PWARN $POPT $PREL $PDEF $PTGT"
 

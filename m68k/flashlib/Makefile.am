@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.8 2008/07/31 01:53:44 cjohns Exp $
+## $Id: Makefile.am,v 1.9 2008/08/03 23:43:15 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -43,35 +43,35 @@ fpi_source = $(1).c $(1).h
 fpi_target = $(foreach target, $(2), $(1)-$(target).plugin)
 
 #
+# Full instruction set range for the Coldfire plus the CPU32.
+#
+fpi_multilib = \
+	cpu32 \
+	5206 \
+	5206e \
+	5307 \
+	5407 \
+	54455 \
+	5475
+
+#
 # The list of plugins we have.
 #
 fpi_flash29 = flash29
-fpi_flash29_targets = \
-	cpu32 \
-	5206e \
-	528x \
-	5235 \
-	52235 \
-	5475
+fpi_flash29_targets = $(fpi_multilib)
 fpi_flash29_source  = $(call fpi_source, flash29)
 fpi_flash29_plugins = $(call fpi_target, flash29, $(fpi_flash29_targets))
 
 fpi_flashcfm = flashcfm
 fpi_flashcfm_targets = \
-	5239 \
-	528x \
-	52235
+	5206 \
+	5206e \
+	54455
 fpi_flashcfm_source  = $(call fpi_source, flashcfm)
 fpi_flashcfm_plugins = $(call fpi_target, flashcfm, $(fpi_flashcfm_targets))
 
 fpi_flashintelc3 = flashintelc3
-fpi_flashintelc3_targets = \
-	cpu32 \
-	5206e \
-	528x \
-	5235 \
-	52235 \
-	5475
+fpi_flashintelc3_targets = $(fpi_multilib)
 fpi_flashintelc3_source  = $(call fpi_source, flashintelc3)
 fpi_flashintelc3_plugins = $(call fpi_target, flashintelc3, $(fpi_flashintelc3_targets))
 

@@ -1,4 +1,4 @@
-/* $Id: bdmctrl.c,v 1.23 2008/07/31 01:53:44 cjohns Exp $
+/* $Id: bdmctrl.c,v 1.24 2008/08/03 23:43:15 cjohns Exp $
  *
  * A utility to control bdm targets.
  *
@@ -1287,7 +1287,7 @@ cmd_source (size_t argc, char **argv)
   FILE *file = stdin;
 
   if (argc >= 2 && !(file = fopen (argv[1], "r")))
-    fata l("%s: %s: %s\n", progname, argv[1], strerror (errno));
+    fatal ("%s: %s: %s\n", progname, argv[1], strerror (errno));
 
   while (fgets (buf, 1020, file)) {
     char *p;

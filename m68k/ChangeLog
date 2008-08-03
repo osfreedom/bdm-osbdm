@@ -1,3 +1,16 @@
+2008-08-04  Chris Johns <cjohns@users.sourceforge.net>
+
+	* flashlib/PLUGIN-MAPPING: New. Provides a mapping for the plugins
+	to the Coldlfire family.
+
+	* flashlib/Makefile.am: Fix the plugin mappings.
+
+	* flashlib/flashintelc3.c: Remove warning.
+
+	* flashlib/m68k-bdm-compile-plugin: Fix CPU option.
+
+	* utils/bdmctrl.c: Fix compile typo.
+
 2008-07-31  Matthew Riek <matthew.riek@ibiscomputer.com.au>
 
 	* INSTALL: New.

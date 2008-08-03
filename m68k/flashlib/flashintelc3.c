@@ -216,7 +216,7 @@ flashintelc3_prog(void *chip_descr,
 
   cnt /= 2;
   for (n = 0; n < cnt; ++n) {
-    uint32_t d = ((uint16_t *) data)[n];
+    uint16_t d = ((uint16_t *) (void*) data)[n];
     
     chip_wr_word(pos, 0x40);
     
