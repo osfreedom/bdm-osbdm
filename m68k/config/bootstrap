@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: bootstrap,v 1.6 2008/07/31 01:53:44 cjohns Exp $
+# $Id: bootstrap,v 1.7 2008/08/06 00:47:47 cjohns Exp $
 #
 # Copyright (c) 2002, Cybertec Pty Ltd.
 # All rights reserved.
@@ -34,7 +34,7 @@ do
 
   aclocal -I config
   grep -q "AC_CONFIG_HEADERS" configure.ac && autoheader
-  automake  -Wno-portability -Wno-unsupported -foreign --add-missing --copy
+  automake  -Wno-portability -Wno-unsupported --foreign --add-missing --copy
   autoconf --warnings=all -Wno-portability
   autoheader
 
