@@ -300,6 +300,9 @@ win_bdm_init ()
   OSVERSIONINFO osvi;
   BOOL          bOsVersionInfoEx;
 
+  if (bdm_dev_registered)
+    return 0;
+  
   /*
    * Determine which operating system in use, if NT or 2000,
    * we need to enable the port.
@@ -312,8 +315,11 @@ win_bdm_init ()
      * If OSVERSIONINFOEX doesn't work, try OSVERSIONINFO.
      */
      osvi.dwOSVersionInfoSize = sizeof (OSVERSIONINFO);
-     if (! GetVersionEx ((OSVERSIONINFO *) &osvi))
-        return FALSE;
+     if (! GetVersionEx ((OSVERSIONINFO *) &osvi)) {
+       fprintf (stderr, "error: unsupported Windows version.\n");
+       errno = EIO;
+       return -1;
+     }
   }
 
   if (osvi.dwPlatformId == VER_PLATFORM_WIN32_NT) {
@@ -324,6 +330,7 @@ win_bdm_init ()
                     OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (h == INVALID_HANDLE_VALUE) {
       fprintf (stderr, "error: could not access the GiveIO device.\n");
+      errno = EIO;
       return -1;
     }
     CloseHandle (h);
@@ -333,8 +340,6 @@ win_bdm_init ()
   fprintf (stderr, "bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
            BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
 #endif
-
-  bdm_dev_registered = 1;
 
   /*
    * Set up port numbers
@@ -363,7 +368,8 @@ win_bdm_init ()
         fprintf (stderr, "BDM driver has no address for LPT%d.\n",
                  BDM_IFACE_MINOR (minor) + 1);
         bdm_cleanup_module();
-        return -EIO;
+        errno = EIO;
+        return -1;
     }
 
     /*
@@ -395,9 +401,12 @@ win_bdm_init ()
       default:
         fprintf (stderr, "BDM driver has no interface for minor number\n");
         bdm_cleanup_module();
-        return -EIO;
+        errno = EIO;
+        return -1;
     }
   }
+
+  bdm_dev_registered = 1;
 
   return 0;
 }
@@ -416,13 +425,8 @@ win_bdm_open (const char *device, int flags, ...)
 
   if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1) == 0)
   {
-    if (!bdm_dev_registered)
-      win_bdm_init ();
-
-    {
-      errno = ENOENT;
+    if (win_bdm_init () < 0)
       return -1;
-    }
 
     device += sizeof ("/dev/bdm") - 1;
 

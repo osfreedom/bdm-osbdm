@@ -1,3 +1,18 @@
+2008-09-09  Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/win/win-bdm.c: Fix the parallel port detect logic. Not
+	tested as much due to the low number of ports I have on Windows
+	machines.
+
+	* flashlib/Makefile.am, flashlib/flash_filter.c: Search the prefix
+	path for plugins. This removes the needs to have a full path name
+	in a bdmctl script.
+
+	* gdbserver/m68k-bdm-low.c: Print the name of the device being
+	opened. Helped see that gdb escapes the name on Windows USB
+	devices which have a '\' in the USB device name. Users needs to
+	add extra '\'s to the device name.
+	
 2008-08-06  Chris Johns <cjohns@users.sourceforge.net>
 
 	* config/bootstrap: Change the -foreign to --foreign option for

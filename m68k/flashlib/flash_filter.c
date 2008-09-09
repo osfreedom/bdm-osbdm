@@ -1,4 +1,4 @@
-/* $Id: flash_filter.c,v 1.6 2008/07/31 01:53:44 cjohns Exp $
+/* $Id: flash_filter.c,v 1.7 2008/09/09 11:48:50 cjohns Exp $
  *
  * Flash filtering layer.
  *
@@ -33,15 +33,21 @@
 #include "flash_filter.h"
 
 #if HOST_FLASHING
+# include <errno.h>
 # include <stdint.h>
 # include <stdio.h>
 # include <limits.h>
 # include <stdio.h>
 # include <stdlib.h>
 # include <string.h>
+# include <sys/types.h> 
+# include <sys/stat.h> 
+# include <unistd.h>
 # include <elf-utils.h>
 # include <BDMlib.h>
 #endif
+
+#define mkstring(_s) #_s
 
 /* Interface to flash modules.
  */
@@ -184,16 +190,49 @@ int
 elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
                       uint32_t adr, uint32_t len, const char *fname)
 {
+  struct stat sb;
   elf_handle handle;
   const char *dmagic;
+  const char* prefix = mkstring (PREFIX);
+  char* name = (char*) fname;
   int i;
 
   elf_handle_init(&handle);
 
-  if (!elf_open (fname, &handle, prfunc))
+  if (name[0] != '/')
+  {
+    if (stat (name, &sb) < 0)
+    {
+      if (errno == ENOENT)
+      {
+        if (prefix[strlen (prefix) - 1] != '/')
+        {
+          name = strdup (prefix);
+          name = strcat (name, "/");
+        }
+        else
+          name = strdup (prefix);
+      
+        name = strcat (name, "share/m68k-bdm/plugins/");
+        name = strcat (name, fname);
+
+        if (stat (name, &sb) < 0)
+        {
+          if (errno == ENOENT)
+          {
+            prfunc ("cannot find plugin: %s\n", fname);
+            prfunc ("searched:\n  .\n  %s: ", mkstring (PREFIX));
+            return 0;
+          }
+        }
+      }
+    }
+  }
+
+  if (!elf_open (name, &handle, prfunc))
   {
     if (prfunc)
-      prfunc ("open %s failed", fname);
+      prfunc ("open %s failed", name);
     return 0;
   }
 

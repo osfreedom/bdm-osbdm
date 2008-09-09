@@ -1,5 +1,5 @@
 ## 
-## $Id: Makefile.am,v 1.9 2008/08/03 23:43:15 cjohns Exp $
+## $Id: Makefile.am,v 1.10 2008/09/09 11:48:50 cjohns Exp $
 ##
 ## This file is part of a free BDM package
 ##
@@ -10,7 +10,8 @@
 ##
 
 AM_CPPFLAGS = -I$(srcdir)/../libelf/lib -I../libelf/lib \
-              -I$(srcdir)/../driver -I$(srcdir)/../lib
+              -I$(srcdir)/../driver -I$(srcdir)/../lib \
+	      -DPREFIX="$(prefix)"
 
 lib_LIBRARIES = libbdmflash.a
 

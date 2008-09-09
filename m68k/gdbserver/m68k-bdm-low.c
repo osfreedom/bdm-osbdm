@@ -1468,6 +1468,9 @@ m68k_bdm_create_inferior (char *program, char *argv[])
     error ("m68k-bdm: the name of the bdm port device is missing.");
   m68k_bdm_dev_name = savestring (device, p - device);
 
+  if (m68k_bdm_debug_level)
+    printf_filtered ("m68k-bdm: opening: %s\n", m68k_bdm_dev_name);
+  
   if (bdmOpen (m68k_bdm_dev_name) < 0)
     m68k_bdm_report_error ();
 
