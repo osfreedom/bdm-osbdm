@@ -199,7 +199,7 @@ bdm_delay (int counter)
 void
 bdm_sleep (unsigned long time)
 {
-  usleep (time * (1000 * (1000 / HZ)));
+  usleep (time * (1000 * (100 / HZ)));
 }
 
 /*
@@ -395,9 +395,10 @@ win_bdm_init ()
     self->delayTimer  = 0;
 
     switch (BDM_IFACE (minor)) {
-      case BDM_CPU32_PD:     cpu32_pd_init_self (self); break;
-      case BDM_CPU32_ICD:    cpu32_icd_init_self (self); break;
-      case BDM_COLDFIRE_PE:  cf_pe_init_self (self); break;
+      case BDM_CPU32_PD:       cpu32_pd_init_self (self); break;
+      case BDM_CPU32_ICD:      cpu32_icd_init_self (self); break;
+      case BDM_COLDFIRE_PE:    cf_pe_init_self (self); break;
+      case BDM_COLDFIRE_TBLCF: break;
       default:
         fprintf (stderr, "BDM driver has no interface for minor number\n");
         bdm_cleanup_module();

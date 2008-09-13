@@ -1,3 +1,9 @@
+2008-09-13  Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/win/win-bdm.c: Fixed the timer. It was too long by a
+	factor of 10. Add the TBLCF interface to the port checking so it
+	is skipped when a parallel port is being used.
+
 2008-09-09  Chris Johns <cjohns@users.sourceforge.net>
 
 	* driver/win/win-bdm.c: Fix the parallel port detect logic. Not
