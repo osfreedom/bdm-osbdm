@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# $Id: bootstrap,v 1.7 2008/08/06 00:47:47 cjohns Exp $
+# $Id: bootstrap,v 1.8 2008/09/19 07:17:29 cjohns Exp $
 #
 # Copyright (c) 2002, Cybertec Pty Ltd.
 # All rights reserved.
@@ -30,7 +30,8 @@ do
 
   config=`echo $c | sed -e "s/[^\/]*\//..\//g" -e "s/configure.ac/config/g"`
 
-  pushd `dirname $c` > /dev/null
+  curr_pwd=$(pwd)
+  cd `dirname $c`
 
   aclocal -I config
   grep -q "AC_CONFIG_HEADERS" configure.ac && autoheader
@@ -38,5 +39,5 @@ do
   autoconf --warnings=all -Wno-portability
   autoheader
 
-  popd > /dev/null
+  cd $curr_pwd
 done

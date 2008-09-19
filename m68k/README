@@ -26,7 +26,8 @@ pod.
 
  o For Unix users the library is built with I/O perm support by 
    default. The same library allows an application to directly 
-   access the hardware or use an installed BDM kernel driver.
+   access the hardware or use an installed BDM kernel driver. On FreeBSD
+   this the "/dev/io" support.
 
    I/O Permission is a means of getting at the parallel port hardware
    without the need for a kernel driver. This BDM package still provides
@@ -637,10 +638,12 @@ It is not a nice name but this is what libusb returns.
 I/O PERM SUPPORT
 ================
 
-The I/O Permission support is based around the 'ioperm' system call. This call
-allows a root executed program direct access to the I/O ports of a PC. Unix
-programs such as X windows use this call to gain control of the video card I/O
-ports without the need for a driver.
+The I/O Permission support is based around the 'ioperm' system call on Linux
+and the "/dev/io" I/O port access on FreeBSD. The calls allows a root executed
+program direct access to the I/O ports of a PC. Unix programs such as X windows
+use this call to gain control of the video card I/O ports without the need for
+a driver. The term "ioperm" refers to the ioperm call on Linux and the
+"/dev/io" interface on FreeBSD.
 
 The support for the ioperm call has been added to the BDM package because it:
 

@@ -92,6 +92,17 @@ AM_CONDITIONAL(BDM_REMOTE, test x$bdm_remote = xtrue)
 
 AC_CHECK_FUNCS(ioperm)
 
+case ${host} in
+  *freebsd*)
+    ac_ioperm=yes
+    ;;
+  *)
+    if test "$ac_cv_func_ioperm" = yes; then
+      ac_ioperm=yes
+    fi
+    ;;
+esac
+
 AC_MSG_CHECKING([direct ioperm hardware access])
 AC_ARG_ENABLE(ioperm,
  [  --enable-ioperm Turn on direct ioperm hardware access (autodetected)],
@@ -109,7 +120,7 @@ AC_ARG_ENABLE(ioperm,
       ;;
    esac],
  [
-   if test "$ac_cv_func_ioperm" = yes; then
+   if test "$ac_ioperm" = yes; then
      AC_MSG_RESULT([yes (autodetected)])
      bdm_ioperm=true
    else

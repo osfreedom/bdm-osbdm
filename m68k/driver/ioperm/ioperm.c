@@ -28,16 +28,38 @@
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
+#ifdef HAVE_IOPERM
 #include <sys/io.h>
+#endif
 #include <sys/param.h>
 #include <sys/stat.h>
+
+#include <config.h>
 
 #include "tblcf.h"
 #include "tblcf_usb.h"
 
+#ifdef __FreeBSD__
+#include <machine/cpufunc.h>
+/*
+ * Need to swap around the parameters to the outb call to match Linux.
+ */
+static inline void fb_outb (u_int port, u_char data)
+{
+  outb (port, data);
+}
+
+#undef outb
+#define outb(d, p) fb_outb(p, d)
+#endif
+
 #define BDM_DEFAULT_DEBUG 0
 
 static int debugLevel = BDM_DEFAULT_DEBUG;
+
+#ifndef HAVE_IOPERM
+static FILE* dev_io_handle;
+#endif
 
 /*
  ************************************************************************
@@ -115,6 +137,10 @@ bdm_delay (int counter)
     junk++;
   }
 }
+
+#ifndef HZ
+#define HZ 1000
+#endif
 
 /*
  * Delay specified number of milliseconds
@@ -210,7 +236,15 @@ bdm_cleanup_module (int fd)
         (((unsigned) fd) < (sizeof (bdm_device_info) / sizeof (*bdm_device_info))))
     {
       struct BDM *self = &bdm_device_info[fd];
+#ifdef HAVE_IOPERM
       ioperm (self->portBase, 3, 0);
+#else
+      if (dev_io_handle)
+      {
+	fclose (dev_io_handle);
+	dev_io_handle = NULL;
+      }
+#endif
       bdm_dev_registered = 0;
 #ifdef BDM_VER_MESSAGE
       fprintf (stderr, "BDM driver unregistered.\n");
@@ -229,6 +263,7 @@ int
 ioperm_bdm_init (int minor)
 {
   unsigned short port;
+  unsigned char  data;
   struct BDM     *self;
 
 #ifdef BDM_VER_MESSAGE
@@ -270,6 +305,7 @@ ioperm_bdm_init (int minor)
    * For PCI parallel port adaptors in extended IO space, use
    * iopl() instead.
    */
+#ifdef HAVE_IOPERM
   if (port < 0x400)
   {
     if (ioperm (port, 3, 1) < 0)
@@ -280,6 +316,14 @@ ioperm_bdm_init (int minor)
     if (iopl(3) != 0)
       return -1;
   }
+#else
+  if (!dev_io_handle)
+  {
+    dev_io_handle = fopen("/dev/io", "rw");
+    if (!dev_io_handle)
+      return -1;
+  }
+#endif
 
   /*
    * See if the port exists
@@ -291,8 +335,9 @@ ioperm_bdm_init (int minor)
 
   outb (0x00, port);
   udelay (50);
+  data = inb (port);
 
-  if (inb (port) != 0x00)
+  if (data  != 0x00)
   {
     self->exists = 0;
     if (self->debugFlag)

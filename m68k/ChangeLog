@@ -1,3 +1,13 @@
+2008-09-19  Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Updated to state FreeBSD is supported via "/dev/io".
+
+	* config/bootstrap: Remove pushd/popd and use basic shell
+	variables. FreeBSD's /bin/sh is not bash.
+
+	* driver/ioperm/ioperm.c: Add FreeBSD "/dev/io" support. Tested on
+	an AMD64 host running FreeBSD 7.0.
+
 2008-09-13  Chris Johns <cjohns@users.sourceforge.net>
 
 	* driver/win/win-bdm.c: Fixed the timer. It was too long by a
