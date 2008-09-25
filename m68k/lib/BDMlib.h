@@ -36,8 +36,14 @@ extern "C"
 #include <bdm.h>
 
 /*
+ * Configuration file name.
+ */
+#define M68K_BDM_INIT_FILE ".m68kbdminit"
+
+/*
  * All (int) routines return -1 on error, >=0 otherwise.
  */
+void bdmReadConfiguration();
 int  bdmCheck (void);
 int  bdmOpen (const char *name);
 int  bdmClose (void);
@@ -127,9 +133,17 @@ int bdmRead (unsigned char *cbuf, unsigned long nbytes);
 int bdmWrite (unsigned char *cbuf, unsigned long nbytes);
 
 /*
+ * BDM Configuration file support.
+ */
+void bdmReadConfiguration ();
+const char* bdmConfigSkipWhiteSpace (const char* text);
+const char* bdmConfigGet (const char* label, const char* last);
+
+/*
  * BDM debug channel. Applications may use this to have a common
  * debug trace environment.
  */
+void bdmInfo (const char *format, ...);
 void bdmPrint (const char *format, ...);
 
 #if __cplusplus

@@ -275,6 +275,7 @@ bdmRemoteName (const char *name)
     errno = ENOENT;
     return 0;
   }
+
   return 1;
 }
 
@@ -289,7 +290,7 @@ bdmRemoteOpen (const char *name)
   int                fd = -1;
   char               lname[256];
   char               *port_str;
-  char               *device;
+  char               *device = 0;
   int                port = 0;
   struct hostent     *hostent;
   struct sockaddr_in sockaddr;
@@ -309,15 +310,26 @@ bdmRemoteOpen (const char *name)
   }
 #endif
 
-  strncpy (lname, name, 256);
-  lname[255]=0;
+  strncpy (lname, name, sizeof (lname));
+  lname[sizeof (lname) - 1] = 0;
+
+  /*
+   * There can 2 types of files names passed:
+   *
+   *   host:device
+   *   host:port:device
+   */
 
   port_str = strchr (lname, ':');
 
   if (port_str) {
-    lname[port_str - lname] = '\0';
-    port_str++;
-    port = atoi (port_str);
+    device = strchr (port_str + 1, ':');
+    if (!device)
+      device = strchr (port_str + 1, '/');
+    if (device) {
+      lname[port_str - lname] = '\0';
+      port = atoi (port_str);
+    }
   }
 
   /*
@@ -329,39 +341,13 @@ bdmRemoteOpen (const char *name)
       port = ntohs (servent->s_port);
     }
   }
+
   if (port == 0) {
     port = 6543;
   }
 
-  /*
-   * If we have another colon in the string we must assume
-   * that another host name is present and we are tring to
-   * access via a proxy server. The port string may be
-   * present if a number exists or it could be an IP address.
-   *
-   */
-
-  if (strchr (port_str, ':')) {
-    /*
-     * We have another host being defined. If a number is the
-     * first character of the port field, look for a dot which
-     * would make it an IP address. If not the number to the
-     * colon will be a port number.
-     */
-
+  if (!device)
     device = port_str;
-
-    if (isdigit (port_str[0])) {
-      while (*port_str != ':') {
-        if (!isdigit (*port_str))
-          break;
-      }
-      if (*port_str == ':')
-        device = port_str + 1;
-    }
-  }
-  else
-    device = strchr (name, '/');
 
   if (!device) {
     bdmPrint ("bdm-remote:open: no device found\n");
@@ -522,7 +508,7 @@ bdmRemoteOpen (const char *name)
     fd = -1;
     errno = save_errno;
   }
-
+  
   return fd;
 }
 

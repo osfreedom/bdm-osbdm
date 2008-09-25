@@ -22,6 +22,8 @@
  *
  */
 
+#include <config.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,8 +35,6 @@
 #endif
 #include <sys/param.h>
 #include <sys/stat.h>
-
-#include <config.h>
 
 #include "tblcf.h"
 #include "tblcf_usb.h"
@@ -241,13 +241,13 @@ bdm_cleanup_module (int fd)
 #else
       if (dev_io_handle)
       {
-	fclose (dev_io_handle);
-	dev_io_handle = NULL;
+        fclose (dev_io_handle);
+        dev_io_handle = NULL;
       }
 #endif
       bdm_dev_registered = 0;
 #ifdef BDM_VER_MESSAGE
-      fprintf (stderr, "BDM driver unregistered.\n");
+      bdmInfo ("BDM driver unregistered.\n");
 #endif
     }
   }
@@ -267,7 +267,7 @@ ioperm_bdm_init (int minor)
   struct BDM     *self;
 
 #ifdef BDM_VER_MESSAGE
-  fprintf (stderr, "bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
+  bdmInfo ("bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
            BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
 #endif
 
@@ -281,7 +281,7 @@ ioperm_bdm_init (int minor)
     case 2:  port = 0x3bc;  break;  /* LPT3 */
     case 3:  port = 0x9400; break;  /* PCI parallel port cards */
     default:
-      fprintf (stderr, "BDM driver has no address for LPT%d.\n",
+      bdmInfo ("BDM driver has no address for LPT%d.\n",
                BDM_IFACE_MINOR (minor) + 1);
       errno = EIO;
       return -1;
@@ -341,8 +341,8 @@ ioperm_bdm_init (int minor)
   {
     self->exists = 0;
     if (self->debugFlag)
-      fprintf (stderr, "BDM driver cannot detect LPT%d.\n",
-              BDM_IFACE_MINOR (minor) + 1);
+      bdmInfo ("BDM driver cannot detect LPT%d.\n",
+               BDM_IFACE_MINOR (minor) + 1);
     bdm_cleanup_module (minor);
     errno = EIO;
     return -3;
@@ -360,7 +360,7 @@ ioperm_bdm_init (int minor)
     case BDM_CPU32_ICD:   cpu32_icd_init_self (self); break;
     case BDM_COLDFIRE_PE: cf_pe_init_self (self); break;
     default:
-      fprintf (stderr, "BDM driver has no interface for minor number\n");
+      bdmInfo ("BDM driver has no interface for minor number\n");
       bdm_cleanup_module (minor);
       errno = EIO;
       return -1;
@@ -389,8 +389,7 @@ ioperm_bdm_open (const char *devname, int flags, ...)
 
   if (bdm_dev_registered)
   {
-    fprintf (stderr,
-             "BDM driver is already registered (Please report to BDM project).\n");
+    bdmInfo ("BDM driver is already registered (Please report to BDM project).\n");
     errno = EIO;
     return -2;
   }
@@ -429,6 +428,7 @@ ioperm_bdm_open (const char *devname, int flags, ...)
 
   if ((result == 0) && (port == -1))
   {
+    bdmInfo ("trying usb driver: %s\n", devname);
     result = usb_bdm_init (device);
     if (result < -1)
       return -1;
@@ -447,14 +447,14 @@ ioperm_bdm_open (const char *devname, int flags, ...)
     if (result == -1)
     {
       int fd;
-      fprintf (stderr, "trying kernel driver: %s\n", devname);
+      bdmInfo ("trying kernel driver: %s\n", devname);
       if ((fd = driver_open (devname, flags)) < 0) {
         if ((strlen (devname) + sizeof ("localhost")) < 128)
         {
           char lname[128];
           strcpy (lname, "localhost:");
           strcat (lname, devname);
-          fprintf (stderr, "trying bdm server: %s\n", lname);
+          bdmInfo ("trying bdm server: %s\n", lname);
           return remoteOpen (lname);
         }
         return -1;
@@ -539,7 +539,7 @@ ioperm_bdm_ioctl (int fd, unsigned int cmd, ...)
       return err;
 
     if (debugLevel > 3)
-      fprintf (stderr, "ioperm_bdm_ioctl cmd:0x%08x\n", cmd);
+      bdmInfo ("ioperm_bdm_ioctl cmd:0x%08x\n", cmd);
 
     switch (cmd) {
       case BDM_DEBUG:

@@ -1,3 +1,31 @@
+2008-09-25  Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Add script documentation. Added extra notes on Windows
+	names and using udev on Linux.
+
+	* utils/bdmreset.c, test/chk.c: Print a decimal verison
+	number. Add TBLCF support.
+
+	* server/bdmServer.c: Correct the help. Minor formatting changes.
+
+	* lib/bdmRemote.c: Correct the name parsing. Allow a device name
+	to not have a '/' to allow USB devices on remote machines to be
+	used.
+
+	* lib/bdmIO.c: Add bdmInfo. Add bdmAppendConfiguration,
+	bdmReadConfiguration, bdmConfigSkipWhiteSpace, bdmConfigGet for
+	scipt support. Change bdmOpen to use 'dev' script entries.
+
+	* lib/BDMlib.h: Add bdmInfo. Add bdmAppendConfiguration,
+	bdmReadConfiguration, bdmConfigSkipWhiteSpace, bdmConfigGet for
+	scipt support.
+
+	* driver/ioperm/ioperm.c: Change fprintf calls to bdmInfo calls to
+	stop the server outputting text to the remote client.
+
+	* driver/bdm-tblcf.c: Add support to partially search a device
+	name against the libusb list of devices for the first match.
+
 2008-09-19  Chris Johns <cjohns@users.sourceforge.net>
 
 	* README: Updated to state FreeBSD is supported via "/dev/io".

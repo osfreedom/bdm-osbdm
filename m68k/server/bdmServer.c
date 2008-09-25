@@ -515,7 +515,9 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
         octet = msg[msg_index] - 'a' + 10;
       }
       else {
-        syslog (LOG_INFO, "write read: hbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
+        syslog (LOG_INFO,
+                "write read: hbyte %ld msg bytes %ld, len:%d index:%d,"
+                " invalid data %#2x",
                 byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
 
@@ -531,7 +533,9 @@ bdm_write (char *message, int msg_len, int msg_buf_len)
         octet |= msg[msg_index] - 'a' + 10;
       }
       else {
-        syslog (LOG_INFO, "write read: lbyte %ld msg bytes %ld, len:%d index:%d, invalid data %#2x",
+        syslog (LOG_INFO,
+                "write read: lbyte %ld msg bytes %ld, len:%d index:%d,"
+                " invalid data %#2x",
                 byte, msg_bytes, msg_len, msg_index, msg[msg_index]);
       }
 
@@ -622,7 +626,7 @@ void
 usage ()
 {
   fprintf (stderr,
-           "Usage: %s [-h] [-n] [--help] [--not-inetd]\n",
+           "Usage: %s [-h] [-n] [-V] [-d]\n",
            program_name);
   exit (1);
 }

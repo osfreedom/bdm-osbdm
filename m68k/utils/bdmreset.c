@@ -168,7 +168,7 @@ main (int argc, char **argv)
     if (bdmGetDrvVersion (&ver) < 0)
       show_error ("GetDrvVersion");
 
-    printf ("Driver Ver : %x.%x\n", ver >> 8, ver & 0xff);
+    printf ("Driver Ver : %i.%i\n", ver >> 8, ver & 0xff);
 
     /*
      * Get the processor
@@ -199,6 +199,9 @@ main (int argc, char **argv)
     switch (iface) {
       case BDM_CPU32_ERIC:
         printf ("Interface  : Eric's CPU32\n");
+        break;
+      case BDM_COLDFIRE_TBLCF:
+        printf ("Interface: TBLCF USB Coldfire\n");
         break;
       case BDM_COLDFIRE:
         printf ("Interface  : P&E Coldfire\n");

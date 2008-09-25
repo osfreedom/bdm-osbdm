@@ -887,6 +887,9 @@ main (int argc, char **argv)
     case BDM_CPU32_ERIC:
       printf ("Interface  : Eric's CPU32\n");
       break;
+    case BDM_COLDFIRE_TBLCF:
+      printf ("Interface: TBLCF USB Coldfire\n");
+      break;
     case BDM_COLDFIRE:
       printf ("Interface  : P&E Coldfire\n");
       break;

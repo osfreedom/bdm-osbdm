@@ -117,6 +117,13 @@
 static int bdm_fd    = -1;
 static int cpu       = BDM_CPU32;
 static int iface     = BDM_CPU32_PD;
+
+/*
+ * The configuration data read from the configuration file.
+ */
+static char*  config;
+static size_t config_buffer_size = 0;
+
 #if defined (BDM_DEVICE_REMOTE)
 static int bdmRemote = 0;
 #endif
@@ -156,6 +163,27 @@ bdmLogSyslog (void)
 #if HAVE_SYSLOG
   debug_syslog = 1;
 #endif
+}
+
+void
+bdmInfo (const char *format, ...)
+{
+  va_list ap;
+
+  va_start (ap, format);
+
+#if HAVE_SYSLOG
+  if (debug_syslog) {
+    if (debugFlag)
+      vsyslog (LOG_INFO, format, ap);
+  } else
+#endif
+  {
+    vfprintf (stderr, format, ap);
+    fflush (stderr);
+  }
+
+  va_end (ap);
 }
 
 void
@@ -423,15 +451,241 @@ bdmErrorString (void)
 }
 
 /*
+ * Append the configuration data.
+ */
+static void
+bdmAppendConfiguration (const char* fname)
+{
+  FILE* file = fopen (fname, "r");
+  char  line[256];
+  int count = 0;
+
+  if (!file)
+    return;
+
+  if (!config)
+  {
+    config = malloc (512);
+    config_buffer_size = 512;
+    memset (config, 0, config_buffer_size);
+  }
+  
+  while (fgets (line, sizeof (line), file) != NULL)
+  {
+    int length;
+    
+    count++;
+    
+    length = strlen (line);
+    
+    if (length)
+    {
+      int blank = 1;
+      int i;
+      
+      for (i = 0; i < length; i++)
+      {
+        if (line[i] == '\r')
+        {
+          memmove (line + i, line + i + 1, length - i);
+          length--;
+        }
+
+        if (line[i] == '#')
+        {
+          if (i < (sizeof (line) - 1))
+          {
+            line[i] = '\n';
+            i++;
+          }
+          
+          line[i] = '\0';
+
+          length = i;
+        }
+      }
+      
+      if (length)
+      {
+        if (line[0] == '\n')
+          continue;
+
+        if ((line[length - 1] == '\n') && (line[length - 2] == '\\'))
+        {
+          line[length - 2] = '\0';
+          length -= 2;
+        }
+      }
+
+      if (!length)
+        continue;
+      
+      if (length >= (config_buffer_size - strlen (config)))
+      {
+        char* new_config = realloc (config, config_buffer_size + 512);
+      
+        if (new_config == NULL)
+          break;
+
+        config = new_config;
+        config_buffer_size += 512;
+      }
+
+      strcat (config, line);
+    }
+  }
+
+  fclose (file);
+}
+
+/*
+ * Read the configuration file.
+ */
+void
+bdmReadConfiguration ()
+{
+  char* env;
+
+  if (config)
+    return;
+  
+  /*
+   * The configuration file is read local first then $HOME
+   * if $HOME is found or $M68K_BDM_INIT. If not found no
+   * configuration data is read.
+   */
+
+  bdmAppendConfiguration (M68K_BDM_INIT_FILE);
+
+  env = getenv ("HOME");
+
+  if (env && strlen (env))
+  {
+    char* fname = malloc (strlen (env) + 1 + strlen (M68K_BDM_INIT_FILE));
+
+    if (fname)
+    {
+      char last;
+      
+      strcpy (fname, env);
+
+      last = fname[strlen (fname) - 1];
+      
+      if (last != '/' && last != '\\')
+        strcat (fname, "/");
+
+      strcat (fname, M68K_BDM_INIT_FILE);
+
+      bdmAppendConfiguration (fname);
+
+      free (fname);
+    }
+  }
+
+  env = getenv ("M68K_BDM_INIT");
+
+  if (env && strlen (env))
+    bdmAppendConfiguration (M68K_BDM_INIT_FILE);
+}
+
+/*
+ * Skip white space.
+ */
+const char*
+bdmConfigSkipWhiteSpace (const char* text)
+{
+  while (*text != '\n')
+  {
+    if (!isblank (*text))
+      break;
+    text++;
+  }
+  return text;
+}
+
+/*
+ * Find matching lines.
+ */
+const char*
+bdmConfigGet (const char* label, const char* last)
+{
+  const char* next = NULL;
+
+  if (config)
+  {    
+    while (1)
+    {
+      if (last)
+        next = strchr (last, '\n') + 1;
+      else
+        next = config;
+    
+      last = next;
+    
+      if (*next == '\0')
+      {
+        next = NULL;
+        break;
+      }
+
+      next = bdmConfigSkipWhiteSpace (next);
+    
+      if (strncmp (next, label, strlen (label)) == 0)
+      {
+        next += strlen (label);
+        break;
+      }
+    }
+  }
+
+  return next;
+}
+
+/*
  * Open the specified BDM device
  */
 int
-bdmOpen (const char *name)
+bdmOpen (const char *user_name)
 {
 #if defined (BDM_LIB_CHECKS_VERSION)
   unsigned int ver;
 #endif
+  char* name = NULL;
+  const char* mapping = NULL;
 
+  /*
+   * Load the configurations.
+   */
+  bdmReadConfiguration ();
+
+  /*
+   * Map the name if a mapping is provided.
+   */
+  while ((mapping = bdmConfigGet ("dev", mapping)))
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+      
+    if (strncmp (mapping, user_name, strlen (user_name)) == 0)
+    {
+      char* lf;
+      mapping += strlen (user_name);
+      name = strdup (bdmConfigSkipWhiteSpace (mapping));
+      lf = strchr (name, '\n');
+      if (lf)
+        *lf = '\0';
+      break;
+    }
+  }
+
+  if (!name)
+    name = strdup (user_name);
+
+  if (!name)
+  {
+    bdmIO_lastErrorString = bdmStrerror (ENOMEM);
+    return -1;
+  }
+  
   /*
    * Open the interface. Name could be an ip:port address
    * which results in tring to open a connection to the
@@ -457,6 +711,7 @@ bdmOpen (const char *name)
   if ((bdm_fd = remoteOpen (name)) < 0) {
 #if !defined (BDM_DEVICE_LOCAL)
     bdmIO_lastErrorString = bdmStrerror (2);
+    free (name);
     return -1;
 #endif
   }
@@ -465,10 +720,13 @@ bdmOpen (const char *name)
   if (bdm_fd < 0) {
     if ((bdm_fd = open (name, O_RDWR)) < 0) {
       bdmIO_lastErrorString = bdmStrerror (errno);
+      free (name);
       return -1;
     }
   }
 #endif
+
+  free (name);
 
 #if defined (BDM_LIB_CHECKS_VERSION)
   /*
@@ -513,6 +771,13 @@ bdmOpen (const char *name)
 int
 bdmClose (void)
 {
+  if (config)
+  {
+    free (config);
+    config = NULL;
+    config_buffer_size = 0;
+  }
+
   if (!bdmCheck ())
     return -1;
 #if defined (BDM_DEVICE_REMOTE)

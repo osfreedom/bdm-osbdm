@@ -976,96 +976,123 @@ usb_bdm_init (const char *device)
   int         dev;
   char        usb_device[256];
   ssize_t     dev_size;
-
-#ifdef BDM_VER_MESSAGE
-  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ "\n",
-           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
-#endif
-
-#if WIN32
-  strcpy (usb_device, device);
-#else
-  {
-    struct stat sb;
-    int         result;
-    char        *p;
-    
-    if (lstat (device, &sb) < 0)
-      return -2;
-
-    if (!S_ISLNK (sb.st_mode))
-    {
-      errno = ENOENT;
-      return -2;
-    }
-
-    dev_size = readlink (device, usb_device, sizeof (usb_device));
-
-    if ((dev_size == -1) || (dev_size >= sizeof (usb_device) - 1))
-    {
-      errno = ENOENT;
-      return -2;
-    }
-    
-    usb_device[dev_size] = '\0';
-
-    /*
-     * On Linux this is bus/usb/....
-     */
-
-    if (strncmp (usb_device, "bus/usb", sizeof ("bus/usb") - 1) != 0)
-    {
-      errno = ENOENT;
-      return -2;
-    } 
-
-    memmove (usb_device, usb_device + sizeof ("bus/usb"),
-             sizeof (usb_device) - sizeof ("bus/usb") - 1);
-
-    p = strchr (usb_device, '/');
-
-    *p = '-';
-  }
+#if linux
+  char        udev_usb_device[256];
 #endif
 
   /*
    * Initialise the USB layers.
    */
-  tblcf_init();
+  devs = tblcf_init ();
 
-  /*
-   * Open the USB device.
-   */
-  self->usbDev = tblcf_open (usb_device);
+#ifdef BDM_VER_MESSAGE
+  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ " devices:%d\n",
+           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff, devs);
+#endif
 
-  if (self->usbDev < 0)
+#if linux
   {
-    errno = EIO;
-    return -1;
+    struct stat sb;
+    int         result;
+    char        *p;
+
+    if (lstat (device, &sb) == 0)
+    {
+      if (S_ISLNK (sb.st_mode))
+      {
+        dev_size = readlink (device, udev_usb_device, sizeof (udev_usb_device));
+
+        if ((dev_size >= 0) || (dev_size < sizeof (udev_usb_device) - 1))
+        {
+          udev_usb_device[dev_size] = '\0';
+
+          /*
+           * On Linux this is bus/usb/....
+           */
+
+          if (strncmp (udev_usb_device, "bus/usb", sizeof ("bus/usb") - 1) == 0)
+          {
+            memmove (udev_usb_device, udev_usb_device + sizeof ("bus/usb"),
+                     sizeof (udev_usb_device) - sizeof ("bus/usb") - 1);
+
+            p = strchr (udev_usb_device, '/');
+
+            *p = '-';
+
+            device = udev_usb_device;
+          }
+        }
+      }
+    }
+  }
+#endif
+  
+  for (dev = 0; dev < devs; dev++)
+  {
+    char* name;
+    int   length;
+
+    tblcf_usb_dev_name (dev, usb_device, sizeof (usb_device));
+
+    name = usb_device;
+    length = strlen (usb_device);
+
+    while (name && length)
+    {
+      name = strchr (name, device[0]);
+
+      if (name)
+      {
+        length = strlen (name);
+
+        if (strlen (device) <= length)
+        {
+          if (strncmp (device, name, length) == 0)
+          {
+            /*
+             * Set up the self srructure. Only ever one with ioperm.
+             */
+
+            self = &bdm_device_info[0];
+
+            /*
+             * Open the USB device.
+             */
+            self->usbDev = tblcf_open (usb_device);
+
+            if (self->usbDev < 0)
+            {
+              errno = EIO;
+              return -1;
+            }
+
+            /*
+             * First set the default debug level.
+             */
+
+            self->debugFlag = BDM_DEFAULT_DEBUG;
+
+            /*
+             * Force the port to exist.
+             */
+            self->exists = 1;
+
+            self->delayTimer = 0;
+      
+            tblcf_init_self (self);
+
+            return 0;
+          }
+        }
+
+        name++;
+        length = strlen (name);
+      }
+    }
   }
 
-  /*
-   * Set up the self srructure. Only ever one with ioperm.
-   */
-
-  self = &bdm_device_info[0];
-
-  /*
-   * First set the default debug level.
-   */
-
-  self->debugFlag = BDM_DEFAULT_DEBUG;
-
-  /*
-   * Force the port to exist.
-   */
-  self->exists = 1;
-
-  self->delayTimer = 0;
-
-  tblcf_init_self (self);
-
-  return 0;
+  errno = ENOENT;
+  return -2;
 #else
   errno = ENOENT;
   return -1;

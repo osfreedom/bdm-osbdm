@@ -44,6 +44,9 @@ pod.
  o To support the TBLCF UDB pod you will need the libusb package. For Windows
    this means the LibUSB-Win32 package.
 
+ o Support for an initialisation script called '.m68kbdminit'. See the 
+   section on Initialisation Scripts.
+
 The subdirectories contain:
 
   config
@@ -387,12 +390,12 @@ Step 3 -- Installing the Server
   It is recommended you add the entry to /etc/services and you check
   the client and server match.
 
-  For inetd users:
+  For inetd users such as FreeBSD:
 
     You need to edit the /etc/inetd.conf file. Add this line at the end of
     /etc/inetd.conf:
 
-    bdm     stream  tcp     nowait  root  /usr/sbin/bdmd bdmd 
+    bdm     stream  tcp     nowait  root  /usr/local/sbin/bdmd bdmd 
 
     You can specify any user including root. If you are wishing to use the
     ioperm support then the user must be root.
@@ -536,16 +539,60 @@ Step 7 -- Try it out
 
   This is left as an exercise for the reader.....
 
-TBLCF USB Support
+INITIALISATION SCRIPTS
+======================
+
+The M68K BDM package supports initialisation scripts. The scripts are all
+called '.m68kbdminit' and read from 3 locations during the bdmOpen call. The
+locations are:
+
+ 1. The current directory ($PWD)
+ 2. The user's home directory as specified by the "HOME" environment 
+    variable.
+ 3. A user define location as specified by the "M68K_BDM_INIT" environment
+    variable.
+
+The files are plain text files and are read into a character array on after
+another. The '#' is a comment character and line continuation using the '\' at
+the end of a line is supported.
+
+The configurations supported are:
+
+ dev:
+     "dev         user-name        device-name"
+
+  A line starting with 'dev' followed by white space defines a device mapping
+  or renaming. The user-name is the name a user may use to reference a
+  device. The device-name is the name required by the hardware to access the
+  device. This can be used to map a difficult USB device name that libusb uses
+  to a simpler user friendly name. This helps users because the naming of USB
+  devices vary between host platforms. The device mapping also helps
+  configuration control of debugging scripts. A common script can reference a
+  name and each user in a team can place the actual device they use in the a
+  user specific file in their home directory.
+
+TBLCF USB SUPPORT
 =================
 
 The TBLCF is the Turbo BDM Light Coldfire UDB Pod created by Daniel Malik back
-in 2006. This is a GPL design for both hadrware and software. It uses a small
+in 2006. This is a GPL design for both hardware and software. It uses a small
 microcontrolller and firmware in the pod and the open source libusb code to
 provide the low level USB support on various hosts.
 
-The support hosts are Linux and Windows. The specifics of the hosts make the
-set up different for each.
+The supported hosts are Linux, FreeBSD, and Windows. The specifics of the hosts
+make the set up different for each. The scripts support helps user isolate
+their host specifics. USB device names are helped by the 'dev' entry in the
+M68K BDM script files. These entries allow you to make a simpler entry for a
+more complex name. Use the' tblcf-show tool' to dump the names of the USB
+devices you need to pass to the BDM software. On Linux you may wish to use read
+the Linux section and use the udev interface.
+
+The USB support in the BDM package checks the device name against the devices
+detected by libusb. Linux is an exception where special code is present to
+handle udev created sym-links. The code will partial match the device node
+against the libusb detected devices. For example if the libusb device node
+found on Windows is 'bus-0-\\.\libusb0-0002-0x0425-0x1001' then you could use
+'0002-0x0425-0x1001' to use the device.
 
 If you are a CPU32 user and would like to look at supporting the CPU32
 processor with this pod please contact the BDM mailing list.
@@ -557,10 +604,15 @@ The USB pod is simple to support on Linux. Just plug it and check the kernel
 messages:
 
   $ dmesg | tail
-  usb 1-2.1.3: new low speed USB device using ehci_hcd and address 12
-  usb 1-2.1.3: config 1 interface 0 altsetting 0 endpoint 0x82 is Bulk; changing to Interrupt
-  usb 1-2.1.3: config 1 interface 0 altsetting 0 endpoint 0x2 is Bulk; changing to Interrupt
-  usb 1-2.1.3: configuration #1 chosen from 1 choice
+  usb 1-1.2: new low speed USB device using ehci_hcd and address 12
+  usb 1-1.2: config 1 interface 0 altsetting 0 endpoint 0x82 is Bulk; ...
+  usb 1-1.2: config 1 interface 0 altsetting 0 endpoint 0x2 is Bulk; ...
+  usb 1-1.2: configuration #1 chosen from 1 choice
+  usb 1-1.2: New USB device found, idVendor=0425, idProduct=1001
+  usb 1-1.2: New USB device strings: Mfr=1, Product=2, SerialNumber=2
+  usb 1-1.2: Product: Turbo BDM Light ColdFire v0.4
+  usb 1-1.2: Manufacturer: Freescale
+  usb 1-1.2: SerialNumber: Turbo BDM Light ColdFire v0.4
 
 You can see the pod has connected with address 12. Run the 'tblcf-show' command
 to list the names of the pods as seen by libusb. If you disconnect the pod or
@@ -575,32 +627,36 @@ overview of udev.
 
 Create a udev rule for the TBLCF pod to create a node in the 'dev'
 directory. You can customise the node name used to suite your specific
-needs. For me I have a single pod on my local workstation and so a basic setup
-is all that is needed:
+needs. For me I have a single pod on my local Fedora Core 8 workstation and so
+a basic setup is all that is needed:
 
   # cat /etc/udev/rules.d/91-tlbcf.rules
   SUBSYSTEM=="usb" ATTR{manufacturer}=="Freescale" \
   ATTR{idVendor}=="0425" ATTR{idProduct}=="1001" SYMLINK+="tblcf%n"
 
-                          Note: there is a single line in the actual file.
+    Note: there is a single line in the actual file.
 
 When I plug in my pod udev creates '/dev/tblcf3'. This is:
 
   # ls -las /dev/tblcf3
   0 lrwxrwxrwx 1 root root 15 2008-03-06 14:59 /dev/tblcf3 -> bus/usb/001/012
 
-The USB support in the BDM package checks if the device node is a sym-link. If
-it is the link path is read and checked to see if the prefix is 'bus/usb'. If
-it is the device is assumed to be a USB device and the trailing part of the
-path is the device name returned by libusb. The USB driver will attempt to open
-the device. This may fail if the user does not have permission. In this case
-the bdmd server on the local host is used. This is similar to the I/O
-Permission support.
+The USB support for Linux in the BDM package checks if the device node is a
+sym-link. If it is the link path is read and checked to see if the prefix is
+'bus/usb'. If it is the device is assumed to be a USB device and the trailing
+part of the path is the device name returned by libusb. The USB driver will
+attempt to open the device. This may fail if the user does not have
+permission. In this case the bdmd server on the local host is used. This is
+similar to the I/O Permission support.
 
 With udev you can create device nodes with any name that suites. You can also
 add more attribute checks to create a specific node. This allows for the
 creation of nodes that match the function the pod is performing. In my example
 above the number in the dev file is based on the USB port on the work station.
+
+The udev configuration required varys for different types of Linux. Please let
+me know of a configuration for your version of Linux and I will add it to the
+list.
 
 Windows
 -------
@@ -633,7 +689,23 @@ use this name when using the BDM software:
 
   > chk-bdm bus-0-\\.\libusb0-0002-0x0425-0x1001
 
-It is not a nice name but this is what libusb returns.
+It is not a nice name but this is what libusb returns. You can take this name
+and place in a .m68kbdminit file to make more user friendly:
+
+ dev  bus-0-\\.\libusb0-0002-0x0425-0x1001 usb1
+
+On Windows you may need to add a HOME environment variable. You can do this
+using the Control Panel's System entry. Open the System entry, select the
+Advanced tab, then the Environment Variables button and add to "User Variables"
+a "HOME" entry thats points to your home directory. On Windows this is
+typically your "My Documents" directory. Once set you can create a .m68kbdminit
+file in that directory and the M68K BDM tools will read that file when opening
+a BDM device.
+
+When using GDB you need to escape the '\' character. The above device name in
+gdb and gdb scripts becomes:
+
+   bus-0-\\\\.\\libusb0-0002-0x0425-0x1001
 
 I/O PERM SUPPORT
 ================
