@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.8 2006/12/28 13:04:58 ppisa Exp $
+ * $Id: bdm.c,v 1.9 2008/10/31 16:27:44 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1839,8 +1839,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.8 $", "$Date: 2006/12/28 13:04:58 $");
-		   /*"$Id: bdm.c,v 1.8 2006/12/28 13:04:58 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.9 $", "$Date: 2008/10/31 16:27:44 $");
+		   /*"$Id: bdm.c,v 1.9 2008/10/31 16:27:44 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "
@@ -1957,11 +1957,8 @@ cleanup_module(void)
 	if(bdm_devfs_handle)
 		devfs_unregister (bdm_devfs_handle);
   #endif /* < 2.5.60 */
-	if (devfs_unregister_chrdev(BDM_MAJOR_NUMBER, "bdm") != 0)
+	devfs_unregister_chrdev(BDM_MAJOR_NUMBER, "bdm");
 #else /* BDM_WITH_DEVFS */
-	if (unregister_chrdev(BDM_MAJOR_NUMBER, "bdm") != 0)
+	unregister_chrdev(BDM_MAJOR_NUMBER, "bdm");
 #endif /* BDM_WITH_DEVFS */
-		printk("BDM cleanup: Unregister failed\n");
-	else
-		printk("BDM cleanup: Unregister  O.K.\n");
 }

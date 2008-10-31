@@ -149,6 +149,11 @@ char kernel_version[] = UTS_RELEASE;
        int intno, void *dev_id
 #endif /* <=2.6.18 */
 
+#if (LINUX_VERSION_CODE < VERSION(2,6,18)) && !defined(IRQF_SHARED)
+   #define IRQF_SHARED    SA_SHIRQ
+   #define IRQF_DISABLED  SA_INTERRUPT
+#endif
+
 /*** timming related stuff ***/
 
 #if (LINUX_VERSION_CODE < VERSION(2,1,100)) /* needs correction */
@@ -326,7 +331,19 @@ char kernel_version[] = UTS_RELEASE;
 #else /* 2.6.0 */
  #define KC_WITH
  #include <linux/device.h>
- #if LINUX_VERSION_CODE >= VERSION(2,6,15)
+ #if LINUX_VERSION_CODE >= VERSION(2,6,26)
+  #define kc_class class
+  #define kc_class_create class_create
+  #if LINUX_VERSION_CODE >= VERSION(2,6,27)
+   #define kc_class_device_create(cls, parent, devt, device, fmt...) \
+                device_create(cls, device, devt, NULL, ##fmt)
+  #else /* 2.6.26 */
+   #define kc_class_device_create(cls, parent, devt, device, fmt...) \
+		device_create(cls, device, devt, ##fmt)
+  #endif /* 2.6.26 */
+  #define kc_class_device_destroy device_destroy
+  #define kc_class_destroy class_destroy
+ #elif LINUX_VERSION_CODE >= VERSION(2,6,15)
   #define kc_class class
   #define kc_class_create class_create
   #define kc_class_device_create class_device_create
