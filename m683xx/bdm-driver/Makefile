@@ -25,14 +25,14 @@ KERNEL_NEW=$(shell if [ -d /lib/modules/$(CURRENT)/build ] ; \
 # Where to look for kernel
 #KERNEL_LOCATION=/usr/src/linux
 #KERNEL_LOCATION=/usr/src/kernel/$(CURRENT)
-#KERNEL_LOCATION=/lib/modules/$(CURRENT)/build
+#KERNEL_LOCATION=/lib/modules/$(CURRENT)/extra
 #KERNEL_LOCATION=/usr/src/linux-2.2.19
 #KERNEL_LOCATION=/usr/src/linux-2.5.60
 
 ifndef KERNEL_LOCATION
 ifeq ($(KERNEL_NEW),yes)
 KERNEL_LOCATION=/lib/modules/$(CURRENT)/build
-MODULE_CHAR_LOC=/lib/modules/$(CURRENT)/kernel/drivers/char
+MODULE_CHAR_LOC=/lib/modules/$(CURRENT)/extra
 else
 KERNEL_LOCATION=/usr/src/linux
 MODULE_CHAR_LOC=/lib/modules/$(CURRENT)/misc
@@ -85,7 +85,7 @@ $(MODULE_NAME).c: bdm.c bdm.h
 	cp $< $@
 
 make_this_module: $(MODULE_NAME).c
-	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
+	DIR=`pwd`; make -C $(KERNEL_LOCATION) SUBDIRS=$$DIR M=$$DIR modules
 
 install_this_module: make_this_module
 	su -c "mkdir -v -p $(MODULE_CHAR_LOC) && cp -v $(FINAL_MODULE_OBJS) $(MODULE_CHAR_LOC)"

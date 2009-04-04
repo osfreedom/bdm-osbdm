@@ -450,4 +450,19 @@ char kernel_version[] = UTS_RELEASE;
   #define MODULE_LICENSE(dummy)
 #endif /* MODULE_LICENSE */
 
+/*** Credentials changes ***/
+#if (LINUX_VERSION_CODE < VERSION(2,6,28))
+  #define kc_current_euid() (current->euid)
+  #define kc_current_egid() (current->egid)
+#else /* 2.6.28 */
+  #define kc_current_euid  current_euid
+  #define kc_current_egid  current_egid
+#endif /* 2.6.28 */
+
+#if (LINUX_VERSION_CODE < VERSION(2,6,0))
+  #define kc_capable(what) (kc_current_euid()!=0)
+#else /* 2.6.0 */
+  #define kc_capable capable
+#endif /* 2.6.0 */
+
 #endif /* _LINUX_K_COMPAT_H */
