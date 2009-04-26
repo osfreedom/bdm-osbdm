@@ -1,5 +1,5 @@
 /* 
- * $Id: bdm.c,v 1.9 2008/10/31 16:27:44 ppisa Exp $
+ * $Id: bdm.c,v 1.10 2009/04/26 18:48:28 ppisa Exp $
  *
  * Linux Device Driver BDM Interface
  * based on the PD driver package by Scott Howard, Feb 93
@@ -1589,7 +1589,7 @@ bdm_ioctl(struct inode *inode, struct file *file,
 		break;
 	  case BDM_GET_VERSION:
 		/* read counter and return it to *arg */
-		if(kc_put_user_long(bdm_version, arg))
+		if(kc_put_user_u32(bdm_version, arg))
 			retval = -EINVAL;
 		break;
 	  case BDM_SENSECABLE:
@@ -1839,8 +1839,8 @@ init_module(void)
 #endif
 
 	printk("BDM init_module\n   %s\n   %s\n   %s\n",
-		   "$RCSfile: bdm.c,v $", "$Revision: 1.9 $", "$Date: 2008/10/31 16:27:44 $");
-		   /*"$Id: bdm.c,v 1.9 2008/10/31 16:27:44 ppisa Exp $", */
+		   "$RCSfile: bdm.c,v $", "$Revision: 1.10 $", "$Date: 2009/04/26 18:48:28 $");
+		   /*"$Id: bdm.c,v 1.10 2009/04/26 18:48:28 ppisa Exp $", */
 	printk("   Version %s\n   Compiled at %s %s\n",
 #ifdef PD_INTERFACE
 		   "PD "

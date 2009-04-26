@@ -13,9 +13,9 @@
 #define WITH_TARGET_BUS32
 
 #ifndef WITH_TARGET_BUS32
-typedef u_int16_t flash_d_t;	/* Type able to store one flash location */
+typedef uint16_t flash_d_t;	/* Type able to store one flash location */
 #else /* WITH_TARGET_BUS32 */
-typedef u_int32_t flash_d_t;	/* Type able to store one flash location */
+typedef uint32_t flash_d_t;	/* Type able to store one flash location */
 #endif /* WITH_TARGET_BUS32 */
 
 /* Structure describing programming operations for flash type */
@@ -28,10 +28,10 @@ typedef struct flash_alg_info {
   /* This version is capable only of full erase (size=0) and one sector (size=1) */
   int (*erase)(const struct flash_alg_info *alg, void *addr, long size);
   /* Numeric and string fields follows */
-  u_int32_t addr_mask;	/* Mask to take offset inside flash */
-  u_int32_t reg1_addr;	/* Flash control register 1 */
-  u_int32_t reg2_addr;	/* Flash control register 2 */
-  u_int32_t sec_size;	/* block size of bigger blocks */
+  uint32_t addr_mask;	/* Mask to take offset inside flash */
+  uint32_t reg1_addr;	/* Flash control register 1 */
+  uint32_t reg2_addr;	/* Flash control register 2 */
+  uint32_t sec_size;	/* block size of bigger blocks */
   flash_d_t width;	/* FLASH_ALG_BITS_x8 .. 8 bit data bus,
 			   FLASH_ALG_BITS_x16 .. 16 bit data,
   			   FLASH_ALG_BITS_x8x2 .. two interleaved 8 bit */
@@ -63,11 +63,11 @@ const flash_alg_info_t *bdmflash_alg_from_id(flash_d_t id[2]);
 const flash_alg_info_t *bdmflash_alg_probe(caddr_t flash_adr);
 
 int bdmflash_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr);
+		uint32_t size, uint8_t * bl_ptr);
 
-int bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, u_int size);
+int bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, uint32_t size);
 
-int bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, u_int size);
+int bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr, uint32_t size);
 
 int bdmflash_check_id(const flash_alg_info_t *alg, void *addr, flash_d_t retid[2]);
 

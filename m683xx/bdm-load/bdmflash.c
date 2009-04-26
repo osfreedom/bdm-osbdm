@@ -214,12 +214,12 @@ flash_alg_info_t *flash_alg_infos_def[]={
 flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
 
 #if 0
-  #define FLASH_WR32(adr,val) (*(volatile u_int32_t*)(adr)=(val))
-  #define FLASH_RD32(adr) (*(volatile u_int32_t*)(adr))
-  #define FLASH_WR16(adr,val) (*(volatile u_int16_t*)(adr)=(val))
-  #define FLASH_RD16(adr) (*(volatile u_int16_t*)(adr))
-  #define FLASH_WR8(adr,val) (*(volatile u_int8_t*)(adr)=(val))
-  #define FLASH_RD8(adr) (*(volatile u_int8_t*)(adr))
+  #define FLASH_WR32(adr,val) (*(volatile uint32_t*)(adr)=(val))
+  #define FLASH_RD32(adr) (*(volatile uint32_t*)(adr))
+  #define FLASH_WR16(adr,val) (*(volatile uint16_t*)(adr)=(val))
+  #define FLASH_RD16(adr) (*(volatile uint16_t*)(adr))
+  #define FLASH_WR8(adr,val) (*(volatile uint8_t*)(adr)=(val))
+  #define FLASH_RD8(adr) (*(volatile uint8_t*)(adr))
 #else
   #define FLASH_WR32(adr,val) \
   		({ \
@@ -228,7 +228,7 @@ flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
   		  val; \
   		})
   #define FLASH_RD32(adr) \
-  		({ u_int32_t temp_val; \
+  		({ uint32_t temp_val; \
   		  if(bdmlib_read_var(adr,BDM_SIZE_LONG,&temp_val)<0) \
   		  	goto mem_op_error; \
   		  temp_val; \
@@ -240,7 +240,7 @@ flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
   		  val; \
   		})
   #define FLASH_RD16(adr) \
-  		({ u_int16_t temp_val; \
+  		({ uint16_t temp_val; \
   		  if(bdmlib_read_var(adr,BDM_SIZE_WORD,&temp_val)<0) \
   		  	goto mem_op_error; \
   		  temp_val; \
@@ -252,7 +252,7 @@ flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
   		  val; \
   		})
   #define FLASH_RD8(adr) \
-  		({ u_int8_t temp_val; \
+  		({ uint8_t temp_val; \
   		  if(bdmlib_read_var(adr,BDM_SIZE_BYTE,&temp_val)<0) \
   		  	goto mem_op_error; \
   		  temp_val; \
@@ -262,17 +262,17 @@ flash_alg_info_t **flash_alg_infos=flash_alg_infos_def;
 
 
 static  
-int bdmflash_prepval_x16(u_int16_t *pval, void *addr, const void *data, long count)
+int bdmflash_prepval_x16(uint16_t *pval, void *addr, const void *data, long count)
 {
   if(!((long)addr&1) && (count>=2)){
-    *pval=(((u_char*)data)[0]<<8)|(((u_char*)data)[1]);
+    *pval=(((uint8_t*)data)[0]<<8)|(((uint8_t*)data)[1]);
     return 2;
   }
   if(!count) return count;
   if(!((long)addr&1)){
-    *pval=(((u_char*)data)[0]<<8) | FLASH_RD8((u_char*)addr+1);
+    *pval=(((uint8_t*)data)[0]<<8) | FLASH_RD8((uint8_t*)addr+1);
   }else{
-    *pval=(FLASH_RD8((u_char*)addr-1)<<8) | (((u_char*)data)[0]);
+    *pval=(FLASH_RD8((uint8_t*)addr-1)<<8) | (((uint8_t*)data)[0]);
   }
   return 1;
 
@@ -282,31 +282,31 @@ int bdmflash_prepval_x16(u_int16_t *pval, void *addr, const void *data, long cou
 
 #ifdef WITH_TARGET_BUS32
 static  
-int bdmflash_prepval_x32(u_int32_t *pval, void *addr, const void *data, long count)
+int bdmflash_prepval_x32(uint32_t *pval, void *addr, const void *data, long count)
 {
   int offs=(long)addr&3;
   int rest=4-offs;
-  u_int32_t val=0;
+  uint32_t val=0;
   if(!offs && (count>=4)){
-    *pval=((u_int32_t)((u_char*)data)[0]<<24)|((u_int32_t)((u_char*)data)[1]<<16)|
-          (((u_char*)data)[2]<<8)|(((u_char*)data)[3]);
+    *pval=((uint32_t)((uint8_t*)data)[0]<<24)|((uint32_t)((uint8_t*)data)[1]<<16)|
+          (((uint8_t*)data)[2]<<8)|(((uint8_t*)data)[3]);
     return 4;
   }
   if(!count) return count;
   if(count>rest) count=rest;
   while(offs){
     val<<=8;
-    val|=FLASH_RD8((u_char*)addr-offs);
+    val|=FLASH_RD8((uint8_t*)addr-offs);
     offs--;
   }
   while(offs<count){
     val<<=8;
-    val|=((u_char*)data)[offs];
+    val|=((uint8_t*)data)[offs];
     offs++;
   }
   while(offs<rest){
     val<<=8;
-    val|=FLASH_RD8((u_char*)addr+offs);
+    val|=FLASH_RD8((uint8_t*)addr+offs);
     offs++;
   }
   *pval=val;
@@ -324,8 +324,8 @@ int bdmflash_prepval_x32(u_int32_t *pval, void *addr, const void *data, long cou
 int bdmflash_check_id_x16(const flash_alg_info_t *alg, void *addr, flash_d_t retid[2])
 {
   int ret=0;
-  u_int16_t devid, manid;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  uint16_t devid, manid;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR16(a,alg->cmd_reset);
   /* security sequence */
@@ -359,8 +359,8 @@ int bdmflash_check_id_x16(const flash_alg_info_t *alg, void *addr, flash_d_t ret
 int bdmflash_prog_x16(const flash_alg_info_t *alg, void *addr, const void *data, long count)
 {
   int ret;
-  u_int16_t old,new,fault,val;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  uint16_t old,new,fault,val;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   ret=bdmflash_prepval_x16(&val,addr,data,count);
   if(ret<=0)
     return ret;
@@ -405,9 +405,9 @@ int bdmflash_prog_x16(const flash_alg_info_t *alg, void *addr, const void *data,
 
 int bdmflash_erase_x16(const flash_alg_info_t *alg, void *addr, long size)
 {
-  u_int16_t old,new,fault;
+  uint16_t old,new,fault;
   int ret=0;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR16(a,alg->cmd_reset);
   /* security sequence */
@@ -459,8 +459,8 @@ int bdmflash_check_id_x8(const flash_alg_info_t *alg, void *addr,
 		   flash_d_t retid[2])
 {
   int ret=0;
-  u_int16_t devid, manid;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  uint16_t devid, manid;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR8(a,alg->cmd_reset);
   /* security sequence */
@@ -494,9 +494,9 @@ int bdmflash_check_id_x8(const flash_alg_info_t *alg, void *addr,
 int bdmflash_prog_x8(const flash_alg_info_t *alg, void *addr, const void *data, long count)
 {
   int ret=1;
-  u_int8_t old,new,val;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
-  val=*(u_int8_t*)data;
+  uint8_t old,new,val;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
+  val=*(uint8_t*)data;
   /* check if FLASH needs programming */
   if(1){
     old=FLASH_RD8(addr);
@@ -529,9 +529,9 @@ int bdmflash_prog_x8(const flash_alg_info_t *alg, void *addr, const void *data, 
 
 int bdmflash_erase_x8(const flash_alg_info_t *alg, void *addr, long size)
 {
-  u_int8_t old,new;
+  uint8_t old,new;
   int ret=0;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR8(a,alg->cmd_reset);
   /* security sequence */
@@ -577,8 +577,8 @@ int bdmflash_erase_x8(const flash_alg_info_t *alg, void *addr, long size)
 int bdmflash_check_id_x32(const flash_alg_info_t *alg, void *addr, flash_d_t retid[2])
 {
   int ret=0;
-  u_int32_t devid, manid;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  uint32_t devid, manid;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR32(a,alg->cmd_reset);
   /* security sequence */
@@ -614,8 +614,8 @@ int bdmflash_check_id_x32(const flash_alg_info_t *alg, void *addr, flash_d_t ret
 int bdmflash_prog_x32(const flash_alg_info_t *alg, void *addr, const void *data, long count)
 {
   int ret=4;
-  u_int32_t old,new,fault,val;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  uint32_t old,new,fault,val;
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   ret=bdmflash_prepval_x32(&val,addr,data,count);
   if(ret<=0)
     return ret;
@@ -663,9 +663,9 @@ int bdmflash_prog_x32(const flash_alg_info_t *alg, void *addr, const void *data,
 
 int bdmflash_erase_x32(const flash_alg_info_t *alg, void *addr, long size)
 {
-  u_int32_t old,new,fault;
+  uint32_t old,new,fault;
   int ret=0;
-  caddr_t a=(caddr_t)((u_int32_t)addr&~alg->addr_mask);
+  caddr_t a=(caddr_t)((uint32_t)addr&~alg->addr_mask);
   /* reset */
   FLASH_WR32(a,alg->cmd_reset);
   /* security sequence */
@@ -774,7 +774,7 @@ bdmflash_alg_probe(caddr_t flash_adr)
 
 int
 bdmflash_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr)
+		uint32_t size, uint8_t * bl_ptr)
 {
   int offs=0,res;
   flash_d_t val;
@@ -841,7 +841,7 @@ bdmflash_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
 
 int
 bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size)
+		uint32_t size)
 {
   int res=0;
   const flash_alg_info_t *alg=(flash_alg_info_t*)filt->info;
@@ -858,7 +858,7 @@ bdmflash_erase_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
 /* slow version of blank check */
 int
 bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size)
+		uint32_t size)
 {
   int errors=0;
   if(!in_adr||!size){
@@ -904,10 +904,10 @@ bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
 /* hopefully faster version of blank check */
 int
 bdmflash_blankck_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size)
+		uint32_t size)
 {
   int errors=0, in_buf;
-  u_char buf[1024], *p;
+  uint8_t buf[1024], *p;
   if(!in_adr||!size){
     in_adr=filt->begin_adr;
     size=filt->end_adr-in_adr+1;

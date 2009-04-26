@@ -76,6 +76,8 @@ char kernel_version[] = UTS_RELEASE;
     (if(!verify_area(VERIFY_WRITE, (ptr), sizeof(short))){put_fs_word((x),(ptr));0;} else 1; })
   #define kc_put_user_byte(x,ptr) \
     (if(!verify_area(VERIFY_WRITE, (ptr), sizeof(char))) {put_fs_byte((x),(ptr));0;} else 1; })
+  #define kc_get_user_u32 kc_get_user_long
+  #define kc_put_user_u32 kc_put_user_long
 #elif (LINUX_VERSION_CODE < VERSION(2,1,100)) /* may need correction */
   #include  <asm/uaccess.h>
   #define kc_copy_from_user copy_from_user
@@ -95,9 +97,13 @@ char kernel_version[] = UTS_RELEASE;
 #endif /* < 2.1.100 */
 
 #if (LINUX_VERSION_CODE >= VERSION(2,1,5))
+  #define kc_get_user_u64(x,ptr)  (kc_get_user((x),(u64 *)(ptr)))
+  #define kc_get_user_u32(x,ptr)  (kc_get_user((x),(u32 *)(ptr)))
   #define kc_get_user_long(x,ptr) (kc_get_user((x),(long*)(ptr)))
   #define kc_get_user_word(x,ptr) (kc_get_user((x),(unsigned short*)(ptr)))
   #define kc_get_user_byte(x,ptr) (kc_get_user((x),(unsigned char*)(ptr)))
+  #define kc_put_user_u64(x,ptr)  (kc_put_user((x),(u64 *)(ptr)))
+  #define kc_put_user_u32(x,ptr)  (kc_put_user((x),(u32 *)(ptr)))
   #define kc_put_user_long(x,ptr) (kc_put_user((x),(long *)(ptr)))
   #define kc_put_user_word(x,ptr) (kc_put_user((x),(unsigned short*)(ptr)))
   #define kc_put_user_byte(x,ptr) (kc_put_user((x),(unsigned char*)(ptr)))

@@ -19,10 +19,10 @@ char hashmark;
 int bdm_autoreset;
 int bdm_ttcu;
 
-int bdm_step_chip()
+int bdm_step_chip(void)
 {
  int ret;
- u_int32_t rpc;
+ uint32_t rpc;
  
  if (!bdmlib_isopen())
   return BDM_ERR_NOT_OPEN;
@@ -41,7 +41,7 @@ int bdm_step_chip()
 
 int bdm_show_regs(void)
 { 
- u_int reg;
+ uint32_t reg;
  if (!bdmlib_isopen())
   return BDM_ERR_NOT_OPEN;
 
@@ -52,7 +52,7 @@ int bdm_show_regs(void)
 
 int rd_test(void)
 { 
- u_int16_t val; 
+ uint16_t val; 
  caddr_t adr=(caddr_t)0xFFAA;
  int counter=0;
  
@@ -77,7 +77,7 @@ int rd_test(void)
 
 int wr_test(void)
 { 
- u_int16_t val=0xAAAA;
+ uint16_t val=0xAAAA;
  caddr_t adr=(caddr_t)0xFFAA;
  int counter=0;
 
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
  char *p;
  char file_name[100]="";
  char bdm_dev_name[100]="/dev/bdm";
- unsigned long entry_pt=0;
+ uint32_t entry_pt=0;
 
  bdmlib_setdebug(1);
  if((p=TestSW(argc,argv,'D'))!=NULL)
@@ -221,7 +221,7 @@ int main(int argc, char *argv[])
     ret=bdmlib_load(file_name, NULL, &entry_pt);
     if(ret<0) printf("bdmlib_load : %s\n",bdmlib_geterror_str(ret));
     else
-    {printf("loaded OK, entrypoint %lx\n",entry_pt);
+    {printf("loaded OK, entrypoint %lx\n",(long)entry_pt);
      if((ret=bdmlib_set_sys_reg(BDM_REG_RPC, entry_pt))<0)
       printf("set PC error : %s\n",bdmlib_geterror_str(ret));
     }

@@ -1,5 +1,5 @@
 /*
- * $Id: bdmlib.c,v 1.5 2005/11/04 14:33:54 ppisa Exp $
+ * $Id: bdmlib.c,v 1.6 2009/04/26 18:48:28 ppisa Exp $
  *
  * Remote debugging interface for 683xx via Background Debug Mode
  * needs a driver, which controls the BDM interface.
@@ -100,7 +100,7 @@ static int bdm_delay=-1;
 #define	BDM_DEBUG_NAME	"bdm-dbg.log"
 static int bdm_flags = 0;
 static int mbar_used = 0;
-static u_long mbar_default_val = 0;
+static uint32_t mbar_default_val = 0;
 extern char hashmark;
 extern int bdm_autoreset;
 extern int bdm_ttcu;
@@ -263,7 +263,7 @@ char *ret;
 }
 
 int 
-bdmlib_setioctl(u_int code, u_int val)
+bdmlib_setioctl(uint32_t code, uint32_t val)
 {
 	if (bdmlib_isopen()) {
 		switch (code) {
@@ -282,7 +282,7 @@ bdmlib_setioctl(u_int code, u_int val)
 }
 
 int 
-bdmlib_ioctl(u_int code)
+bdmlib_ioctl(uint32_t code)
 {
 int ret;
 	if (bdmlib_isopen()) {
@@ -327,7 +327,7 @@ bdmlib_getstatus(void)
 int
 bdmlib_go(void)
 {
-	u_short buf;
+	uint16_t buf;
 	int ret;
 
 	dbprintf("bdmlib_go\n");
@@ -350,7 +350,7 @@ bdmlib_go(void)
 }
 
 int
-bdmlib_set_mbar(u_long mbar_val)
+bdmlib_set_mbar(uint32_t mbar_val)
 {
   int ret;
   bdmlib_set_sys_reg(BDM_REG_DFC, 7);
@@ -369,7 +369,7 @@ int
 bdmlib_reset(void)
 {
 #if SUPPORT_RAMINIT
-	u_long dummy;
+	uint32_t dummy;
 #endif 
 	int ret;
 
@@ -426,17 +426,17 @@ bdmlib_reset(void)
 }
 
 #define swaps(x) \
-((u_short)((((u_short)(x) & 0x00ff) << 8) | \
-	(((u_short)(x) & 0xff00) >> 8)))
+((uint16_t)((((uint16_t)(x) & 0x00ff) << 8) | \
+	(((uint16_t)(x) & 0xff00) >> 8)))
 
 #define	swapl(x) \
-((u_int)((((u_int)(x) & 0x000000ffU) << 24) | \
-	(((u_int)(x) & 0x0000ff00U) << 8) | \
-	(((u_int)(x) & 0x00ff0000U) >> 8) | \
-	(((u_int)(x) & 0xff000000U) >> 24)))
+((uint32_t)((((uint32_t)(x) & 0x000000ffU) << 24) | \
+	    (((uint32_t)(x) & 0x0000ff00U) << 8) | \
+	    (((uint32_t)(x) & 0x00ff0000U) >> 8) | \
+	    (((uint32_t)(x) & 0xff000000U) >> 24)))
 
-static u_short *
-bdmlib_conv_short_to_buf(u_short * buf, u_short val, int endianness)
+static uint16_t *
+bdmlib_conv_short_to_buf(uint16_t * buf, uint16_t val, int endianness)
 {
 	if (endianness) {
 		*buf++ = swaps(val);
@@ -447,8 +447,8 @@ bdmlib_conv_short_to_buf(u_short * buf, u_short val, int endianness)
 }
 
 /* conv long in host format (little endian) to buf (target format = big e) */
-static u_short *
-bdmlib_conv_long_to_buf(u_short * buf, u_long val, int endianness)
+static uint16_t *
+bdmlib_conv_long_to_buf(uint16_t * buf, uint32_t val, int endianness)
 {
 	if (endianness) {
 		*buf++ = swaps(val & 0xffff);
@@ -461,8 +461,8 @@ bdmlib_conv_long_to_buf(u_short * buf, u_long val, int endianness)
 }
 
 /* buf representation to a single short */
-static u_short *
-bdmlib_conv_buf_to_short(u_short * buf, u_short * val, int endianness)
+static uint16_t *
+bdmlib_conv_buf_to_short(uint16_t * buf, uint16_t * val, int endianness)
 {
 	if (endianness) {
 		*val = *buf++;
@@ -474,8 +474,8 @@ bdmlib_conv_buf_to_short(u_short * buf, u_short * val, int endianness)
 }
 
 /* buf representation to a single long */
-static u_short *
-bdmlib_conv_buf_to_long(u_short * buf, u_long * val, int endianness)
+static uint16_t *
+bdmlib_conv_buf_to_long(uint16_t * buf, uint32_t * val, int endianness)
 {
 	if (endianness) {
 		*val = (buf[0] << 16) | buf[1];
@@ -491,13 +491,13 @@ bdmlib_conv_buf_to_long(u_short * buf, u_long * val, int endianness)
 * endianness=0: interprete char as little end
 * else interprete char as big endian
 */
-static u_char *
-bdmlib_conv_char_to_long(u_char * buf, u_long * val, int endianness)
+static uint8_t *
+bdmlib_conv_char_to_long(uint8_t * buf, uint32_t * val, int endianness)
 {
 	int i;
 	union {
-		u_long l;
-		u_char c[4];
+		uint32_t l;
+		uint8_t c[4];
 	} u;
 
 	if (endianness) {
@@ -512,13 +512,13 @@ bdmlib_conv_char_to_long(u_char * buf, u_long * val, int endianness)
 }
 
 /* put a char stream of 2 bytes into a short */
-static u_char *
-bdmlib_conv_char_to_short(u_char * buf, u_short * val, int endianness)
+static uint8_t *
+bdmlib_conv_char_to_short(uint8_t * buf, uint16_t * val, int endianness)
 {
 	int i;
 	union {
-		u_short s;
-		u_char c[2];
+		uint16_t s;
+		uint8_t c[2];
 	} u;
 
 	if (endianness) {
@@ -533,13 +533,13 @@ bdmlib_conv_char_to_short(u_char * buf, u_short * val, int endianness)
 }
 
 /* put a long to a char stream */
-static u_char *
-bdmlib_conv_long_to_char(u_char * buf, u_long val, int endianness)
+static uint8_t *
+bdmlib_conv_long_to_char(uint8_t * buf, uint32_t val, int endianness)
 {
 	int i;
 	union {
-		u_long l;
-		u_char c[4];
+		uint32_t l;
+		uint8_t c[4];
 	} u;
 
 	u.l = val;
@@ -554,13 +554,13 @@ bdmlib_conv_long_to_char(u_char * buf, u_long val, int endianness)
 }
 
 /* put a short to a char stream */
-static u_char *
-bdmlib_conv_short_to_char(u_char * buf, u_short val, int endianness)
+static uint8_t *
+bdmlib_conv_short_to_char(uint8_t * buf, uint16_t val, int endianness)
 {
 	int i;
 	union {
-		u_short s;
-		u_char c[2];
+		uint16_t s;
+		uint8_t c[2];
 	} u;
 
 	u.s = val;
@@ -575,10 +575,10 @@ bdmlib_conv_short_to_char(u_char * buf, u_short val, int endianness)
 }
 
 int
-bdmlib_get_sys_reg(u_int reg, u_int * ret_val)
+bdmlib_get_sys_reg(uint32_t reg, uint32_t * ret_val)
 {
-	u_short send;
-	u_short recv[2];
+	uint16_t send;
+	uint16_t recv[2];
 	int ret;
 
 	send = BDM_RSREG_CMD | (reg & 0xf);
@@ -591,14 +591,14 @@ bdmlib_get_sys_reg(u_int reg, u_int * ret_val)
 		dbprintf("bdmlib_get_sys_reg error on send: errno %d\n", errno);
 		return -errno;
 	}
-	bdmlib_conv_buf_to_long(recv, (u_long *) ret_val, 0);
+	bdmlib_conv_buf_to_long(recv, ret_val, 0);
 	return (ret == 4) ? BDM_NO_ERROR : -errno;
 }
 
 int
-bdmlib_set_sys_reg(u_int reg, u_int cont)
+bdmlib_set_sys_reg(uint32_t reg, uint32_t cont)
 {
-	u_short send[3];
+	uint16_t send[3];
 	int ret;
 
 	if (!bdmlib_isopen())
@@ -614,10 +614,10 @@ bdmlib_set_sys_reg(u_int reg, u_int cont)
 }
 
 int
-bdmlib_get_reg(u_int reg, u_int * ret_val)
+bdmlib_get_reg(uint32_t reg, uint32_t * ret_val)
 {
-	u_short send;
-	u_short recv[2];
+	uint16_t send;
+	uint16_t recv[2];
 	int ret;
 
 	if (!bdmlib_isopen())
@@ -631,14 +631,14 @@ bdmlib_get_reg(u_int reg, u_int * ret_val)
 		return -errno;
 	}
 	/* get target format, as conversion will be done in higher levels */
-	bdmlib_conv_buf_to_long(recv, (u_long *) ret_val, 0);
+	bdmlib_conv_buf_to_long(recv, ret_val, 0);
 	return (ret == 4) ? BDM_NO_ERROR : -errno;
 }
 
 int
-bdmlib_set_reg(u_int reg, u_int cont)
+bdmlib_set_reg(uint32_t reg, uint32_t cont)
 {
-	u_short send[3];
+	uint16_t send[3];
 	int ret;
 
 	if (!bdmlib_isopen())
@@ -654,9 +654,9 @@ bdmlib_set_reg(u_int reg, u_int cont)
 }
 
 int
-bdmlib_write_var(caddr_t adr, u_short size, u_int val)
+bdmlib_write_var(caddr_t adr, uint16_t size, uint32_t val)
 {
-	u_short buf[6], *b_ptr = buf;
+	uint16_t buf[6], *b_ptr = buf;
 	int w_buf_len, r_buf_len;
 	int written;
 
@@ -666,7 +666,7 @@ bdmlib_write_var(caddr_t adr, u_short size, u_int val)
 	size &= 0x00c0;
 	*b_ptr++ = (BDM_WRITE_CMD | size);
 	/* no need for byte swapping, as adr is already a valid long; so use 0 */
-	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (u_long) adr, 0);
+	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (uint32_t) adr, 0);
 	switch (size) {
 	  case BDM_SIZE_LONG:
 		  b_ptr = bdmlib_conv_long_to_buf(b_ptr, val, 0);
@@ -677,7 +677,7 @@ bdmlib_write_var(caddr_t adr, u_short size, u_int val)
 		  w_buf_len = 4;
 		  break;
 	  case BDM_SIZE_BYTE:
-		  *b_ptr++ = (u_short) (val & 0xff);
+		  *b_ptr++ = (uint16_t) (val & 0xff);
 		  w_buf_len = 4;
 		  break;
 	  default:
@@ -712,17 +712,17 @@ bdmlib_write_var(caddr_t adr, u_short size, u_int val)
    in bdm_write_var */ 
 
 int
-bdmlib_write_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
+bdmlib_write_block(caddr_t in_adr, uint32_t size, uint8_t * bl_ptr)
 {
-	u_short buf[8];
+	uint16_t buf[8];
 	int fills, got_size = 0;
-	u_long ul;
-	u_short us;
-	u_char uc;
-	u_int first_acc;
+	uint32_t ul;
+	uint16_t us;
+	uint8_t uc;
+	uint32_t first_acc;
 
 	dbprintf("bdmlib_write_block size %#x to adr %#x ", size, in_adr);
-	first_acc = 4 - ((u_long) in_adr & 0x3);
+	first_acc = 4 - ((uint32_t) in_adr & 0x3);
 	if (size < first_acc) {
 		switch (size) {
 			case 0: return 0;
@@ -805,21 +805,21 @@ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 #else
 
 int
-bdmlib_write_block(caddr_t in_adr, u_int size, u_char * block)
+bdmlib_write_block(caddr_t in_adr, uint32_t size, uint8_t * block)
 {
-	u_short *buf, *buf_ptr;
+	uint16_t *buf, *buf_ptr;
 	int buf_len = 0;			/* valid len of buf to writecmd in shorts */
-	u_char *bl_ptr;
-	u_int adr;
+	uint8_t *bl_ptr;
+	uint32_t adr;
 	int fills, put_size;
-	u_long ul;
-	u_short us;
-	u_int first_acc;
+	uint32_t ul;
+	uint16_t us;
+	uint32_t first_acc;
 
 	dbprintf("bdmlib_write_block size %#x to adr %#x\n", size, in_adr);
 	if (!bdmlib_isopen())
 		return BDM_ERR_NOT_OPEN;
-	first_acc = 4 - ((u_long) in_adr & 0x3);
+	first_acc = 4 - ((uint32_t) in_adr & 0x3);
 	if (size < first_acc) {
 		switch (size) {
 			case 0: return 0;
@@ -830,7 +830,7 @@ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * block)
 	}
 
 	put_size = size;
-	adr = (u_int) in_adr;
+	adr = (uint32_t) in_adr;
 	bl_ptr = block;
 	buf_ptr = buf = xmalloc((size / 4 + 5) * 6);
 
@@ -933,12 +933,12 @@ bdmlib_write_block(caddr_t in_adr, u_int size, u_char * block)
 
 /* return format in *val is target byte ordering */
 int
-bdmlib_read_var(caddr_t adr, u_short size, void *val)
+bdmlib_read_var(caddr_t adr, uint16_t size, void *val)
 {
-	u_short buf[6], *b_ptr = buf;
+	uint16_t buf[6], *b_ptr = buf;
 	int count;
 
-	/* u_char *cptr; u_short *sptr; u_long *lptr;	*/
+	/* uint8_t *cptr; uint16_t *sptr; uint32_t *lptr;	*/
 
 	dbprintf("bdmlib_read_var size %#x from adr %#x ", size, adr);
 	if (!bdmlib_isopen())
@@ -946,7 +946,7 @@ bdmlib_read_var(caddr_t adr, u_short size, void *val)
 	size &= 0x00c0;
 	*b_ptr++ = (BDM_READ_CMD | size);
 	/* no need for byte swapping, as adr is already a valid long; so use 0 */
-	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (u_long) adr, 0);
+	b_ptr = bdmlib_conv_long_to_buf(b_ptr, (uint32_t) adr, 0);
 	if ((count = write(bdm_fd, buf, 6)) != 6) {
 		dbprintf("bdmlib_read_var error: write returns %d\n", count);
 		return BDM_ERR_WRITE_FAIL;
@@ -954,20 +954,20 @@ bdmlib_read_var(caddr_t adr, u_short size, void *val)
 	switch (size) {
 	  case BDM_SIZE_LONG:
 		  if ((count = read(bdm_fd, buf, 4)) == 4) {
-			  *(u_long *) val = (buf[0] << 16) | buf[1];
+			  *(uint32_t *) val = (buf[0] << 16) | buf[1];
 		  }
 		  break;
 	  case BDM_SIZE_WORD:
 		  if ((count = read(bdm_fd, buf, 2)) == 2) {
-			  *(u_short *) val = (u_short) buf[0];
-			  /* sptr = (u_short*) val; *sptr = (u_short) buf[0];	*/
+			  *(uint16_t *) val = (uint16_t) buf[0];
+			  /* sptr = (uint16_t*) val; *sptr = (uint16_t) buf[0];	*/
 		  }
 		  break;
 	  case BDM_SIZE_BYTE:
 		  if ((count = read(bdm_fd, buf, 2)) == 2) {
 			  count = 1;
-			  *(u_char *) val = (u_char) (buf[0] & 0xff);
-			  /* cptr = (u_char*)val; *cptr = (u_char) (buf[0] & 0xff); */
+			  *(uint8_t *) val = (uint8_t) (buf[0] & 0xff);
+			  /* cptr = (uint8_t*)val; *cptr = (uint8_t) (buf[0] & 0xff); */
 		  }
 		  break;
 	  default:
@@ -977,24 +977,24 @@ bdmlib_read_var(caddr_t adr, u_short size, void *val)
 		dbprintf("\nerror %d (%s)\n", errno, bdmlib_geterror_str(errno));
 		return -errno;
 	}
-	/* val = (u_int*) ((u_long)val & ~3); 	*/
-	dbprintf(" cont %#x\n", *(u_long *) ((long) val & ~3));
+	/* val = (uint32_t*) ((uint32_t)val & ~3); 	*/
+	dbprintf(" cont %#x\n", *(uint32_t *) ((long) val & ~3));
 	return count;				/* _must_ return count */
 }
 
 int
-bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
+bdmlib_read_block(caddr_t in_adr, uint32_t size, uint8_t * bl_ptr)
 {
-	u_short buf[8];
-	u_short dump_cmd;
+	uint16_t buf[8];
+	uint16_t dump_cmd;
 	int dumps, got_size = 0;
-	u_long ul;
-	u_short us;
-	u_char uc;
-	u_int first_acc;
+	uint32_t ul;
+	uint16_t us;
+	uint8_t uc;
+	uint32_t first_acc;
 
 	dbprintf("bdmlib_read_block size %#x from adr %#x ", size, in_adr);
-	first_acc = 4 - ((u_long) in_adr & 0x3);
+	first_acc = 4 - ((uint32_t) in_adr & 0x3);
 	if (size < first_acc) {
 		switch (size) {
 			case 0: return 0;
@@ -1077,13 +1077,13 @@ bdmlib_read_block(caddr_t in_adr, u_int size, u_char * bl_ptr)
 }
 
 void
-bdmlib_propeller(u_long addr, FILE * fp)
+bdmlib_propeller(uint32_t addr, FILE * fp)
 {
 static char *str = "\\|/-";
 static int index;
 	
 	if (!hashmark) return;
-	fprintf(fp, "%c 0x%08lx\b\b\b\b\b\b\b\b\b\b\b\b", str[index++], addr);
+	fprintf(fp, "%c 0x%08lx\b\b\b\b\b\b\b\b\b\b\b\b", str[index++], (u_long)addr);
 	fflush(fp);
 	index %= 4;
 }
@@ -1154,8 +1154,8 @@ int quitting;
 void
 bdmlib_showpc(void)
 {
-	u_int sr, usp, ssp, vbr;
-	u_int pcc, rpc, a7;
+	uint32_t sr, usp, ssp, vbr;
+	uint32_t pcc, rpc, a7;
 
 	bdmlib_get_sys_reg(BDM_REG_SR, &sr);
 	bdmlib_get_sys_reg(BDM_REG_USP, &usp);
@@ -1204,7 +1204,7 @@ bdmlib_do_load_macro(char *file_name, int which_suffix)
 	int line_nr, ret, size;
 	bfd_vma addr1, addr2;
 	short size_tag;
-	u_char *buf;
+	uint8_t *buf;
 	int errorcount = 0;
 	char * begin_suffix = ".bdmmb", *end_suffix = ".bdmme", *no_suffix = "";
 	char * suffix;
@@ -1261,7 +1261,7 @@ size must be either 1,2,4 bytes, '%d' is not allowed",
 						  m_name, line_nr, size);
 					continue;
 			  }
-			  if ((ret = bdmlib_write_var((caddr_t) addr1, size_tag, (u_int) addr2)) < 0) {
+			  if ((ret = bdmlib_write_var((caddr_t) addr1, size_tag, (uint32_t) addr2)) < 0) {
 				  errorcount++;
 				  dbprintf("\
 Error in processing macro %s line %d 'W' command:\n\t\
@@ -1317,7 +1317,7 @@ bdm_set size mismatch on write to %#x: wanted %d got %d",
 			  break;
 		  case 'M':
 			  dbprintf("\tMBAR setup to %#x\n", addr1);
-			  if ((ret = bdmlib_set_mbar((u_long) addr1))) {
+			  if ((ret = bdmlib_set_mbar((uint32_t) addr1))) {
 				  errorcount++;
 				  error("\
 Error in processing macro %s line %d 'M' command:\n\t\
@@ -1360,10 +1360,10 @@ bdmlib_bfilt_t * bdmlib_bfilt=NULL;
 
 int
 bdmlib_wrb_filt(bdmlib_bfilt_t * filt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr)
+		uint32_t size, uint8_t * bl_ptr)
 {
 	int ret, part_ret;
-	u_int part_size;	
+	uint32_t part_size;	
 	if (!size) return 0;
 
 	while (filt) {
@@ -1414,12 +1414,12 @@ static int load_section_error;
 static void
 bdmlib_load_section(bfd * abfd, sec_ptr sec, PTR ignore)
 {
-	u_long addr;
-	u_long dfc;
-	u_long load_bytes;
+	uint32_t addr;
+	uint32_t dfc;
+	uint32_t load_bytes;
 	file_ptr offset;
 	int ret, cnt;
-	char cbuf[512];
+	uint8_t cbuf[512];
 
 	dbprintf("bdmlib_load_section:\n\tsection %s index %d\n",
 			sec->name, sec->index);
@@ -1499,11 +1499,11 @@ static bfd * prepare_binary(char *file_name)
  * load a binary file, returns error codes
  */
 int
-bdmlib_do_load_binary(char *file_name, char *entry_name, u_long *entry_pt)
+bdmlib_do_load_binary(char *file_name, char *entry_name, uint32_t *entry_pt)
 {
 	bfd *abfd;
 	int ret;
-	u_long entry_addr = 0;
+	uint32_t entry_addr = 0;
 
 	if ((abfd = prepare_binary(file_name)) == NULL) 
 		return BDM_ERR_OPEN;
@@ -1591,13 +1591,13 @@ bdmlib_do_load_binary_section(char *file_name, char *section_name)
  */
 
 int
-bdmlib_load(char *file, char *entry_name, u_long * entry_pt)
+bdmlib_load(char *file, char *entry_name, uint32_t * entry_pt)
 {
 	int ret = 0;
-	u_int sfc, dfc;
+	uint32_t sfc, dfc;
 	int we_have_macro_files = 0;
 #if SUPPORT_RAMINIT
-	u_long dummy;
+	uint32_t dummy;
 #endif 
 
 	if (!bdmlib_isopen())

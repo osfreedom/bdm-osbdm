@@ -104,7 +104,7 @@ mem_dump (char *buf)
   caddr_t adr;
   long len, l;
   int i, ret;
-  u_char mem[16];
+  uint8_t mem[16];
   char *dump_fname = NULL;
   FILE *dump_file = NULL;
   i = sscanf (buf, " %li %li %as", &l, &len, &dump_fname);
@@ -159,8 +159,8 @@ mem_modify (char *buf)
   long addr;
   long count=0;
   long capacity=0;
-  u_char *data=NULL;
-  u_char val;
+  uint8_t *data=NULL;
+  uint8_t val;
 
   while(*buf&&!isblank(*buf)) buf++;
   while(*buf&&isblank(*buf)) buf++;
@@ -199,10 +199,10 @@ mem_modify (char *buf)
 }
 
 int
-cpu_get_rpc(u_int32_t *val)
+cpu_get_rpc(uint32_t *val)
 {
   int ret;
-  u_int32_t rpc;
+  uint32_t rpc;
   if ((ret = bdmlib_get_sys_reg (BDM_REG_RPC, &rpc)) < 0)
     return ret;
   *val=swap_l(rpc);
@@ -213,7 +213,7 @@ int
 cpu_stat (char *buf)
 {
   int ret;
-  u_int32_t rpc;
+  uint32_t rpc;
   ret = bdmlib_getstatus ();
   printf ("MCU ");
   if (ret & BDM_TARGETRESET)
@@ -254,12 +254,12 @@ flash_check_one (bdmlib_bfilt_t *filt, int autoset)
 
   if ((autoset & 4)&&(adr>=AUTO_ADR_CSBOOT)&&(adr<=AUTO_ADR_CSBOOT+12))
     {
-      u_int32_t csx_opt, csx_base, csx_size;
+      uint32_t csx_opt, csx_base, csx_size;
       caddr_t cpu32csopt_adr;
       cpu32csopt_adr=(caddr_t)0xfffa48+(adr-AUTO_ADR_CSBOOT)*4;
       if (bdmlib_read_var (cpu32csopt_adr, BDM_SIZE_LONG, &csx_opt) >= 0)
 	{
-	  static u_int32_t csx_sizes[]={1<<11,1<<13,1<<14,1<<16,
+	  static uint32_t csx_sizes[]={1<<11,1<<13,1<<14,1<<16,
 					  1<<17,1<<18,1<<19,1<<20};
 	  csx_base = (csx_opt >> 8) & 0xfff800;
 	  filt->begin_adr = (caddr_t) csx_base;
@@ -527,8 +527,8 @@ main (int argc, char *argv[])
   static int script = 0;		/* Batch mode */
   static int bdm_delay = 0;		/* Delay/speed for BDM driver */
   static int set_mbar_fl = 0;		/* Set MBAR requested */
-  static u_long mbar_val = 0;
-  static u_long entry_pt=0;
+  static uint32_t mbar_val = 0;
+  static uint32_t entry_pt=0;
   str_list_t files2load={0,};		/* List of filenames to load */
   int cmd;
   char buf[255];
@@ -705,7 +705,7 @@ main (int argc, char *argv[])
   }
   hashmark = 1;
   if(set_mbar_fl) {
-    printf ("MBAR setup to %08lX\n",mbar_val);
+    printf ("MBAR setup to %08lX\n",(u_long)mbar_val);
     if(bdmlib_set_mbar(mbar_val) != BDM_NO_ERROR) {
       printf("%s: MBAR setup failed with error %s\n",
     		argv[0],bdmlib_geterror_str(ret));
@@ -737,7 +737,7 @@ main (int argc, char *argv[])
 	    }
 	    else
 	    {
-	      u_int32_t rpc;
+	      uint32_t rpc;
 	      reset = 0;
 	      if(entry_pt==0)
 	      {
@@ -808,7 +808,7 @@ main (int argc, char *argv[])
 
       if (run && !error)
       {
-	printf ("starting at 0x%lx\n", entry_pt);
+	printf ("starting at 0x%lx\n", (u_long)entry_pt);
 	bdmlib_set_sys_reg (BDM_REG_RPC, entry_pt);
 	bdmlib_go ();
 	run=0;

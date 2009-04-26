@@ -1,44 +1,44 @@
 /*
- * $Id: bdmlib.h,v 1.2 2003/08/15 12:06:47 ppisa Exp $
+ * $Id: bdmlib.h,v 1.3 2009/04/26 18:48:28 ppisa Exp $
  */
 
 #ifndef BDMLIB_H
 #define BDMLIB_H
 
-#include	<sys/types.h>
+#include	<inttypes.h>
 #include 	<stdarg.h>
 #include 	<stdio.h>
 
-typedef u_short bdmstatus;
+typedef uint16_t bdmstatus;
 
 extern int bdmlib_open(char *device);
 extern int bdmlib_close(int);
 extern int bdmlib_isopen(void);
-extern int bdmlib_ioctl(u_int code);
-extern int bdmlib_setioctl(u_int code, u_int val);
+extern int bdmlib_ioctl(uint32_t code);
+extern int bdmlib_setioctl(uint32_t code, uint32_t val);
 extern bdmstatus bdmlib_getstatus(void);
-extern int bdmlib_write_var(caddr_t adr, u_short size, u_int val);
-extern int bdmlib_read_var(caddr_t adr, u_short size, void *val);
-extern int bdmlib_write_block(caddr_t adr, u_int size, u_char *block);
-extern int bdmlib_read_block(caddr_t adr, u_int size, u_char *block);
-extern int bdmlib_load(char *file, char *entry_name, u_long *entry_pt);
+extern int bdmlib_write_var(caddr_t adr, uint16_t size, uint32_t val);
+extern int bdmlib_read_var(caddr_t adr, uint16_t size, void *val);
+extern int bdmlib_write_block(caddr_t adr, uint32_t size, uint8_t *block);
+extern int bdmlib_read_block(caddr_t adr, uint32_t size, uint8_t *block);
+extern int bdmlib_load(char *file, char *entry_name, uint32_t *entry_pt);
 extern int bdmlib_do_load_binary(char *file_name, char *entry_name,
-				 u_long *entry_pt);
+				 uint32_t *entry_pt);
 extern int bdmlib_do_load_macro(char *file_name, int is_begin_macro);
-extern int bdmlib_get_sys_reg(u_int, u_int *);
-extern int bdmlib_set_sys_reg(u_int, u_int);
-extern int bdmlib_get_reg(u_int, u_int *);
-extern int bdmlib_set_reg(u_int, u_int);
+extern int bdmlib_get_sys_reg(uint32_t, uint32_t *);
+extern int bdmlib_set_sys_reg(uint32_t, uint32_t);
+extern int bdmlib_get_reg(uint32_t, uint32_t *);
+extern int bdmlib_set_reg(uint32_t, uint32_t);
 extern int bdmlib_go(void);
 extern char *bdmlib_geterror_str(int);
 extern char *bdmlib_getstatus_str(bdmstatus);
-extern int bdmlib_set_mbar(u_long mbar_val);
+extern int bdmlib_set_mbar(uint32_t mbar_val);
 extern int bdmlib_reset(void);
 extern void bdmlib_setdebug(int switch_on);
 extern int bdmlib_querydebug(void);
 extern void bdmlib_showpc(void);
 extern void bdmlib_log(const char *format, ...);
-extern void bdmlib_propeller(u_long addr, FILE * fp);
+extern void bdmlib_propeller(uint32_t addr, FILE * fp);
 extern int bdmlib_do_load_binary_section(char *file_name, char *sect_name);
 
 /* some additional error codes beyond those of the driver */
@@ -62,8 +62,8 @@ typedef struct bdmlib_bfilt{
 	caddr_t begin_adr;
 	caddr_t end_adr;
 	int filt_id;
-	u_int flags;
-	int (*wrb_filt)(struct bdmlib_bfilt *, caddr_t , u_int, u_char * );
+	uint32_t flags;
+	int (*wrb_filt)(struct bdmlib_bfilt *, caddr_t , uint32_t, uint8_t * );
 	void *info;
 	void *state;
 }bdmlib_bfilt_t;
@@ -78,6 +78,6 @@ bdmlib_bfilt_t * bdmlib_bfilt;
 
 int
 bdmlib_wrb_filt(bdmlib_bfilt_t * bdmlib_bfilt, caddr_t in_adr,
-		u_int size, u_char * bl_ptr);
+		uint32_t size, uint8_t * bl_ptr);
 
 #endif /* BDMLIB_H */

@@ -38,8 +38,8 @@
 #define mfld2val __mfld2val
 
 #if 0
-  #define TPU_WR16(adr,val) (*(volatile u_int16_t*)(adr)=(val))
-  #define TPU_RD16(adr) (*(volatile u_int16_t*)(adr))
+  #define TPU_WR16(adr,val) (*(volatile uint16_t*)(adr)=(val))
+  #define TPU_RD16(adr) (*(volatile uint16_t*)(adr))
 #else
   #define TPU_WR16(adr,val) \
   		({ \
@@ -48,7 +48,7 @@
   		  val; \
   		})
   #define TPU_RD16(adr) \
-  		({ u_int16_t temp_val; \
+  		({ uint16_t temp_val; \
   		  if(bdmlib_read_var(adr,BDM_SIZE_WORD,&temp_val)<0) \
   		  	goto mem_op_error; \
   		  temp_val; \
@@ -267,14 +267,14 @@ tpu_reg_des_t tpu_regs[]={
 /* Helper function for test register access */
 
 static int use_fetched_reg;
-static u_int16_t fetched_dscr;
-static u_int16_t fetched_creg;
-static u_int16_t fetched_tcr;
+static uint16_t fetched_dscr;
+static uint16_t fetched_creg;
+static uint16_t fetched_tcr;
 
-static u_int16_t stored_diob;
-static u_int16_t stored_pc;
-static u_int16_t stored_debpar2;	/* was strored_debur2 */
-static u_int32_t stored_ir;		/* was strored_x1 */
+static uint16_t stored_diob;
+static uint16_t stored_pc;
+static uint16_t stored_debpar2;	/* was strored_debur2 */
+static uint32_t stored_ir;		/* was strored_x1 */
 					/* was strored_x2 */
 
 static
@@ -291,11 +291,11 @@ void test_shift_wait(unsigned creg)
 
 /* Write 32 Bit Instruction Register */
 static		/* was test_shift_1 */
-void test_shift_irwr(u_int32_t new_ir )
+void test_shift_irwr(uint32_t new_ir )
 {
-  u_int16_t dscr; /* [bp-6] */
-  u_int16_t creg; /* si */
-  u_int16_t tcr;  /* di */
+  uint16_t dscr; /* [bp-6] */
+  uint16_t creg; /* si */
+  uint16_t tcr;  /* di */
 
   if (!use_fetched_reg){
     tpu_reg_wr(TPUREG_TSTMSRB,0,0);
@@ -337,12 +337,12 @@ void test_shift_irwr(u_int32_t new_ir )
 
 /* Read 32 Bit Instruction Register */
 static		/* was test_shift_2 */
-u_int32_t test_shift_irrd(void)
+uint32_t test_shift_irrd(void)
 {
-  u_int16_t dscr; /* [bp-0a] */
-  u_int16_t creg; /* si */
-  u_int16_t tcr;  /* di */
-  u_int16_t ir_lo,ir_hi;
+  uint16_t dscr; /* [bp-0a] */
+  uint16_t creg; /* si */
+  uint16_t tcr;  /* di */
+  uint16_t ir_lo,ir_hi;
 
   if (!use_fetched_reg){
     tpu_reg_wr(TPUREG_TSTMSRB,0,0);
@@ -390,16 +390,16 @@ u_int32_t test_shift_irrd(void)
   if(!(dscr&TPU_HOT4))  /* ???????? */
     tpu_reg_wr(TPUREG_DSCR,0,dscr);
     
-  return ir_lo|((u_int32_t)ir_hi<<16);
+  return ir_lo|((uint32_t)ir_hi<<16);
 }
 
 static 		/* was test_shift_3 */
 int test_shift_regrd(int shiftcnt ,int sxsel)
 {
-  u_int16_t dscr; /* [bp-8] */
-  u_int16_t creg; /* si */
-  u_int16_t tcr;  /* di */
-  u_int16_t ret;
+  uint16_t dscr; /* [bp-8] */
+  uint16_t creg; /* si */
+  uint16_t tcr;  /* di */
+  uint16_t ret;
 
   if (!use_fetched_reg){
     tpu_reg_wr(TPUREG_TSTMSRB,0,0);
@@ -444,9 +444,9 @@ int test_shift_regrd(int shiftcnt ,int sxsel)
 static		/* was test_shift_4 */
 int test_shift_regwr(int shiftcnt, int sxsel, int val)
 {
-  u_int16_t dscr; /* di */
-  u_int16_t creg; /* si */
-  u_int16_t tcr;  /* [bp-6] */
+  uint16_t dscr; /* di */
+  uint16_t creg; /* si */
+  uint16_t tcr;  /* [bp-6] */
 
   if (!use_fetched_reg){
     tpu_reg_wr(TPUREG_TSTMSRB,0,0);
@@ -481,7 +481,7 @@ int test_shift_regwr(int shiftcnt, int sxsel, int val)
 }
 
 static		/* was test_pha_2 */
-void test_forced_inst(u_int32_t new_ir)
+void test_forced_inst(uint32_t new_ir)
 {
   test_shift_irwr(new_ir);
   tpu_reg_or(TPUREG_CREG,0,TPU_ACUT);
@@ -510,13 +510,13 @@ void test_restore_ir(void)
 /**************************************************************************/
 /* Other supporting routines */
 
-static u_int16_t test_dssrdscr_1;	/* 0 => stop, 1 =>run */
-static u_int16_t test_dscr_arm;
-static u_int16_t test_dssr_bkpt;
+static uint16_t test_dssrdscr_1;	/* 0 => stop, 1 =>run */
+static uint16_t test_dscr_arm;
+static uint16_t test_dssr_bkpt;
 
 int test_init_1(void)
 {
-  u_int16_t creg; /* bp-2 */
+  uint16_t creg; /* bp-2 */
   int cnt=0x1000;
 
   tpu_reg_wr(TPUREG_CREG,0,TPU_MUXEL|TPU_EMT);
@@ -534,8 +534,8 @@ int test_init_1(void)
 
 int test_init_2(void)
 {
-  u_int16_t dssr; /* si */
-  u_int16_t dscr; /* bx */
+  uint16_t dssr; /* si */
+  uint16_t dscr; /* bx */
   dssr=tpu_reg_rd(TPUREG_DSSR,0);
   dscr=tpu_reg_rd(TPUREG_DSCR,0);
   if((dssr&TPU_BKPT)||(dscr&TPU_HOT4))
@@ -574,12 +574,12 @@ int tpu_halt(void)
 
 #define TPU_UCODE_LEN 0x200
 
-u_int32_t tpu_ucode_img[TPU_UCODE_LEN];
+uint32_t tpu_ucode_img[TPU_UCODE_LEN];
 
 int tpu_ucode_read(int print)
 {
   int adr;
-  u_int32_t ir;
+  uint32_t ir;
   adr=0;
   
   test_store_ir();  
@@ -656,7 +656,7 @@ int tpu_t2_wr(struct tpu_reg_des *des,  int indx, int val)
 /* read 16 bit variable from main CPU address space */
 int tpu_mem_rd16(struct tpu_reg_des *des,  int indx)
 {
-  u_int16_t val;
+  uint16_t val;
   int adr=des->adr;
   if(indx){
     if(indx>=des->arr_len) return -1;
@@ -733,7 +733,7 @@ void DisInst (unsigned long i, FILE * fp);
 int cpu_stat(void)
 {
   int ret;
-  u_int rpc;
+  uint32_t rpc;
 
   ret=bdmlib_getstatus();
   printf("MCU ");
