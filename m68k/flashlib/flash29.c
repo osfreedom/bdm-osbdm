@@ -1,4 +1,4 @@
-/* $Id: flash29.c,v 1.6 2008/07/31 01:53:44 cjohns Exp $
+/* $Id: flash29.c,v 1.7 2009/05/16 06:21:22 cjohns Exp $
  *
  * Driver for 29Fxxx and 49Fxxx flash chips.
  *
@@ -193,7 +193,9 @@ static const chip_t chips[] = {
   {"TC58FVM5B3A", 0x98, 0x0050, 0x400000, &alg_29_unl}, /* TOSHIBA */
 
   {"Am29LV640MB", 0x01, 0x227e, 0x800000, &alg_29_unl}, /* AMD */
+  {"M29W320ET", 0x20, 0x2256, 0x400000, &alg_29_unl},     /* ST */
   {"M29W640DB", 0x20, 0x22df, 0x800000, &alg_29_unl},   /* ST */
+  {"M29(D)W128G", 0x20, 0x227e, 0x1000000, &alg_29_unl},     /* ST */
   {"MBM29DLV640E", 0x04, 0x227e, 0x800000, &alg_29_std},        /* FUJITSU */
   {"MX29LV640MB", 0xc2, 0x22cb, 0x800000, &alg_29_unl}, /* MACRONIX */
   {"TC58FVM6B2A", 0x98, 0x0058, 0x800000, &alg_29_unl}, /* TOSHIBA */

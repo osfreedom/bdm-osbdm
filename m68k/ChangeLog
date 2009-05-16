@@ -1,3 +1,7 @@
+2009-05-16  Len Sorensen <lsorense@csclub.uwaterloo.ca>
+
+	* flashlib/flash29.c: Added new flash devices.
+
 2008-09-25  Chris Johns <cjohns@users.sourceforge.net>
 
 	* README: Add script documentation. Added extra notes on Windows
