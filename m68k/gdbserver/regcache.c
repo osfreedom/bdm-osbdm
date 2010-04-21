@@ -174,13 +174,27 @@ registers_to_string (char *buf)
 {
   unsigned char *registers = get_regcache (current_inferior, 1)->registers;
   int i;
+  char *bufptr = buf;
+  unsigned char *regptr = registers;
 
   for (i = 0; i < num_registers; i++)
-    if ((reg_defs[i].flags & REG_NON_CACHEABLE) &&
-        ((reg_defs[i].flags & (REG_NOT_ACCESSABLE | REG_WRITE_ONLY)) == 0))
-        fetch_inferior_registers (i);
-
-  convert_int_to_ascii (registers, buf, register_bytes);
+    {
+      if ((reg_defs[i].flags & REG_NOT_ACCESSABLE) == 0)
+        {
+          if ((reg_defs[i].flags & REG_NON_CACHEABLE) && 
+              ((reg_defs[i].flags & REG_WRITE_ONLY) == 0))
+            {
+              printf_filtered("m68k-bdm: adding register %d to response\n", i);
+              fetch_inferior_registers (i);
+              convert_int_to_ascii(regptr, bufptr, reg_defs[i].size / 8);
+              /* Increment bufptr by asciified size (2 chars per byte) */
+              bufptr += (reg_defs[i].size / 8) * 2;
+            }
+        }
+      /* Increment regptr by size of reg, defined in bits */
+      regptr += reg_defs[i].size / 8;
+    }
+  printf_filtered("m68k-bdm: built register string response: %s\n", buf);
 }
 
 /* Received from GDB */

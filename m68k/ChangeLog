@@ -1,3 +1,8 @@
+2010-04-21  Reid Wightman <krwightm@gmail.com>
+
+	* gdbserver/regcache.c: Fix the reading of registers from the
+	target when registers are not accessible.
+
 2009-05-16  Len Sorensen <lsorense@csclub.uwaterloo.ca>
 
 	* flashlib/flash29.c: Added new flash devices.
