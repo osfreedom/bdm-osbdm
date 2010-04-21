@@ -1,3 +1,11 @@
+2010-04-21  Chris Johns <cjohns@users.sourceforge.net>
+
+	* .cvsignore, bdmabstraction/.cvsignore, config/.cvsignore,
+	driver/freebsd/.cvsignore, driver/linux-2.6/.cvsignore,
+	flashlib/.cvsignore, gdbserver/.cvsignore, lib/.cvsignore,
+	packages/.cvsignore, server/.cvsignore, tblcf/.cvsignore,
+	test/.cvsignore, utils/.cvsignore: Renamed to .gitignore
+
 2010-04-21  Reid Wightman <krwightm@gmail.com>
 
 	* gdbserver/regcache.c: Fix the reading of registers from the
