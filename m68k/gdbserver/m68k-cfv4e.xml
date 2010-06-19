@@ -28,27 +28,29 @@
     <reg name="csr"      bitsize="32" group="debug"  regnum="40"/>
     <reg name="aatr"     bitsize="32" group="debug"  regnum="41"/>
     <reg name="tdr"      bitsize="32" group="debug"  regnum="42"/>
-    <reg name="pbr"      bitsize="32" group="debug"  regnum="43"/>
-    <reg name="pbr1"     bitsize="32" group="debug"  regnum="44"/>
-    <reg name="pbr2"     bitsize="32" group="debug"  regnum="45"/>
-    <reg name="pbr3"     bitsize="32" group="debug"  regnum="46"/>
-    <reg name="pbmr"     bitsize="32" group="debug"  regnum="47"/>
-    <reg name="abhr"     bitsize="32" group="debug"  regnum="48"/>
-    <reg name="ablr"     bitsize="32" group="debug"  regnum="49"/>
-    <reg name="abhr1"    bitsize="32" group="debug"  regnum="50"/>
-    <reg name="ablr1"    bitsize="32" group="debug"  regnum="51"/>
-    <reg name="dbr"      bitsize="32" group="debug"  regnum="52"/>
-    <reg name="dbmr"     bitsize="32" group="debug"  regnum="53"/>
-    <reg name="dbr1"     bitsize="32" group="debug"  regnum="54"/>
-    <reg name="dbmr1"    bitsize="32" group="debug"  regnum="55"/>
-    <reg name="macsr"    bitsize="32"                regnum="56"/>
-    <reg name="mask"     bitsize="32"                regnum="57"/>
-    <reg name="acc0"     bitsize="32"                regnum="58"/>
-    <reg name="acc1"     bitsize="32"                regnum="59"/>
-    <reg name="acc2"     bitsize="32"                regnum="60"/>
-    <reg name="acc3"     bitsize="32"                regnum="61"/>
-    <reg name="accext01" bitsize="32"                regnum="62"/>
-    <reg name="accext32" bitsize="32"                regnum="63"/>
+    <reg name="xtdr"     bitsize="32" group="debug"  regnum="43"/>
+    <reg name="pbr"      bitsize="32" group="debug"  regnum="44"/>
+    <reg name="pbr1"     bitsize="32" group="debug"  regnum="45"/>
+    <reg name="pbr2"     bitsize="32" group="debug"  regnum="46"/>
+    <reg name="pbr3"     bitsize="32" group="debug"  regnum="47"/>
+    <reg name="pbmr"     bitsize="32" group="debug"  regnum="48"/>
+    <reg name="pbasid"   bitsize="32" group="debug"  regnum="49"/>
+    <reg name="abhr"     bitsize="32" group="debug"  regnum="50"/>
+    <reg name="ablr"     bitsize="32" group="debug"  regnum="51"/>
+    <reg name="abhr1"    bitsize="32" group="debug"  regnum="52"/>
+    <reg name="ablr1"    bitsize="32" group="debug"  regnum="53"/>
+    <reg name="dbr"      bitsize="32" group="debug"  regnum="54"/>
+    <reg name="dbmr"     bitsize="32" group="debug"  regnum="55"/>
+    <reg name="dbr1"     bitsize="32" group="debug"  regnum="56"/>
+    <reg name="dbmr1"    bitsize="32" group="debug"  regnum="57"/>
+    <reg name="macsr"    bitsize="32"                regnum="58"/>
+    <reg name="mask"     bitsize="32"                regnum="59"/>
+    <reg name="acc0"     bitsize="32"                regnum="60"/>
+    <reg name="acc1"     bitsize="32"                regnum="61"/>
+    <reg name="acc2"     bitsize="32"                regnum="62"/>
+    <reg name="acc3"     bitsize="32"                regnum="63"/>
+    <reg name="accext01" bitsize="32"                regnum="64"/>
+    <reg name="accext32" bitsize="32"                regnum="65"/>
   </feature>
 </target>
 

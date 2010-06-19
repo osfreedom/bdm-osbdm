@@ -94,7 +94,7 @@
 /*
  * The size of the register in bits.
  */
-static const int m68k_bdm_reg_sizes[4] = { 32, 32, 32, 64 };
+static const int m68k_bdm_reg_sizes[4] = { 32, 32, 32, 65 };
 
 /*
  * The array of registers for each support processor.
@@ -300,7 +300,7 @@ m68k_bdm_register_index (int regno)
   for (index = 0; index < M68K_BDM_NUM_REGS_BDM; index++)
     if (M68K_BDM_REG_NUM_INDEXED (index) == regno)
       return index;
-  fatal ("m68k-bdm: no register found: %d", regno);
+  fatal ("m68k-bdm: index: no register found: %d", regno);
 }
 
 static int
@@ -310,7 +310,7 @@ m68k_bdm_register_index_by_name (const char* name)
   for (index = 0; index < M68K_BDM_NUM_REGS_BDM; index++)
     if (M68K_BDM_STR_IS (name, M68K_BDM_REG_NAME_INDEXED (index)))
       return index;
-  fatal ("m68k-bdm: no register found: %s", name);
+  fatal ("m68k-bdm: idxbyname: no register found: %s", name);
 }
 
 static int
@@ -330,7 +330,7 @@ m68k_bdm_register_offset (int regno)
     if (M68K_BDM_REG_NUM_INDEXED (index) < regno)
       offset += M68K_BDM_REG_SIZE_INDEXED (index);
   }
-  fatal ("m68k-bdm: no register found: %d", regno);
+  fatal ("m68k-bdm: offset: no register found: %d", regno);
 }
 
 static void
@@ -347,10 +347,10 @@ m68k_bdm_init_registers (void)
     fatal ("m68k-bdm: no memory for regs");
 
   for (reg = 0; reg < M68K_BDM_NUM_REGS_BDM; reg++) {
-    regs[reg].name = M68K_BDM_REG_NAME (reg);
+    regs[reg].name   = M68K_BDM_REG_NAME (reg);
     regs[reg].offset = m68k_bdm_register_offset (reg);
-    regs[reg].size = M68K_BDM_REG_SIZE (reg);
-    regs[reg].flags = M68K_BDM_REG_FLAGS (reg);
+    regs[reg].size   = M68K_BDM_REG_SIZE (reg);
+    regs[reg].flags  = M68K_BDM_REG_FLAGS (reg);
   }
 
   if (m68k_bdm_debug_level)
@@ -1539,6 +1539,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
       if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
         m68k_bdm_report_error ();
       m68k_bdm_cf_debug_ver = (csr >> 20) & 0x0f;
+      printf_filtered ("m68k-bdm: debug module version %d\n", m68k_bdm_cf_debug_ver);
 
       /*
        * If the processor is a version 0 read the PC and VBR
@@ -1578,7 +1579,8 @@ m68k_bdm_create_inferior (char *program, char *argv[])
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CF5307;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CF5307_LABEL;
         printf_filtered ("m68k-bdm: detected MCF5307\n");
-      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) {
+      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C
+             ||  m68k_bdm_cf_debug_ver == M68K_BDM_VER_D) {
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CFV4E;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CFV4E_LABEL;
         printf_filtered ("m68k-bdm: detected V4e core\n");
@@ -1607,7 +1609,8 @@ m68k_bdm_create_inferior (char *program, char *argv[])
       cf_type = "52223/52235";
       m68k_bdm_ptid = 0x52223;
     }
-    else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C) {
+    else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C
+          || m68k_bdm_cf_debug_ver == M68K_BDM_VER_D ) {
       cf_type = "V4e (547x/548x)";
       m68k_bdm_ptid = 0x5400;
     }
@@ -1619,7 +1622,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   }
 
   m68k_bdm_init_registers ();
-  
+
   m68k_bdm_init_watchpoints ();
 
   set_breakpoint_data (m68k_bdm_breakpoint_code, m68k_bdm_breakpoint_size);
