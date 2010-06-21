@@ -158,12 +158,24 @@ QUICK START
 ===========
 
 You have unpacked the package. Next to the top of the package create an empty
-directory and enter it, configure the package, make, then install.
+directory and enter it, configure the package, make, then install. It working
+with a release tarball unpack it:
 
   $ tar xzf bdm-xx.tar.gz
   $ mkdir build
   $ cd build
   $ ../gdb-bdm-xxx/m68k/configure
+  $ make
+  $ make install
+
+If working from a git checkout you need to bootstrap:
+
+  $ cd bdm/m68k
+  $ config/bootstrap
+  $ cd ../..
+  $ mkdir build
+  $ cd build
+  $ ../bdm/m68k/configure
   $ make
   $ make install
 

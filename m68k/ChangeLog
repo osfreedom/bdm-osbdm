@@ -1,3 +1,16 @@
+2010-06-19  Groleo Marius <groleo@gmail.com>
+
+	* gdbserver/m68k-bdm-low.c: Increase Coldfire number of registers
+	in m68k_bdm_reg_sizes[]. Modified "m68k-bdm: no register found"
+	string to know what kind of search failed.  detect M68K_BDM_VER_D
+	too.
+
+	* gdbserver/m68k-cfv4e-regs.c: Fixed the num field to be
+	sequantial.
+
+	* gdbserver/m68k-cfv4e.xml: Added xtdr and pbasid registers to
+	match bdm/m68k/gdbserver/m68k-cfv4e-regs.c.
+
 2010-04-21  Chris Johns <cjohns@users.sourceforge.net>
 
 	* .cvsignore, bdmabstraction/.cvsignore, config/.cvsignore,
