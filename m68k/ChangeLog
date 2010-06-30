@@ -1,4 +1,9 @@
-2010-06-19  Groleo Marius <groleo@gmail.com>
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
+	* m68k/tblcf/Makefile.am: Revert library order for
+	tblcf_unsec.patch.
+
+2010-06-30  Groleo Marius <groleo@gmail.com>
 
 	* m68k/config/bootstrap: Fix automake version detection.
 
@@ -7,7 +12,7 @@
 	
 	* m68k/test/chk.c: Comment test opcode and check post test regs.
 	
-2010-06-19  Groleo Marius <groleo@gmail.com>
+2010-06-30  Groleo Marius <groleo@gmail.com>
 
 	* m68k/tblcf/Makefile.am: Fix link order.
 	

@@ -46,8 +46,8 @@ tblcf_unsec_SOURCES = \
 	log_cmdline.c
 
 tblcf_unsec_LDADD =  \
-	$(top_builddir)/lib/libBDM.a \
-	$(top_builddir)/tblcf/libtblcf.a
+	$(top_builddir)/tblcf/libtblcf.a \
+	$(top_builddir)/lib/libBDM.a
 
 lib_LIBRARIES = libtblcf.a
 
