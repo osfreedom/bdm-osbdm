@@ -28,8 +28,8 @@ tblcf_show_SOURCES = \
 	log.c
 
 tblcf_show_LDADD =  \
-	$(top_builddir)/tblcf/libtblcf.a \
-	$(top_builddir)/lib/libBDM.a
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/tblcf/libtblcf.a
 
 tblcf_boot_SOURCES = \
 	tblcf_bt.c \
@@ -46,8 +46,8 @@ tblcf_unsec_SOURCES = \
 	log_cmdline.c
 
 tblcf_unsec_LDADD =  \
-	$(top_builddir)/tblcf/libtblcf.a \
-	$(top_builddir)/lib/libBDM.a
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/tblcf/libtblcf.a
 
 lib_LIBRARIES = libtblcf.a
 

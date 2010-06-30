@@ -1,5 +1,9 @@
 2010-06-19  Groleo Marius <groleo@gmail.com>
 
+	* m68k/tblcf/Makefile.am: Fix link order.
+	
+2010-06-19  Groleo Marius <groleo@gmail.com>
+
 	* gdbserver/m68k-bdm-low.c: Increase Coldfire number of registers
 	in m68k_bdm_reg_sizes[]. Modified "m68k-bdm: no register found"
 	string to know what kind of search failed.  detect M68K_BDM_VER_D
