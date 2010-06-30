@@ -1,5 +1,14 @@
 2010-06-19  Groleo Marius <groleo@gmail.com>
 
+	* m68k/config/bootstrap: Fix automake version detection.
+
+	* m68k/configure.ac, m68k/lib/bdmIO.c: Detect syslog.h from
+	configure.ac.
+	
+	* m68k/test/chk.c: Comment test opcode and check post test regs.
+	
+2010-06-19  Groleo Marius <groleo@gmail.com>
+
 	* m68k/tblcf/Makefile.am: Fix link order.
 	
 2010-06-19  Groleo Marius <groleo@gmail.com>

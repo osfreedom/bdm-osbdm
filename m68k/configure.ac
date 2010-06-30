@@ -60,6 +60,7 @@ AC_CHECK_HEADERS(errno.h)
 AC_CHECK_HEADERS(termios.h)
 AC_CHECK_HEADERS(termio.h)
 AC_CHECK_HEADERS(sgtty.h)
+AC_CHECK_HEADERS(syslog.h)
 AC_CHECK_DECLS([strerror, perror])
 AC_CHECK_TYPES(socklen_t, [], [],
 [#include <sys/types.h>

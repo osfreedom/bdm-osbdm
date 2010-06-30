@@ -17,7 +17,7 @@ if [ ! -d config ]; then
 fi
 
 
-am_version=$(automake --version 2>&1 | head -n 1 | awk '{ print $4 }' | sed -e 's/\.//')
+am_version=$(automake --version 2>&1 | head -n 1 | awk '{ print $4 }' | sed -e 's/\([0-9]\)\.\([0-9]\+\).*/\1\2/')
 if test $am_version -lt 17;
 then
   echo "Automake 1.7 or higher is required! Aborting...";

@@ -64,13 +64,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
+#include "config.h"
 
 /*
  * This test should be done by autoconf. Please fix if you
  * know how.
  */
-#if !defined (__WIN32__) || defined (__CYGWIN__)
-#define HAVE_SYSLOG 1
+#if defined HAVE_SYSLOG_H
 #include <syslog.h>
 #endif
 
@@ -138,7 +138,7 @@ const char *bdmIO_lastErrorString = "No BDM error (yet!)";
  * Debugging
  */
 static int debugFlag = 0;
-#if HAVE_SYSLOG
+#if HAVE_SYSLOG_H
 static int debug_syslog = 0;
 #endif
 static const char *const sysregName[BDM_MAX_SYSREG] = {
@@ -160,7 +160,7 @@ static const char *const regName[] = {
 void
 bdmLogSyslog (void)
 {
-#if HAVE_SYSLOG
+#if HAVE_SYSLOG_H
   debug_syslog = 1;
 #endif
 }
@@ -172,7 +172,7 @@ bdmInfo (const char *format, ...)
 
   va_start (ap, format);
 
-#if HAVE_SYSLOG
+#if HAVE_SYSLOG_H
   if (debug_syslog) {
     if (debugFlag)
       vsyslog (LOG_INFO, format, ap);
@@ -194,7 +194,7 @@ bdmPrint (const char *format, ...)
   va_start (ap, format);
 
   if (debugFlag) {
-#if HAVE_SYSLOG
+#if HAVE_SYSLOG_H
     if (debug_syslog) {
       vsyslog (LOG_INFO, format, ap);
     } else

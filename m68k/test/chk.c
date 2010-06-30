@@ -184,6 +184,43 @@ do_reset (int cpu)
   }
 }
 
+struct postTestRegs {
+	int reg;
+	int value;
+};
+
+struct postTestRegs expectedResults[]={
+	{BDM_REG_A0,0xa0a0a0a0},
+	{BDM_REG_A1,0xa1a1a1a1},
+	{BDM_REG_A2,0xa2a2a2a2},
+	{BDM_REG_A3,0xa3a3a3a3},
+	{BDM_REG_A4,0xa4a4a4a4},
+	{BDM_REG_A5,0xa5a5a5a5},
+	{BDM_REG_A6,0xa6a6a6a6},
+	{BDM_REG_A7,0xa7a7a7a7},
+	{BDM_REG_D0,0xd0d0d0d0},
+	{BDM_REG_D1,0xd1d1d1d1},
+	{BDM_REG_D2,0xd2d2d2d2},
+	{BDM_REG_D3,0xd3d3d3d3},
+	{BDM_REG_D4,0xd4d4d4d4},
+	{BDM_REG_D5,0xd5d5d5d5},
+	{BDM_REG_D6,0xd6d6d6d6},
+	{BDM_REG_D7,0xd7d7d7d7},
+};
+
+
+void checkRegValues()
+{
+	int i;
+	for (i=0;i<sizeof(expectedResults)/sizeof(struct postTestReg); ++i)
+	{
+		unsigned long value=0;
+		bdmReadRegister(expectedResults[i].reg,&value);
+		if ( expectedResults[i].value != value )
+			printf("Failed setting register %c%i: %x != %x\n", (i<7?'A':'D'), i%8, expectedResults[i].value, value);
+	}
+}
+
 void
 coldfireExecute ()
 {
@@ -195,39 +232,40 @@ coldfireExecute ()
   int i, b;
   
   const char *code =
-    "46fc 2700"
-    "2e7c 2000 0000"
-    "207c a0a0 a0a0"
-    "227c a1a1 a1a1"
-    "247c a2a2 a2a2"
-    "267c a3a3 a3a3"
-    "287c a4a4 a4a4"
-    "2a7c a5a5 a5a5"
-    "2c7c a6a6 a6a6"
-    "2e7c a7a7 a7a7"
-    "203c d0d0 d0d0"
-    "223c d1d1 d1d1"
-    "243c d2d2 d2d2"
-    "263c d3d3 d3d3"
-    "283c d4d4 d4d4"
-    "2a3c d5d5 d5d5"
-    "2c3c d6d6 d6d6"
-    "2e3c d7d7 d7d7"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4e71"
-    "4ac8";
+    "46fc 2700"		// "movew #0x2700,%sr\n"	| enter supervisor mode
+    "2e7c 2000 0000"	// "movel #0x20000000,%sp\n"	| setup the stack
+    "207c a0a0 a0a0"	// "movel #0xa0a0a0a0,%a0\n"
+    "227c a1a1 a1a1"	// "movel #0xa1a1a1a1,%a1\n"
+    "247c a2a2 a2a2"	// "movel #0xa2a2a2a2,%a2\n"
+    "267c a3a3 a3a3"	// "movel #0xa3a3a3a3,%a3\n"
+    "287c a4a4 a4a4"	// "movel #0xa4a4a4a4,%a4\n"
+    "2a7c a5a5 a5a5"	// "movel #0xa5a5a5a5,%a5\n"
+    "2c7c a6a6 a6a6"	// "movel #0xa6a6a6a6,%a6\n"
+    "2e7c a7a7 a7a7"	// "movel #0xa7a7a7a7,%a7\n"
+    "203c d0d0 d0d0"	// "movel #0xd0d0d0d0,%d0\n"
+    "223c d1d1 d1d1"	// "movel #0xd1d1d1d1,%d1\n"
+    "243c d2d2 d2d2"	// "movel #0xd2d2d2d2,%d2\n"
+    "263c d3d3 d3d3"	// "movel #0xd3d3d3d3,%d3\n"
+    "283c d4d4 d4d4"	// "movel #0xd4d4d4d4,%d4\n"
+    "2a3c d5d5 d5d5"	// "movel #0xd5d5d5d5,%d5\n"
+    "2c3c d6d6 d6d6"	// "movel #0xd6d6d6d6,%d6\n"
+    "2e3c d7d7 d7d7"	// "movel #0xd7d7d7d7,%d7\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4e71"		// "nop\n"
+    "4ac8"		// "halt\n"
+    ;
 
   printf ("Coldfire execution test, loading code to SRAM.\n");
   
@@ -274,6 +312,10 @@ coldfireExecute ()
 
   if (bdmWriteSystemRegister (BDM_REG_RPC, SRAMBAR) < 0)
     showError ("Writing PC");
+  if (memcmp(wbuf,rbuf,b))
+  {
+    showError("Buffer mismatch");
+  }
 
   printf ("Stepping code.\n");
   
@@ -295,6 +337,7 @@ coldfireExecute ()
   }
   
   showRegs (BDM_COLDFIRE);
+  checkRegValues();
 
   if (bdmGo () < 0)
     showError ("Go");
