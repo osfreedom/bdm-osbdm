@@ -212,7 +212,7 @@ struct postTestRegs expectedResults[]={
 void checkRegValues()
 {
 	int i;
-	for (i=0;i<sizeof(expectedResults)/sizeof(struct postTestReg); ++i)
+	for (i=0;i<sizeof(expectedResults)/sizeof(struct postTestRegs); ++i)
 	{
 		unsigned long value=0;
 		bdmReadRegister(expectedResults[i].reg,&value);

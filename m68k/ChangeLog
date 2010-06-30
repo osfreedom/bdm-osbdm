@@ -1,5 +1,9 @@
 2010-06-30  Groleo Marius <groleo@gmail.com>
 
+	* m68k/test/chk.c: Fix struct name typo.
+
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
 	* m68k/tblcf/Makefile.am: Revert library order for
 	tblcf_unsec.patch.
 
