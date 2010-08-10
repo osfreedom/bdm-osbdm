@@ -1,0 +1,65 @@
+# initialization macro-file for MO_CPU1
+
+# 0xFFFA00 - SIMCR - SIM Configuration Register
+w 0xfffa00 0x40cf 2
+
+# 0xFFFA21 - SYPCR - System Protection Control Register
+w 0xfffa21 0x06 1
+
+# 0xFFFA04 - SYNCR Clock Synthesizer Control Register
+w 0xfffa04 0xd408 2
+
+# 0xFFFA17 - PEPAR - Port E Pin Assignment Register
+w 0xfffa17 0xf4 1
+
+# 0xFFFA1F - PFPAR - Port F Pin Assignment Register
+w 0xfffa1f 0 1
+
+# setup STANBY RAM at 0xFFD000
+w 0xFFFB40 0x8000 2
+w 0xFFFB44 0xFFD000 4
+w 0xFFFB40 0x0000 2
+
+# setup TPU RAM at 0xFFE000
+w 0xFFFB00 0x8000 2
+w 0xFFFB04 0xFFE0 2
+w 0xFFFB00 0x0000 2
+
+# 0xYFFA44 - CSPAR0 - Chip Select Pin Assignment Register 0
+w 0xfffa44 0x3bff 2
+
+# 0xFFFA46 - CSPAR1 - Chip Select Pin Assignment Register 1
+w 0xfffa46 0x03a9 2
+
+# BOOT ROM 0x800000 1MB  RW UL - Boot FLASH
+w 0xfffa48 0x8007 2
+w 0xfffa4A 0x7830 2
+
+# CS0  ROM 0x900000 1MB  RW UL - 2nd FLASH
+w 0xfffa4c 0x9007 2
+w 0xfffa4e 0x7830 2
+
+# CS2  RAM 0x000000 1MB   RW UL - Main RAM first 1MB
+w 0xfffa54 0x0007 2
+w 0xfffa56 0x7830 2
+
+# CS3  RAM 0x100000 1MB   RW UL - Main RAM second 1MB
+w 0xfffa58 0x1007 2
+w 0xfffa5a 0x7830 2
+
+# CS4 PER  0xf00000 512kB  RW UL - CMOS RAM, RTC, other devices
+w 0xfffa5c 0xf006 2
+w 0xfffa5e 0x7cb0 2
+
+# CS7  PER 0xf87000  2k   RW UL - MO_PWR
+w 0xfffa68 0xf870 2
+w 0xfffa6a 0x7c70 2
+
+# CS8  PER 0xf88000  2k   RO UL - IRC
+w 0xfffa6c 0xf880 2
+w 0xfffa6e 0x7c70 2
+
+# CS9  PER 0xf89000  2k   WR UL - KBD
+w 0xfffa70 0xf890 2
+w 0xfffa72 0x7cf0 2
+

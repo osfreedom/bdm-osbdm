@@ -1,0 +1,3 @@
+*.cmd
+bdm.ko
+bdm.mod.c

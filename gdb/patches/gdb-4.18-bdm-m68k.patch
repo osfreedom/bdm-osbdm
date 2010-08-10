@@ -1,0 +1,1544 @@
+diff -urN gdb-4.18/gdb/Makefile.in gdb-4.18-new/gdb/Makefile.in
+--- gdb-4.18/gdb/Makefile.in	Wed Apr  7 15:00:43 1999
++++ gdb-4.18-new/gdb/Makefile.in	Thu Aug 19 14:18:02 1999
+@@ -949,5 +949,5 @@
+ 	vax-tdep.c \
+-	vx-share/xdr_ld.c vx-share/xdr_ptrace.c vx-share/xdr_rdb.c \
++	vx-share/xdr_ld.c vx-share/xdr_ptrace.c vx-share/xdr_rdb.c remote-m68k-bdm.c\
+ 	win32-nat.c \
+ udip2soc.o: $(srcdir)/29k-share/udi/udip2soc.c $(udiheaders)
+ 	$(CC) -c $(INTERNAL_CFLAGS) $(srcdir)/29k-share/udi/udip2soc.c
+@@ -1392,6 +1392,9 @@
+ 
+ remote-mm.o: remote-mm.c $(bfd_h) $(wait_h) $(defs_h) $(inferior_h) \
+ 	minimon.h target.h terminal.h gdb_string.h
++
++remote-m68k-bdm.o: remote-m68k-bdm.c $(bfd_h) $(wait_h) $(defs_h) $(inferior_h) \
++	$(gdbcore_h) target.h
+ 
+ remote-nindy.o: remote-nindy.c $(floatformat_h) $(wait_h) $(command_h) \
+ 	$(defs_h) $(gdbcore_h) $(inferior_h) \
+diff -urN gdb-4.18/gdb/config/m68k/bdm.mt gdb-4.18-new/gdb/config/m68k/bdm.mt
+--- gdb-4.18/gdb/config/m68k/bdm.mt	Wed Dec 31 18:00:00 1969
++++ gdb-4.18-new/gdb/config/m68k/bdm.mt	Wed Dec  8 04:25:12 1999
+@@ -0,0 +1,5 @@
++# Target: m68k bdm interface for the CPU32 and Coldfire processors.
++#
++TM_CLIBS= -lBDM
++TDEPFILES= m68k-tdep.o remote-m68k-bdm.o
++TM_FILE= tm-bdm.h
+diff -urN gdb-4.18/gdb/config/m68k/tm-bdm.h gdb-4.18-new/gdb/config/m68k/tm-bdm.h
+--- gdb-4.18/gdb/config/m68k/tm-bdm.h	Wed Dec 31 18:00:00 1969
++++ gdb-4.18-new/gdb/config/m68k/tm-bdm.h	Thu Aug 19 14:18:02 1999
+@@ -0,0 +1,87 @@
++/*
++ * Target machine description for Coldfire BDM (Moto 5200)
++ * Copyright (C) 1995  W. Eric Norum
++ * Copyright (C) 1998  Chris Johns (ccj@acm.org)
++ *
++ * Based on:
++ *  1. `A Background Debug Mode Driver Package for Motorola's
++ *     16- and 32-Bit Microcontrollers', Scott Howard, Motorola
++ *     Canada, 1993.
++ *  2. `Linux device driver for public domain BDM Interface',
++ *     M. Schraut, Technische Universitaet Muenchen, Lehrstuhl
++ *     fuer Prozessrechner, 1995.
++ *  3. BDM support for gdb by W. Eric Norum
++ *     Saskatchewan Accelerator Laboratory
++ *     University of Saskatchewan
++ *     107 North Road
++ *     Saskatoon, Saskatchewan, CANADA
++ *     S7N 5C6
++ * 
++ * This file is part of GDB.
++ * 
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ * 
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ * 
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ */
++
++/*
++ * Coldfire does it for us if we use PCC to get the PC
++ */
++#define	DECR_PC_AFTER_BREAK	0
++
++/*
++ * We have to control this directly as the CPU32 and Coldfire have different
++ * breakpoint opcodes.
++ */
++#define BREAKPOINT_FROM_PC m68k_bdm_breakpoint_from_pc
++
++/*
++ * Include the generic stuff
++ */
++#include "m68k/tm-m68k.h"
++
++/*
++ * Override some of the generic definitions
++ */
++
++/*
++ * we need 40 registers for the CPU32 and Coldfire:
++ *   8 data registers
++ *   8 address registers
++ *   2 other registers (PC, PS)
++ *  22 special registers (actual set depends on architecture)
++ *   0 floating point registers
++ */
++#undef NUM_REGS
++#undef REGISTER_BYTES
++#define NUM_REGS    40
++#define REGISTER_BYTES (16*4 + 2*4 + 22*4)
++
++#undef REGISTER_NAMES
++#define REGISTER_NAME(i) bdm_register_name(i)
++extern const char *bdm_register_name(int i);
++
++#undef FP0_REGNUM
++#undef FPC_REGNUM
++#undef FPS_REGNUM
++#undef FPI_REGNUM
++#define FP0_REGNUM 40                   /* Floating point register 0 */
++#define FPC_REGNUM FP0_REGNUM + 8       /* 68881 control register */
++#define FPS_REGNUM FPC_REGNUM + 1       /* 68881 status register */
++#define FPI_REGNUM FPS_REGNUM + 1       /* 68881 iaddr register */
++
++/*
++ * The other definitions and macros don't need to be changed:
++ *    a) The Coldfire has no floating point registers
++ *    b) The REGISTER_BYTES_OK macro isn't used
++ */
+diff -urN gdb-4.18/gdb/configure.tgt gdb-4.18-new/gdb/configure.tgt
+--- gdb-4.18/gdb/configure.tgt	Wed Apr  7 15:00:17 1999
++++ gdb-4.18-new/gdb/configure.tgt	Thu Aug 19 14:18:02 1999
+@@ -149,6 +149,7 @@
+ m68*-*bug-*)            gdb_target=monitor ;;
+ m68*-monitor-*)         gdb_target=monitor ;;
+ m68*-est-*)		gdb_target=monitor ;;
++m68*-bdm-*)		gdb_target=bdm ;;
+ m68*-*-aout*)		gdb_target=monitor ;;
+ m68*-*-coff*)		gdb_target=monitor ;;
+ m68*-*-elf*)		gdb_target=monitor ;;
+diff -urN gdb-4.18/gdb/doc/all-cfg.texi gdb-4.18-new/gdb/doc/all-cfg.texi
+--- gdb-4.18/gdb/doc/all-cfg.texi	Fri Feb  5 19:26:05 1999
++++ gdb-4.18-new/gdb/doc/all-cfg.texi	Thu Aug 19 14:18:02 1999
+@@ -39,6 +39,9 @@
+ @c Intel 960 target:
+ @set I960
+ @c
++@c Motorola BDM target:
++@set BDM
++@c
+ @c Tandem ST2000 (phone switch) target:
+ @set ST2000
+ @c
+diff -urN gdb-4.18/gdb/doc/gdb.texinfo gdb-4.18-new/gdb/doc/gdb.texinfo
+--- gdb-4.18/gdb/doc/gdb.texinfo	Thu Feb 11 20:02:45 1999
++++ gdb-4.18-new/gdb/doc/gdb.texinfo	Thu Aug 19 14:18:02 1999
+@@ -413,6 +413,10 @@
+ * Simulator::                   Simulated CPU target
+ @end ifset
+ 
++@ifset BDM
++* Motorola BDM Target::         @value{GDBN} and Motorola 68k/Coldfire BDM targets
++@end ifset
++
+ Controlling @value{GDBN}
+ 
+ * Prompt::                      Prompt
+@@ -8527,6 +8531,12 @@
+ @item target bug @var{dev}
+ BUG monitor, running on a MVME187 (m88k) board.
+ 
++@ifset BDM
++@kindex target bdm
++Background Debug Mode interface to Motorola 68k/Coldfire machine.
++@xref{Motorola BDM Target, ,@value{GDBN} and Motorola 68k/Coldfire BDM}.
++@end ifset
++
+ @kindex target cpu32bug
+ @item target cpu32bug @var{dev}
+ CPU32BUG monitor, running on a CPU32 (M68K) board.
+@@ -8819,6 +8829,11 @@
+ @ifset SIMS
+ * Simulator::                   Simulated CPU target
+ @end ifset
++@ifset BDM
++* Motorola BDM Target::         @value{GDBN} and Motorola 68k/Coldfire Background Debug 
++Mode
++@end ifset
++
+ @end menu
+ 
+ @include remote.texi
+diff -urN gdb-4.18/gdb/doc/remote.texi gdb-4.18-new/gdb/doc/remote.texi
+--- gdb-4.18/gdb/doc/remote.texi	Fri Feb  5 19:28:34 1999
++++ gdb-4.18-new/gdb/doc/remote.texi	Thu Aug 19 14:18:02 1999
+@@ -1705,4 +1705,101 @@
+ simulated clock ticks.
+ @end ifset
+ 
++
++@ifset BDM
++@node Motorola BDM Target
++@subsection @value{GDBN} and Motorola BDM
++
++@cindex BDM
++@cindex CPU32
++@cindex Coldfire
++Background Debug Mode (@dfn{BDM}) provides a full set of debug options
++including the ability to:
++@itemize @bullet
++@item Insert breakpoints
++@item Single-step
++@item Display register contents
++@item Display memory contents
++@item Modify register contents
++@item Modify memory contents
++@end itemize
++
++A small interface circuit connects the BDM interface port on the
++target machine to a parallel printer port on the debugging host.
++A target system can be configured and a program downloaded and
++executed with no bootstrap memory on the target machine and no other
++connection between the debugging host and the target machine.
++
++The @code{target} command tells @value{GDBN}
++to debug a program running on a target machine
++@xref{Target Commands, ,Commands for managing targets}.
++For example, the following command tells @value{GDBN} to use a BDM
++interface connected to the @code{LPT0} parallel port:
++@example
++target bdm /dev/bdm0
++@end example
++
++Do not attempt to use the parallel port for any other purpose while
++@value{GDBN} is using it to control a BDM target.
++
++Once the BDM target has been selected a few other commands become
++available:
++
++@table @code
++@item bdm_reset
++@kindex bdm_reset
++Reset the target machine and enable BDM operation in the target.
++
++@item bdm_restart
++@kindex bdm_restart
++Reset the target machine and disable BDM operation in the target.
++This command is useful only if the target machine has some kind of
++bootstrap memory installed.
++
++@item bdm_status
++@kindex bdm_status
++Print the status of the target machine and the BDM interface.
++
++@item bdm_setdelay @var{N}
++@kindex bdm_setdelay
++Some BDM interface circuits can not handle high-speed data transfer.
++This command lets you insert a delay between each BDM clock.
++The larger the value of @var{N}, the longer the delay.
++On most machines the default delay of @var{0} should work just fine.
++
++@item bdm_setdebug @var{N}
++@kindex bdm_setdebug
++Setting the level (@var{N}) to a non-zero value turns on
++debugging messages in the BDM support library.
++
++@item bdm_setdriverdebug @var{N}
++@kindex bdm_setdriverdebug
++Setting the level (@var{N}) to a non-zero value turns on
++debugging messages in the BDM device driver.
++
++@end table
++
++The registers which can be displayed and modified are:
++@itemize @bullet
++@item The data registers: @code{$d0}-@code{$d7}
++@item The address registers: @code{$a0}-@code{$a5}, @code{$fp}, @code{$sp}
++@item The program counter: @code{$pc}
++@item The status register: @code{$ps}
++@item The program counter at the beginning of the most recently executed
++instruction: @code{$pcc}
++@item The user stack pointer: @code{$usp}
++@item The supervisor stack pointer: @code{$ssp}
++@item The source function code register: @code{$sfc}
++@item The destinaton function code register: @code{$dfc}
++@item The vector base register: @code{$vbr}
++@item The fault address register: @code{$far}
++@item The BDM temporary register: @code{$atemp}
++@item The module base address register: @code{$mbar}
++@end itemize
++
++Target processor interrupts are disabled during single-step (step, next,
++stepi, nexti) operations.
++
++@end ifset
++
+ @c need to add much more detail about sims!
+diff -urN gdb-4.18/gdb/findvar.c gdb-4.18-new/gdb/findvar.c
+--- gdb-4.18/gdb/findvar.c	Fri Jan 29 03:46:03 1999
++++ gdb-4.18-new/gdb/findvar.c	Tue Dec  7 13:23:36 1999
+@@ -253,6 +253,7 @@
+      LONGEST val;
+ {
+   if( TARGET_BYTE_ORDER == BIG_ENDIAN
++      && HOST_BYTE_ORDER != LITTLE_ENDIAN
+       &&  len != sizeof( LONGEST )) {
+     /* On big-endian machines (e.g., HPPA 2.0, narrow mode)
+      * just letting this fall through to the call below will
+diff -urN gdb-4.18/gdb/remote-m68k-bdm.c gdb-4.18-new/gdb/remote-m68k-bdm.c
+--- gdb-4.18/gdb/remote-m68k-bdm.c	Wed Dec 31 18:00:00 1969
++++ gdb-4.18-new/gdb/remote-m68k-bdm.c	Thu Aug 19 14:18:02 1999
+@@ -0,0 +1,1241 @@
++/*
++ * Motorola Background Debug Mode Target
++ * Copyright (C) 1995  W. Eric Norum
++ * Copyright (C) 1998  Chris Johns (ccj@acm.org)
++ *
++ * Based on:
++ *  1. `A Background Debug Mode Driver Package for Motorola's
++ *     16- and 32-Bit Microcontrollers', Scott Howard, Motorola
++ *     Canada, 1993.
++ *  2. `Linux device driver for public domain BDM Interface',
++ *     M. Schraut, Technische Universitaet Muenchen, Lehrstuhl
++ *     fuer Prozessrechner, 1995.
++ *  3. BDM support for gdb by W. Eric Norum
++ *     Saskatchewan Accelerator Laboratory
++ *     University of Saskatchewan
++ *     107 North Road
++ *     Saskatoon, Saskatchewan, CANADA
++ *     S7N 5C6
++ *  4. Coldfire support added by C Johns.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
++ *
++ * W. Eric Norum
++ * Saskatchewan Accelerator Laboratory
++ * University of Saskatchewan
++ * 107 North Road
++ * Saskatoon, Saskatchewan, CANADA
++ * S7N 5C6
++ * 
++ * eric@skatter.usask.ca
++ *
++ * Coldfire support by:
++ * Chris Johns
++ * Objective Design Systems
++ * 35 Cairo Street
++ * Cammeray, Sydney, 2062, Australia
++ *
++ * ccj@acm.org
++ */
++
++/*
++ * $Revision: 1.1 $    $Date: 2004/03/28 23:13:10 $   $Author: codewiz $
++ */
++
++#include "defs.h"
++#include "gdbcore.h"
++#include "target.h"
++#include "wait.h"
++#include <unistd.h>
++#include <stdlib.h>
++#include <stdarg.h>
++#include <errno.h>
++#include <signal.h>
++#include <string.h>
++#include <stdio.h>
++#include <fcntl.h>
++#include <ctype.h>
++#include <sys/types.h>
++#include <sys/ioctl.h>
++#include <sys/time.h>
++#include "command.h"
++#include "inferior.h"
++#include "value.h"
++#include "breakpoint.h"
++#include "BDMlib.h"
++
++extern struct target_ops bdm_ops;	/* Forward declaration */
++
++/*
++ * The name of the BDM driver special file
++ */
++static char *dev_name;
++static int cpu_type;
++
++/*
++ * The different register names for the processors.
++ */
++static const char *cpu32_reg_names[NUM_REGS] = {
++ "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
++ "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
++ "ps", "pc",
++ "pcc", "usp", "ssp", "sfc", "dfc", "atemp", "far",
++ "vbr",
++ NULL, NULL, NULL, NULL,
++ "mbar",
++ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
++};
++
++static const char *cf_reg_names[NUM_REGS] = {
++ "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7",
++ "a0", "a1", "a2", "a3", "a4", "a5", "fp", "sp",
++ "ps", "pc",
++ NULL, NULL, NULL, NULL, NULL, NULL, NULL,
++ "vbr",
++ "cacr", "acr0", "acr1", "rambar",
++ "mbar",
++ "csr", "aatr", "tdr", "pbr", "pbmr", "abhr", "ablr", "dbr", "dbmr",
++};
++
++static const char **bdm_reg_names = cpu32_reg_names;
++
++const char *bdm_register_name(int i)
++{
++	if ((i < 0) || (i >= NUM_REGS))
++		return NULL;
++	return bdm_reg_names[i];
++}
++
++static int reg_to_dev_num[] = 
++{ BDM_REG_SR, 
++  BDM_REG_RPC,
++  BDM_REG_PCC,
++  BDM_REG_USP,
++  BDM_REG_SSP,
++  BDM_REG_SFC,
++  BDM_REG_DFC,
++  BDM_REG_ATEMP,
++  BDM_REG_FAR,
++  BDM_REG_VBR,
++  BDM_REG_CACR,
++  BDM_REG_ACR0,
++  BDM_REG_ACR1,
++  BDM_REG_RAMBAR,
++  BDM_REG_MBAR,
++  BDM_REG_CSR,
++  BDM_REG_AATR,
++  BDM_REG_TDR,
++  BDM_REG_PBR,
++  BDM_REG_PBMR,
++  BDM_REG_ABHR,
++  BDM_REG_ABLR,
++  BDM_REG_DBR,
++  BDM_REG_DBMR
++ };
++
++/*
++ * The name of the most recently loaded program
++ */
++static char *bdm_prog_loaded;
++
++/*
++ * default delay for interface
++ */
++#define	BDM_DEFAULT_DELAY	0
++static int bdm_delay = -1;
++
++/*
++ * does gdb wait or not, only valid for a Coldfire processor
++ */
++static int bdm_gdb_no_wait = 0;
++
++/*
++ * Hold BDM ATEMP register (CPU32 only).
++ */
++static unsigned long atemp;
++static int haveAtemp;
++
++/*
++ * Forward declarations
++ */
++static void bdm_load (char *, int);
++
++/*
++ * give target time to come up after reset
++ * time in usec
++ */
++#define	TIME_TO_COME_UP	60000
++
++/*
++ * Downloader routines
++ */
++static int downLoaderReturn;
++static int downLoaderFirst;
++static unsigned long downLoadBaseAddress, downLoadStartAddress;
++static int bdmDebugLevel;
++static const char *downloadErrorString;
++
++static void
++downloadSection (bfd *abfd, sec_ptr sec, PTR ignore)
++{
++	unsigned long dfc;
++	unsigned long address;
++	unsigned long nleft;
++	int count;
++	file_ptr offset;
++	char cbuf[1024];
++
++	/*
++	 * See if the section needs loading
++	 */
++	if (bdmDebugLevel)
++		printf_filtered ("Section flags:%#x", bfd_get_section_flags (abfd, sec));
++	if ((downLoaderReturn < 0) ||
++			((bfd_get_section_flags (abfd, sec) & SEC_HAS_CONTENTS) == 0) ||
++			((bfd_get_section_flags (abfd, sec) & SEC_LOAD) == 0))
++		return;
++	address = bfd_section_lma (abfd, sec);
++	if (bdmDebugLevel)
++		printf_filtered ("Section address:%#x", address);
++	if (downLoaderFirst && (bfd_get_section_flags (abfd, sec) & SEC_CODE)) {
++		downLoadStartAddress = bfd_get_start_address (abfd);
++		downLoadBaseAddress = address;
++		downLoaderFirst = 0;
++		if (bdmDebugLevel)
++			printf_filtered ("Start address:%#x	 Base address:%#x", downLoadStartAddress, downLoadBaseAddress);
++	}
++
++	/*
++	 * Set the appropriate destination address space
++	 */
++	if (bfd_get_section_flags (abfd, sec) & SEC_CODE)
++		dfc = 0x6;	/* Supervisor program space */
++	else
++		dfc = 0x5;	/* Supervisor data space */
++	if (bdmWriteSystemRegister (BDM_REG_DFC, dfc) < 0) {
++		downLoaderReturn = -1;
++		return;
++	}
++
++	/*
++	 * Load the section in `sizeof cbuf` chunks
++	 */
++	nleft = bfd_get_section_size_before_reloc (sec);
++	if (nleft == 0)
++		return;
++	offset = 0;
++	while (nleft) {
++		if (nleft > sizeof cbuf)
++			count = sizeof cbuf;
++		else
++			count = nleft;
++		if (!bfd_get_section_contents (abfd, sec, cbuf, offset, count)) {
++			downloadErrorString = "Error reading section contents";
++			downLoaderReturn = -1;
++			return;
++		}
++		if (bdmWriteMemory (address, cbuf, count) < 0) {
++			downLoaderReturn = -1;
++			return;
++		}
++		address += count;
++		offset += count;
++		nleft -= count;
++	}
++}
++
++/*
++ * Load an executable image into the target
++ */
++static int
++loadExecutable (const char *name)
++{
++	bfd *abfd;
++	unsigned long dfc;
++	unsigned long l;
++
++	/*
++	 * Make sure target is there
++	 */
++	if (!bdmCheck ())
++		return -1;
++
++	/*
++	 * Open and verify the file
++	 */
++	bfd_init ();
++	abfd = bfd_openr (name, "default");
++	if (abfd == NULL) {
++		downloadErrorString = bfd_errmsg (bfd_get_error());
++		return -1;
++	}
++	if (!bfd_check_format (abfd, bfd_object)) {
++		downloadErrorString = "Not an object file";
++		return -1;
++	}
++
++	/*
++	 * Save the destination function code register
++	 */
++	if (bdmReadSystemRegister (BDM_REG_DFC, &dfc) < 0)
++		return -1;
++
++	/*
++	 * Load each section of the executable file
++	 */
++	downLoaderFirst = 1;
++	downLoaderReturn = 0;
++	bfd_map_over_sections (abfd, downloadSection, NULL);
++	if (downLoaderReturn < 0)
++		return -1;
++
++	/*
++	 * Set up stack pointer and program counter
++	 */
++	if ((bdmReadLongWord (downLoadBaseAddress, &l) < 0)
++	 || (bdmWriteSystemRegister (BDM_REG_SSP, l) < 0)
++	 || (bdmReadLongWord (downLoadBaseAddress+4, &l) < 0)
++	 || (bdmWriteSystemRegister (BDM_REG_RPC, l) < 0)
++	 || (bdmWriteSystemRegister (BDM_REG_VBR, downLoadBaseAddress) < 0)
++	 || (bdmWriteSystemRegister (BDM_REG_DFC, dfc) < 0))
++		return -1;
++	return 0;
++}
++
++/*
++ * The breakpoint codes for the different processors
++ */
++static char cpu32_breakpoint[] = {0x4a, 0xfa};
++static char cf_breakpoint[] = {0x4a, 0xc8};
++static char *breakpointCode;
++static int breakpointSize;
++
++unsigned char *m68k_bdm_breakpoint_from_pc (pcptr, lenptr)
++     CORE_ADDR *pcptr;
++     int *lenptr;
++{
++	*lenptr = breakpointSize;
++	return breakpointCode;
++}
++
++/*
++ * Short pause
++ */
++static void
++nap (int microseconds)
++{
++	struct timeval tv;
++
++	tv.tv_sec = microseconds / 1000000;
++	tv.tv_usec = microseconds % 1000000;
++	select (0, NULL, NULL, NULL, &tv);
++}
++
++/*
++ * Display error message and jump back to main input loop
++ */
++static void
++bdm_report_error (void)
++{
++	error ("BDM error: %s", bdmErrorString ());
++}
++
++/*
++ * Initialize bdm interface port
++ */
++static void
++bdm_init (int tty, char *arg)
++{
++}
++
++/*
++ * Return interface status
++ */
++static int
++bdm_get_status (void)
++{
++	int status;
++
++	if ((status = bdmStatus ()) < 0)
++		bdm_report_error ();
++	return status;
++}
++
++static void
++bdm_get_status_interactive (int pid, char *arg)
++{
++	printf ("BDM status: 0x%x\n", bdm_get_status ());
++}
++
++/*
++ * release chip: reset and disable bdm mode
++ */
++static void
++bdm_release_chip (void)
++{
++	haveAtemp = 0;
++	registers_changed ();
++	if (bdmRelease () < 0)
++		bdm_report_error ();
++}
++
++/*
++ * stop chip
++ */
++static void
++bdm_stop_chip (void)
++{
++	if (bdmStop () < 0)
++		bdm_report_error ();
++}
++
++/*
++ * Allow chip to resume execution
++ */
++static void
++bdm_go (void)
++{
++	haveAtemp = 0;
++	if (bdmGo () < 0)
++		bdm_report_error ();
++}
++
++/*
++ * Reset chip, enter BDM mode
++ */
++static void
++bdm_reset (void)
++{
++	registers_changed ();
++	if (bdmReset () < 0)
++		bdm_report_error ();
++	nap (TIME_TO_COME_UP);
++}
++
++/*
++ * step cpu32 chip: execute a single instruction
++ * This is complicated by the presence of interrupts.
++ * Consider the following sequence of events:
++ *    - User attempts to `continue' from a breakpoint.
++ *    - Gdb calls bdm_step_chip to single-step the instruction that
++ *      had been replaced by the BGND instruction.
++ *    - The target processor executes the instruction and stops.
++ *    - GDB replaces the instruction with a BGND instruction to
++ *      force a breakpoint the next time the instruction is hit.
++ *    - GDB calls bdm_go and the target resumes execution.
++ * This all seems fine, but now consider what happens when a interrupt
++ * is pending:
++ *    - User attempts to `continue' from a breakpoint.
++ *    - Gdb calls bdm_step_chip to single-step the instruction that
++ *      had been replaced by the BGND instruction.
++ *    - The target processor does not execute the replaced instruction,
++ *      but rather executes the first instruction of the interrupt
++ *      service routine, then stops.
++ *    - GDB replaces the instruction with a BGND instruction to
++ *      force a breakpoint the next time the instruction is hit.
++ *    - GDB calls bdm_go and the target resumes execution.
++ *    - The target finishes off the interrupt, and upon returing from
++ *      the interrupt generates another breakpoint!
++ * The solution is simple -- disable interrupts when single stepping.
++ * The problem then becomes the handling of instructions which involve
++ * the program status word!
++ */
++static void
++bdm_step_cpu32_chip (void)
++{
++	unsigned long pc;
++	unsigned short instruction;
++	unsigned short immediate;
++	unsigned long d7;
++	unsigned long sr;
++	unsigned long nsr;
++	enum {
++	  op_other,
++	  op_ANDIsr,
++	  op_EORIsr,
++	  op_ORIsr,
++	  op_TOsr,
++	  op_FROMsr,
++	  op_FROMsrTOd7
++	} op;
++
++	/*
++	 * Get the existing status register
++	 */
++	if (bdmReadSystemRegister (BDM_REG_SR, &sr) < 0)
++		bdm_report_error ();
++
++	/*
++	 * Read the instuction about to be executed
++	 */
++	if ((bdmReadSystemRegister (BDM_REG_RPC, &pc) < 0)
++	 || (bdmReadWord (pc, &instruction) < 0))
++		bdm_report_error ();
++
++	/*
++	 * See what operation is to be performed
++	 */
++	if (instruction == 0x027C)
++		op = op_ANDIsr;
++	else if (instruction == 0x0A7C)
++		op = op_EORIsr;
++	else if (instruction == 0x007C)
++		op = op_ORIsr;
++	else if (instruction == 0x40C7)
++		op = op_FROMsrTOd7;
++	else if ((instruction & 0xFFC0) == 0x40C0)
++		op = op_FROMsr;
++	else if ((instruction & 0xFFC0) == 0x46C0)
++		op = op_TOsr;
++	else
++		op = op_other;
++
++	/*
++	 * Set things up for the single-step operation
++	 */
++	switch (op) {
++	case op_FROMsr:
++		/*
++		 * It's storing the SR somewhere.
++		 * Store the SR in D7 and change the instruction
++		 * to save D7.  This fails if the addressing mode
++		 * is one of the esoteric modes that uses D7 as
++		 * and index register, but we'll just have to hope
++		 * that doesn't happen too often.
++		 */
++		if ((bdmReadRegister (7, &d7) < 0)
++		 || (bdmWriteRegister (7, sr) < 0)
++		 || (bdmWriteWord (pc, 0x3007 |
++					((instruction & 0x38) << 3) |
++					((instruction & 0x07) << 9)) < 0))
++			bdm_report_error ();
++		break;
++
++	case op_ANDIsr:
++	case op_EORIsr:
++	case op_ORIsr:
++		/*
++		 * It's an immediate operation to the SR -- pick up the value
++		 */
++		if (bdmReadWord (pc+2, &immediate) < 0)
++			bdm_report_error ();
++		break;
++
++	case op_TOsr:
++	case op_other:
++		break;
++	}
++
++	/*
++	 * Ensure the step is done with interrupts disabled
++	 */
++	if (bdmWriteSystemRegister (BDM_REG_SR, sr | 0x0700) < 0)
++		bdm_report_error ();
++
++	/*
++	 * Do the single-step
++	 */
++	if (bdmStep () < 0)
++		bdm_report_error ();
++
++	/*
++	 * Get the ATEMP register since the following operations may
++	 * modify it.
++	 */
++	if (bdmReadSystemRegister (BDM_REG_ATEMP, &atemp) < 0)
++		bdm_report_error ();
++	haveAtemp = 1;
++
++	/*
++	 * Clean things up
++	 */
++	switch (op) {
++	case op_FROMsr:
++		if ((bdmWriteRegister (7, d7) < 0)
++		 || (bdmWriteWord (pc, instruction) < 0)
++		 || (bdmWriteSystemRegister (BDM_REG_SR, sr) < 0))
++			bdm_report_error ();
++		break;
++
++	case op_FROMsrTOd7:
++		if ((bdmReadRegister (7, &d7) < 0)
++		 || (bdmWriteRegister (7, (d7 & ~0xFFFF) | (sr & 0xFFFF)) < 0)
++		 || (bdmWriteSystemRegister (BDM_REG_SR, sr) < 0))
++			bdm_report_error ();
++		break;
++
++	case op_ANDIsr:
++		if (bdmWriteSystemRegister (BDM_REG_SR, sr & immediate) < 0)
++			bdm_report_error ();
++		break;
++		
++	case op_EORIsr:
++		if (bdmWriteSystemRegister (BDM_REG_SR, sr ^ immediate) < 0)
++			bdm_report_error ();
++		break;
++
++	case op_ORIsr:
++		if (bdmWriteSystemRegister (BDM_REG_SR, sr | immediate) < 0)
++			bdm_report_error ();
++		break;
++
++	case op_TOsr:
++		break;
++
++	case op_other:
++		if ((bdmReadSystemRegister (BDM_REG_SR, &nsr) < 0)
++		 || (bdmWriteSystemRegister (BDM_REG_SR, (nsr & ~0x0700) | (sr & 0x0700)) < 0))
++			bdm_report_error ();
++		break;
++	}
++}
++
++static void
++bdm_step_chip (void)
++{
++	/*
++	 * The cpu32 is harder to step than the Coldfire.
++	 */
++	if (cpu_type == BDM_CPU32) {
++		bdm_step_cpu32_chip();
++		return;
++	}
++
++	/*
++	 * Do the single-step
++	 */
++	if (bdmStep () < 0)
++		bdm_report_error ();
++}
++
++/*
++ * true if runnable
++ */
++static int
++bdm_can_run (void)
++{
++	return 1;
++}
++
++static void
++bdm_setdelay(int delay)
++{
++	if (bdmSetDelay (delay) < 0)
++		bdm_report_error ();
++}
++
++static void 
++bdm_setdelay_interactive (char *arg, int from_tty)
++{
++	char *dummy;
++
++	if (!arg) {
++		if (bdm_delay >= 0)
++			printf_filtered("bdm_delay is %d", bdm_delay);
++		else 
++			printf_filtered("using default delay %d", BDM_DEFAULT_DELAY);
++	}
++	else {
++		bdm_delay = strtoul(arg, &dummy, 0);
++		bdm_setdelay (bdm_delay);
++	}
++}
++
++static void 
++bdm_setdebug_interactive (char *arg, int from_tty)
++{
++	char *dummy;
++
++	if (arg) {
++		bdmDebugLevel = strtoul(arg, &dummy, 0);
++		bdmSetDebugFlag (bdmDebugLevel);
++	}
++	else
++		error ("Argument missing");
++}
++
++static void 
++bdm_setdriverdebug_interactive (char *arg, int from_tty)
++{
++	char *dummy;
++
++	if (arg)
++		bdmSetDriverDebugFlag (strtoul(arg, &dummy, 0));
++	else
++		error ("Argument missing");
++}
++
++static void 
++bdm_set_no_wait (char *arg, int from_tty)
++{
++	bdm_gdb_no_wait = 1;
++}
++
++static void 
++bdm_set_wait (char *arg, int from_tty)
++{
++	if (cpu_type == BDM_CPU32) {
++		error ("No wait mode is not supported on a CPU32");
++		return;
++	}
++	if (bdm_get_status ())
++		bdm_gdb_no_wait = 0;
++	else
++		error ("The target is running, please stop first");
++}
++
++static void 
++bdm_issue_stop (char *arg, int from_tty)
++{
++	bdm_stop_chip ();
++}
++
++/*
++ * Open a connection the target via bdm
++ * name is the devicename of bdm and the filename to be used
++ * used for communication.
++ */
++static void
++bdm_open (char *name, int from_tty)
++{
++	char *p;
++	int  version;
++
++	if (bdmIsOpen ())
++		error ("Bdm is already open, must close it first");
++	if (name == NULL)
++		error ("Use `target bdm <DEVICE-NAME>' to use the bdm target");
++
++	/*
++	 * Find the first whitespace character after device and chop it off
++	 */
++	for (p = name; (*p != '\0') && (!isspace (*p)); p++) ;
++	if ((*p == '\0') && (p == name))
++		error ("Please include the name the bdm port device.");
++	dev_name = savestring (name, p - name);
++
++	target_preopen (from_tty);
++	unpush_target (&bdm_ops);
++
++	if (bdmOpen (dev_name) < 0)
++		bdm_report_error ();
++	if (bdmStatus () & (BDM_TARGETPOWER | BDM_TARGETNC)) {
++		bdmClose ();
++		error ("Target or cable problem");
++	}
++
++	/*
++	 * Ask the driver for it's version.
++	 * We are only interested in the major number when checking the 
++	 * driver version number.
++	 */
++	if (bdmGetDrvVersion (&version) < 0)
++		bdm_report_error ();
++	if ((version & 0xff00) != (BDM_DRV_VERSION & 0xff00)) {
++		printf_filtered ("Incorrect driver version, looking for %i.%i and found %i.%i\n", 
++					BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff, 
++					version >> 8, version  & 0xff);
++		bdmClose ();
++		error ("Can't run with wrong BDM driver");
++	}
++
++	/*
++	 * Get the processor type.
++	 */
++	if (bdmGetProcessor (&cpu_type) < 0)
++		bdm_report_error ();
++	switch (cpu_type) {
++	case BDM_CPU32:
++		bdm_reg_names = cpu32_reg_names;
++		breakpointCode = cpu32_breakpoint;
++		breakpointSize = sizeof cpu32_breakpoint;
++		break;
++
++	case BDM_COLDFIRE:
++		bdm_reg_names = cf_reg_names;
++		breakpointCode = cf_breakpoint;
++		breakpointSize = sizeof cf_breakpoint;
++		break;
++
++	default:
++		bdmClose ();
++		error ("Unknown processor type returned from the driver.");
++	}
++
++	push_target (&bdm_ops);
++
++	if (bdm_delay >= 0)
++		bdm_setdelay (bdm_delay);
++	else
++		bdm_setdelay (BDM_DEFAULT_DELAY);
++	if (from_tty)
++		printf_filtered ("Remote %s connected to %s\n", target_shortname, dev_name);
++}
++
++/*
++ * Terminate current application and return to system prompt.
++ * On a target, just let the program keep on running
++ */
++static void
++bdm_kill (void)
++{
++	if (bdm_get_status () & BDM_TARGETSTOPPED)
++		bdm_go ();
++}
++
++static void
++bdm_close (quitting)
++int quitting;
++{
++	if (quitting)
++		bdm_kill ();
++	bdmClose ();
++}
++
++/*
++ * _detach -- Terminate the open connection to the remote debugger.
++ * takes a program previously attached to and detaches it.
++ * We better not have left any breakpoints
++ * in the program or it'll die when it hits one.
++ * Close the open connection to the remote debugger.
++ * Use this when you want to detach and do something else
++ * with your gdb.
++ */
++static void
++bdm_detach (char *args, int from_tty)
++{
++	pop_target ();		/* calls bdm_close to do the real work */
++}
++
++/*
++ * _resume -- Tell the remote machine to resume.
++ */
++static void
++bdm_resume (int pid, int step, enum target_signal sig)
++{
++	if (step)
++		bdm_step_chip ();
++	else
++		bdm_go ();
++}
++
++/*
++ * We have fallen into an exception supported by the runtime system.
++ * by executing a `breakpoint' instruction.
++ */
++static void 
++analyze_exception (struct target_waitstatus *status)
++{
++	unsigned long pc, sp;
++	unsigned short vec;
++	char opcode[20]; /* `big enough' */
++
++	if (cpu_type == BDM_CPU32) {
++		if (bdmReadSystemRegister (BDM_REG_PCC, &pc) < 0)
++			bdm_report_error ();
++	}
++	else {
++		if (bdmReadSystemRegister (BDM_REG_RPC, &pc) < 0)
++			bdm_report_error ();
++		if (pc)
++			pc -= 2;
++	}
++	status->kind = TARGET_WAITKIND_STOPPED;
++
++	/*
++	 * See if it was a `breakpoint' instruction
++	 */
++	if (bdmReadMemory (pc, opcode, breakpointSize) < 0)
++		bdm_report_error ();
++	if (memcmp (breakpointCode, opcode, breakpointSize) == 0) {
++		if (bdmWriteSystemRegister (BDM_REG_RPC, pc) < 0)
++			bdm_report_error ();
++		status->value.sig = TARGET_SIGNAL_TRAP;
++		return;
++	}
++	/*
++	 * FIXME: Why an illegal instruction signal ?
++	 */
++	status->value.sig = TARGET_SIGNAL_ILL;
++}
++
++static int sigintFlag;
++static void 
++bdm_signal_handler (int s)
++{
++	sigintFlag++;
++}
++
++/*
++ * Wait until the remote machine stops, then return,
++ * storing status in status just as `wait' would.
++ */
++static int
++bdm_wait (int pid, struct target_waitstatus *status)
++{
++	unsigned long csr;
++	int bdm_stat;
++	void (*ofunc) ();
++
++	if (bdm_gdb_no_wait) {
++		status->kind = TARGET_WAITKIND_STOPPED;
++		status->value.sig = TARGET_SIGNAL_GRANT;
++		return 0;
++	}
++  
++	status->kind = TARGET_WAITKIND_EXITED;
++	status->value.integer = 0;
++
++	/*
++	 * Catch SIGINT signals
++	 */
++	sigintFlag = 0;
++	ofunc = signal (SIGINT, bdm_signal_handler);
++
++	/*
++	 * Wait here till the target requires service
++	 */
++	while ((bdm_stat = bdm_get_status ()) == 0) {
++		nap (500000);
++		if (sigintFlag)
++			bdm_stop_chip ();
++	}
++  
++	signal (SIGINT, ofunc);
++
++	/*
++	 * Determine why the target stopped
++	 */
++	switch (bdm_stat) {
++	case BDM_TARGETNC:
++		status->kind = TARGET_WAITKIND_EXITED;
++		status->value.integer = 9999;
++		break;
++	case BDM_TARGETPOWER:
++		status->kind = TARGET_WAITKIND_STOPPED;
++		status->value.sig = TARGET_SIGNAL_PWR;
++		break;
++	case BDM_TARGETRESET:
++		status->kind = TARGET_WAITKIND_STOPPED;
++		status->value.sig = TARGET_SIGNAL_ABRT;
++		break;
++	case BDM_TARGETSTOPPED:
++	case BDM_TARGETHALT:
++	case BDM_TARGETSTOPPED | BDM_TARGETHALT:
++		if (sigintFlag) {
++			status->kind = TARGET_WAITKIND_STOPPED;
++			status->value.sig = TARGET_SIGNAL_TSTP;
++		}
++		else {
++			if (cpu_type == BDM_CPU32) {
++				if (!haveAtemp
++				 && (bdmReadSystemRegister (BDM_REG_ATEMP, &atemp) < 0))
++					bdm_report_error ();
++				switch (atemp & 0xffff) {
++					case 0xffff:	/* double bus fault */
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_BUS;
++					break;
++				case 0x0:	/* HW bkpt */
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_TRAP;
++					break;
++				case 0x1:	/* background mode */
++					analyze_exception (status);
++					break;
++				default:
++					printf_filtered ("bdm_wait: Unknown atemp:%#lx\n", atemp);
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_GRANT;
++				}
++			}
++			else {
++				if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
++					bdm_report_error ();
++				switch (csr & 0x0f000000) {
++				case 0x08000000:	/* double bus fault */
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_BUS;
++					break;
++				case 0x04000000:	/* HW bkpt */
++				case 0x03000000:	/* we have both, treat it as a brk signal  */
++				case 0x01000000:	/* bkpt signal asserted */
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_TRAP;
++					break;
++				case 0x02000000:	/* background mode */
++					analyze_exception (status);
++					break;
++				default:
++					printf_filtered ("bdm_wait: Unknown csr:%#lx", csr);
++					status->kind = TARGET_WAITKIND_STOPPED;
++					status->value.sig = TARGET_SIGNAL_GRANT;
++				}
++			}
++		}
++		break;
++	default:
++		printf_filtered ("bdm_wait: Unknown BDM status: %#x", bdm_stat);
++		break;
++	}
++	haveAtemp = 0;
++	return 0;
++}
++
++/* This is called not only when we first attach, but also when the
++   user types "run" after having attached.  */
++void
++bdm_create_inferior (char *execfile, char *args, char **env)
++{
++	char *prg_file = NULL;
++	unsigned long entry_pt;
++
++	clear_proceed_status ();
++	init_wait_for_inferior ();
++	if (*args) {
++		prg_file = args;
++	}
++	else {
++		prg_file = execfile;
++	}
++	if (!(prg_file) && !(bdm_prog_loaded))
++		error ("No program specified to run\n");
++	if (bdm_prog_loaded)
++		printf_filtered ("Note: `%s' has already been loaded.\n", bdm_prog_loaded);
++	if (query ("Do you want to download `%s'?", prg_file))
++		bdm_load (prg_file, 0);
++	if (bdmReadSystemRegister (BDM_REG_RPC, &entry_pt) < 0)
++		bdm_report_error ();
++	proceed (entry_pt, TARGET_SIGNAL_DEFAULT, 0);
++}
++
++/*
++ * Fetch register REGNO, or all user registers if REGNO is -1.
++ */
++static void
++bdm_fetch_register (int regno)
++{
++	unsigned long l;
++	char cbuf[4];
++	int ret;
++
++	if (regno < 0) {
++		for (regno = 0 ; regno < NUM_REGS ; regno++)
++			bdm_fetch_register (regno);
++	}
++	else {
++		/*
++		 * When the target is running the 
++		 * cpu registers can not be accessed.
++		 */
++		if (bdm_gdb_no_wait && (bdm_get_status () == 0)) {
++			l = 0;
++			ret = 0;
++	 	}
++		else {
++			if (regno < 16) {
++				ret = bdmReadRegister (regno, &l);
++			}
++			else {
++				if ((regno - 16) < (sizeof (reg_to_dev_num) / sizeof (int))) {
++					ret = bdmReadSystemRegister (reg_to_dev_num[regno - 16], &l);
++				}
++				else {
++					error ("Bad register number (%d)", regno); 
++					return;
++				}
++			}
++		}
++		if (ret < 0)
++			bdm_report_error ();
++		cbuf[0] = l >> 24;
++		cbuf[1] = l >> 16;
++		cbuf[2] = l >> 8;
++		cbuf[3] = l;
++		supply_register (regno, cbuf);
++	}
++}
++
++void
++bdm_prepare_to_store (void)
++{
++	/* Do nothing, since we can store individual regs */
++}
++
++/*
++ * Store register REGNO, or all user registers if REGNO == -1.
++ */
++void
++bdm_store_register (int regno)
++{
++	unsigned long l;
++	int ret;
++
++	if (bdm_gdb_no_wait && (bdm_get_status () == 0))
++		return;
++  
++	if (regno == -1) {
++		for (regno = 0 ; regno < NUM_REGS ; regno++)
++			bdm_store_register (regno);
++	}
++	else {
++		l = read_register (regno);
++		if (regno < 16) {
++			ret = bdmWriteRegister (regno, l);
++		}
++		else {
++			if ((regno - 16) < (sizeof (reg_to_dev_num) / sizeof (int))) {
++				ret = bdmWriteSystemRegister (reg_to_dev_num[regno - 16], l);
++			}
++			else {
++				error ("Bad register number (%d)", regno); 
++				return;
++			}
++		}
++		if (ret < 0)
++			bdm_report_error ();
++	}
++}
++
++/*
++ * Transfer memory contents between target and host
++ */
++static int
++bdm_xfer_inferior_memory (CORE_ADDR memaddr, char *myaddr, int len, int write, struct target_ops *t)
++{
++	int ret;
++
++	if (write)
++		ret = bdmWriteMemory (memaddr, myaddr, len);
++	else
++		ret = bdmReadMemory (memaddr, myaddr, len);
++	if (ret < 0)
++		bdm_report_error ();
++	return len;
++}
++
++static void
++bdm_files_info (struct target_ops *t)
++{
++	printf_filtered ("target %s is attached to %s\n", t->to_shortname, dev_name);
++	if (bdm_prog_loaded) {
++		printf_filtered ("and running program %s\n", bdm_prog_loaded);
++	}
++	else {
++		printf_filtered ("no program loaded\n");
++	}
++}
++
++/*
++ * Load a file.
++ */
++static void
++bdm_load (char *args, int from_tty)
++{
++	char *p;
++
++	if (bdm_prog_loaded) {
++		free (bdm_prog_loaded);
++		bdm_prog_loaded = NULL;
++	}
++	if (!args) {
++		error (
++		 "The bdmload command must include the filename to load.\n"
++			     "You may want to use 'run', which uses the file given\n"
++				 "on the command line when gdb was invoked.");
++	}
++	if ((bdm_get_status () & BDM_TARGETSTOPPED) == 0)
++		bdm_stop_chip ();
++
++	/* strip off additional (unwanted) arguments after file name */
++	for (p = args; (*p != '\0') && (!isspace (*p)); p++) ;
++	*p = '\0';
++
++	if (loadExecutable (args) < 0)
++		error ("%s", downloadErrorString);
++	bdm_prog_loaded = savestring (args, strlen (args));
++}
++
++struct target_ops bdm_ops;
++
++static void
++init_bdm_ops(void)
++{
++	bdm_ops.to_shortname = "bdm";
++	bdm_ops.to_longname = "CPU32 and Coldfire Background Debug Mode Interface for downloading and remote debugging";
++	bdm_ops.to_doc = "Uses the Public Domain Background Debug Mode Interface connected to the\n"
++"BDM-port of the CPU32 or Coldfire based microcontroller and to a parallel port\n"
++"of the PC.\n"
++"Usage: target bdm <device>\n"
++"where <device> is the BDM character special file (e.g. /dev/bdm0).";
++	bdm_ops.to_open = bdm_open;
++	bdm_ops.to_close = bdm_close;
++	bdm_ops.to_detach = bdm_detach;
++	bdm_ops.to_resume = bdm_resume;
++	bdm_ops.to_wait = bdm_wait;
++	bdm_ops.to_fetch_registers = bdm_fetch_register;
++	bdm_ops.to_store_registers = bdm_store_register;
++	bdm_ops.to_prepare_to_store = bdm_prepare_to_store;
++	bdm_ops.to_xfer_memory = bdm_xfer_inferior_memory;
++	bdm_ops.to_files_info = bdm_files_info;
++	bdm_ops.to_insert_breakpoint = memory_insert_breakpoint;
++	bdm_ops.to_remove_breakpoint = memory_remove_breakpoint;
++	bdm_ops.to_kill = bdm_kill;
++	bdm_ops.to_load = bdm_load;
++	bdm_ops.to_create_inferior = bdm_create_inferior;
++	bdm_ops.to_mourn_inferior = generic_mourn_inferior;
++	bdm_ops.to_can_run = bdm_can_run;
++	bdm_ops.to_stratum = process_stratum;
++	bdm_ops.to_has_all_memory = 1;
++	bdm_ops.to_has_memory = 1;
++	bdm_ops.to_has_stack = 1;
++	bdm_ops.to_has_registers = 1;
++	bdm_ops.to_has_execution = 1;
++	bdm_ops.to_magic = OPS_MAGIC;
++};
++
++void
++_initialize_remote_bdmcf (void)
++{
++	init_bdm_ops ();
++	add_com ("bdm_reset", class_obscure,
++		 (void (*)(char *, int))bdm_reset,
++		 "Reset target and enter BDM mode.");
++	add_com ("bdm_release", class_obscure,
++		 (void (*)(char *, int))bdm_release_chip,
++		 "Reset target without BDM-mode.");
++	add_com ("bdm_status", class_obscure,
++		 (void (*)(char *, int))bdm_get_status_interactive,
++		 "Show status of bdm interface\n");
++	add_com ("bdm_setdelay", class_obscure,
++		 bdm_setdelay_interactive,
++		 "set delay for download");
++	add_com ("bdm_setdebug", class_obscure,
++		 bdm_setdebug_interactive,
++		 "enable/disable BDM diagnostic messages");
++	add_com ("bdm_setdriverdebug", class_obscure,
++		 bdm_setdriverdebug_interactive,
++		 "enable/disable BDM driver diagnostic messages");
++	add_com ("bdm_no_wait", class_obscure,
++		 bdm_set_no_wait,
++		 "Cause GDB to not wait for the target to stop when running.");
++	add_com ("bdm_wait", class_obscure,
++		 bdm_set_wait,
++		 "Cause GDB to wait for the target to stop when running.");
++	add_com ("bdm_stop", class_obscure,
++		 bdm_issue_stop,
++		 "Stop the target if running.");
++	add_target (&bdm_ops);
++}

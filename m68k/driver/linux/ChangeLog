@@ -1,0 +1,83 @@
+2001-04-25  Chris Johns  <cjohns@cybertec.com.au>
+
+	* linux-bdm.c: Still need the config modules check.
+
+	* Makefile: Do not force module versions on. Detect it now.
+
+	* linux-bdm.c:
+	Use config.h (autoconfig.h) to detect if module version numbers are
+	enabled. On RH7.0 you still get warnings.
+
+2001-04-22  Chris Johns  <cjohns@cybertec.com.au>
+
+	* Makefile: Changed to better support RH7.0 systems.
+
+2001-02-03  Chris Johns  <cjohns@cybertec.com.au>
+
+	* linux-bdm.c: Changed to support the new memory move interface.
+
+2000-09-03  Chris Johns  <ccj@acm.org>
+
+        * linux-bdm.c: Fixed the ICD spelling.
+
+22000-08-03  Chris Johns  <ccj@acm.org>
+
+        * linux-bdm.c:
+        Merged a patch from Frank Haverkamp <haver@ibr.cs.tu-bs.de> which
+        makes the driver more robust in the face of kernel data
+        structure changes.
+
+2000-06-27  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Use a full path to depmod as `/sbin' may not be in root's
+        path when doing an install.
+
+2000-05-31  Chris Johns  <ccj@acm.org>
+
+        * Makefile:
+        Added the system include path incase another gcc is installed.
+        Removed the PST define. It is automatic now.
+
+         * linux-bdm.c: Support for the IDC interface.
+
+2000-03-30  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Added the USE_PST support. Moved to clean OS structure.
+
+        * linux-bdm.c: New file.
+
+1999-05-25  eric  <>
+
+        * Makefile:
+        It seems that depmod complains about unresolved symbols even
+        when the driver loads and works properly.  I don't know what's
+        changed in Linux to cause this, but for now just get rid of
+        the depmod.
+
+1998-12-12  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Fixed the modversions.
+
+1998-10-31  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Always over-write the installed header and lib.
+
+1998-10-14  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Changed the prefix to the default of /usr.
+
+1997-11-01  eric  <>
+
+        * Makefile: Fit into RTEMS distribution.
+
+1997-02-08  eric  <>
+
+        * Makefile: Add a single `prefix'.
+        Make directories if necessary when installing.
+
+1997-02-07  eric  <>
+
+        * Makefile: Add module installation to install target.
+
+        * Makefile: New file.
+

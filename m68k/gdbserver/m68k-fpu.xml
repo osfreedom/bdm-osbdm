@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2007 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<!-- This is the name used m68k-tdep.c in GDB. -->
+<feature name="org.gnu.gdb.coldfire.core.fp">
+  <reg name="fp0" bitsize="64" type="float" group="float" regnum="18"/>
+  <reg name="fp1" bitsize="64" type="float" group="float" regnum="19"/>
+  <reg name="fp2" bitsize="64" type="float" group="float" regnum="20"/>
+  <reg name="fp3" bitsize="64" type="float" group="float" regnum="21"/>
+  <reg name="fp4" bitsize="64" type="float" group="float" regnum="22"/>
+  <reg name="fp5" bitsize="64" type="float" group="float" regnum="23"/>
+  <reg name="fp6" bitsize="64" type="float" group="float" regnum="24"/>
+  <reg name="fp7" bitsize="64" type="float" group="float" regnum="25"/>
+  <reg name="fpcontrol" bitsize="32" group="float" regnum="26"/>
+  <reg name="fpstatus"  bitsize="32" group="float" regnum="27"/>,
+  <reg name="fpiaddr"   bitsize="32" type="code_ptr" group="float" regnum="28"/>
+</feature>

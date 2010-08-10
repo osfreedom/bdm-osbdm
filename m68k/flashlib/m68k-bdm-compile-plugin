@@ -1,0 +1,21 @@
+#! /bin/sh
+
+CC=$1         # The m68k cross compiler.
+SRC=$2        # The source file.
+OUTPUT=$3     # The output file. Contains the CPU.
+
+CPU=$(echo $OUTPUT | sed -e 's/.*-//g' -e 's/\..*//g')
+
+PWARN="-pedantic -Wall -Wcast-align -Wstrict-prototypes -Wmissing-prototypes"
+POPT="-O2 -fomit-frame-pointer"
+PREL="-mpcrel"
+PDEF="-DHOST_FLASHING=0"
+PTGT="-mcpu=$CPU"
+
+OPT="$PWARN $POPT $PREL $PDEF $PTGT"
+
+CMD="$CC $OPT -c -o $OUTPUT $SRC"
+echo $CMD
+$CMD
+
+exit $?

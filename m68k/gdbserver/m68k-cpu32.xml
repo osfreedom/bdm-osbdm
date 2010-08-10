@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2007 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<target>
+  <!-- The 68000 standard registers  -->
+  <xi:include href="m68k-core.xml"/>
+  <!-- This is the name used m68k-tdep.c in GDB. -->
+  <feature name="org.gnu.gdb.coldfire.core">
+    <!-- The CPU32 specific registers  -->
+    <reg name="vbr" bitsize="32" group="system" regnum="18"/>
+    <reg name="pcc" bitsize="32" group="system" regnum="19"/>
+    <reg name="usp" bitsize="32" group="system" regnum="20"/>
+    <reg name="ssp" bitsize="32" group="system" regnum="21"/>
+    <reg name="sfc" bitsize="32" group="system" regnum="22"/>
+    <reg name="dfc" bitsize="32" group="system" regnum="23"/>
+  </feature>
+</target>

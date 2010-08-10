@@ -1,0 +1,28 @@
+This directory contains M683xx specific BDM
+driver version and GDB utilities from the
+development branch with following history
+
+  * Scott Howard, original author of Motorola
+    BDM library and utilities, Feb 93
+  * M. Schraut, original author of BDM driver
+  * Gunter Magin magin AT skil.camelot.de
+    maintainer of BDM and GDB till 98
+  * Pavel Pisa pisa AT cmp.felk.cvut.cz
+    enhancements and maintaining this branch from May 98
+    
+The full documentation of this branch
+is at this moment at next URLs:
+
+  http://cmp.felk.cvut.cz/~pisa
+  http://cmp.felk.cvut.cz/~pisa/m683xx/bdm_driver.html
+
+This driver uses different API than Chris's tool-chain.
+Code is there to:
+
+  * provide support for people using this branch
+  * archival purposes
+  * as source for integration of same features
+    (DEVFS, PARPORT) into Chris's driver.
+    
+Pavel Pisa pisa@cmp.felk.cvut.cz 2003
+

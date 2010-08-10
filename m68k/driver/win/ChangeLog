@@ -1,0 +1,44 @@
+2002-02-10  Chris Johns  <cjohns@cybertec.com.au>
+
+	* win-bdm.c:
+	Do not provide a stat as it effects programs using stat, eg Insight.
+
+2001-09-01  Chris Johns  <cjohns@cybertec.com.au>
+
+	* win-bdm.c: Fixed the GiveIO patches to compile under Cygwin.
+
+2001-04-15  Chris Johns  <cjohns@cybertec.com.au>
+
+	* win9x-bdm.c:
+	Merged in the changes from Rick Haubenstricker <rickh@perceptron.com> to
+	support NT and the GiveIO driver. This file should be moved to win-bdm.c
+	and the lib makefile updated but it is a change that is not important.
+
+2001-02-03  Chris Johns  <ccj@acm.org>
+
+        * win9x-bdm.c:
+        Enabled support for TCP, so the driver supports remote connections.
+
+2000-09-02  Chris Johns  <ccj@acm.org>
+
+        * win9x-bdm.c:
+        Fixed cpu32 support. Patch from Howard Loewen <loewenhw@mb.sympatico.ca>.
+
+22000-06-27  Chris Johns  <ccj@acm.org>
+
+        * win9x-bdm.c: The usleep takes micro seconds and it was being given
+        milli seconds. Delays did not work.
+
+2000-06-07  Chris Johns  <ccj@acm.org>
+
+        * win9x-bdm.c:
+        Moved the open/close etc definitions to this file from the lib.
+
+2000-05-31  Chris Johns  <ccj@acm.org>
+
+        * win9x-bdm.c: Support for the IDC interface.
+
+2000-05-27  Chris Johns  <ccj@acm.org>
+
+	* win9x-io.h, win9x-bdm.c: New file.
+

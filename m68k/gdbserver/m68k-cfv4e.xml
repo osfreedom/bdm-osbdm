@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2007 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<target>
+  <!-- The 68000 standard registers  -->
+  <xi:include href="m68k-core.xml"/>
+  <!-- The 68000 standard FPU registers  -->
+  <xi:include href="m68k-fpu.xml"/>
+  <!-- This is the name used m68k-tdep.c in GDB. -->
+  <feature name="org.gnu.gdb.coldfire.core">
+    <!-- The cfv4e specific registers  -->
+    <reg name="vbr"      bitsize="32" group="system" regnum="29"/>
+    <reg name="cacr"     bitsize="32" group="system" regnum="30"/>
+    <reg name="asid"     bitsize="32" group="system" regnum="31"/>
+    <reg name="acr0"     bitsize="32" group="system" regnum="32"/>
+    <reg name="acr1"     bitsize="32" group="system" regnum="33"/>
+    <reg name="acr2"     bitsize="32" group="system" regnum="34"/>
+    <reg name="acr3"     bitsize="32" group="system" regnum="35"/>
+    <reg name="mmubar"   bitsize="32" group="system" regnum="36"/>
+    <reg name="mbar"     bitsize="32" group="system" regnum="37"/>
+    <reg name="rambar0"  bitsize="32" group="system" regnum="38"/>
+    <reg name="rambar1"  bitsize="32" group="system" regnum="39"/>
+    <reg name="csr"      bitsize="32" group="debug"  regnum="40"/>
+    <reg name="aatr"     bitsize="32" group="debug"  regnum="41"/>
+    <reg name="tdr"      bitsize="32" group="debug"  regnum="42"/>
+    <reg name="xtdr"     bitsize="32" group="debug"  regnum="43"/>
+    <reg name="pbr"      bitsize="32" group="debug"  regnum="44"/>
+    <reg name="pbr1"     bitsize="32" group="debug"  regnum="45"/>
+    <reg name="pbr2"     bitsize="32" group="debug"  regnum="46"/>
+    <reg name="pbr3"     bitsize="32" group="debug"  regnum="47"/>
+    <reg name="pbmr"     bitsize="32" group="debug"  regnum="48"/>
+    <reg name="pbasid"   bitsize="32" group="debug"  regnum="49"/>
+    <reg name="abhr"     bitsize="32" group="debug"  regnum="50"/>
+    <reg name="ablr"     bitsize="32" group="debug"  regnum="51"/>
+    <reg name="abhr1"    bitsize="32" group="debug"  regnum="52"/>
+    <reg name="ablr1"    bitsize="32" group="debug"  regnum="53"/>
+    <reg name="dbr"      bitsize="32" group="debug"  regnum="54"/>
+    <reg name="dbmr"     bitsize="32" group="debug"  regnum="55"/>
+    <reg name="dbr1"     bitsize="32" group="debug"  regnum="56"/>
+    <reg name="dbmr1"    bitsize="32" group="debug"  regnum="57"/>
+    <reg name="macsr"    bitsize="32"                regnum="58"/>
+    <reg name="mask"     bitsize="32"                regnum="59"/>
+    <reg name="acc0"     bitsize="32"                regnum="60"/>
+    <reg name="acc1"     bitsize="32"                regnum="61"/>
+    <reg name="acc2"     bitsize="32"                regnum="62"/>
+    <reg name="acc3"     bitsize="32"                regnum="63"/>
+    <reg name="accext01" bitsize="32"                regnum="64"/>
+    <reg name="accext32" bitsize="32"                regnum="65"/>
+  </feature>
+</target>
+

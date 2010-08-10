@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2007 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<feature name="org.gnu.gdb.coldfire.core">
+  <!-- The standard m68k register set  -->
+  <reg name="d0" bitsize="32" regnum="0"/>
+  <reg name="d1" bitsize="32" regnum="1"/>
+  <reg name="d2" bitsize="32" regnum="2"/>
+  <reg name="d3" bitsize="32" regnum="3"/>
+  <reg name="d4" bitsize="32" regnum="4"/>
+  <reg name="d5" bitsize="32" regnum="5"/>
+  <reg name="d6" bitsize="32" regnum="6"/>
+  <reg name="d7" bitsize="32" regnum="7"/>
+  <reg name="a0" bitsize="32" regnum="8" type="data_ptr"/>
+  <reg name="a1" bitsize="32" regnum="9" type="data_ptr"/>
+  <reg name="a2" bitsize="32" regnum="10" type="data_ptr"/>
+  <reg name="a3" bitsize="32" regnum="11" type="data_ptr"/>
+  <reg name="a4" bitsize="32" regnum="12" type="data_ptr"/>
+  <reg name="a5" bitsize="32" regnum="13" type="data_ptr"/>
+
+  <!-- The fp is a6 and sp is a7  -->
+  <reg name="fp" bitsize="32" regnum="14" type="data_ptr"/>
+  <reg name="sp" bitsize="32" regnum="15" type="data_ptr"/>
+
+  <reg name="ps" bitsize="32" regnum="16"/>
+  <reg name="pc" bitsize="32" regnum="17" type="code_ptr"/>
+</feature>

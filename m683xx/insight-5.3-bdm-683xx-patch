@@ -1,0 +1,41 @@
+diff -Nurd insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c insight-5.3.patched/gdb/gdbtk/generic/gdbtk-hooks.c
+--- insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c	2002-07-03 19:38:22.000000000 +0200
++++ insight-5.3.patched/gdb/gdbtk/generic/gdbtk-hooks.c	2003-09-05 14:02:42.000000000 +0200
+@@ -518,6 +518,10 @@
+ gdbtk_call_command (struct cmd_list_element *cmdblk,
+ 		    char *arg, int from_tty)
+ {
++  struct cleanup *old_chain;
++
++  old_chain = make_cleanup (null_cleanup, 0);
++
+   running_now = 0;
+   if (cmdblk->class == class_run || cmdblk->class == class_trace)
+     {
+@@ -532,6 +536,8 @@
+     }
+   else
+     cmd_func (cmdblk, arg, from_tty);
++
++  do_cleanups (old_chain);
+ }
+ 
+ /* Called after a `set' command succeeds.  Runs the Tcl hook
+diff -Nurd insight-5.3.orig/gdb/gdbtk/library/targetselection.itb insight-5.3.patched/gdb/gdbtk/library/targetselection.itb
+--- insight-5.3.orig/gdb/gdbtk/library/targetselection.itb	2002-02-12 21:05:14.000000000 +0100
++++ insight-5.3.patched/gdb/gdbtk/library/targetselection.itb	2003-09-05 14:02:57.000000000 +0200
+@@ -261,6 +261,14 @@
+   set gdb_target(vxworks,cmd) "vxworks ethX"
+   set gdb_target(vxworks,runlist) { 1 0 1 1}
+   set gdb_target(vxworks,after_attaching) { sym vxWorks.st }
++
++  # BDM
++  set gdb_target(bdm,pretty-name) "BDM"
++  set gdb_target(bdm,defbaud) ""
++  set gdb_target(bdm,baud-rates) {}
++  set gdb_target(bdm,cmd) "bdm /dev/icd_bdm0"
++  set gdb_target(bdm,runlist) {1 0 1 0}
++  set gdb_target(bdm,after_attaching) "reset"
+ }
+ 
+ body TargetSelection::default_port {} {

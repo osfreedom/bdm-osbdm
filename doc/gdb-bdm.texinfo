@@ -1,0 +1,464 @@
+\input texinfo
+@setfilename gdb-bdm.info
+@syncodeindex ky cp
+
+@c 
+@c $Id: gdb-bdm.texinfo,v 1.1 2003/06/02 15:13:33 codewiz Exp $
+@c
+@c GDB BDM Manual
+@c
+
+@c Parts taken from the Ld, the GNU Linker info page. 
+@c This is Copyright (C) Free Software Foundation, Inc.
+
+@ifinfo
+@format
+START-INFO-DIR-ENTRY
+* @sc{gdb-bdm}:                       GDB m68k Background Debug Mode (BDM).
+END-INFO-DIR-ENTRY
+@end format
+@end ifinfo
+
+@ifinfo
+This file documents the Background Debug support for GDB, the GNU debugger.
+
+Copyright @copyright{} Free Software Foundation, Inc.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+
+@ignore
+Permission is granted to process this file through Tex and print the
+results, provided the printed document carries copying permission
+notice identical to this one except for the removal of this paragraph
+(this paragraph not being relevant to the printed manual).
+@end ignore
+@end ifinfo
+
+@iftex
+@finalout
+@setchapternewpage odd
+@settitle GDB Background Debug Mode Support
+@titlepage
+@title GDB BDM
+@subtitle GDB Background Debug Mode
+@sp 1
+@subtitle @code{MRB} version 1
+@subtitle December 1999
+@author Chris Johns (ccj@@acm.org)
+@author Objective Design Systems Pty Ltd
+@page
+
+@tex
+{\parskip=0pt
+\hfill Objective Design Systems Pty Ltd\par
+\hfill ccj\@acm.org, cjohns\@cybertec.com.au\par
+\hfill {\it Using m68k BDM with GDB, the GNU debugger}\par
+\hfill Edited by Chris Johns (ccj@@acm.org)\par
+}
+\global\parindent=0pt % Steve likes it this way.
+@end tex
+
+@vskip 0pt plus 1filll
+Copyright @copyright{} Free Software Foundation, Inc.
+
+Permission is granted to make and distribute verbatim copies of
+this manual provided the copyright notice and this permission notice
+are preserved on all copies.
+
+Permission is granted to copy and distribute modified versions of this
+manual under the conditions for verbatim copying, provided also that
+the entire resulting derived work is distributed under the terms of a
+permission notice identical to this one.
+
+Permission is granted to copy and distribute translations of this manual
+into another language, under the above conditions for modified versions.
+@end titlepage
+@end iftex
+
+@ifinfo
+@node Top, , ,
+@top GDB BDM
+
+This file documents GDB support for BDM for CPU32 and Coldfire processors.
+
+@menu
+* Overview::                    Overview
+* Hardware::                    POD, Pins, Power
+* Driver::                      The Driver
+* Library::                     A Library for Applications
+
+* Testing::                     Is BDM working
+
+* GDB::                         Building and using GDB
+
+* Server::                      BDM Server
+
+@c Following blank line required for remaining bug in makeinfo conds/menus
+
+* Reporting Bugs::              Reporting Bugs
+* Index::                       Index
+@end menu
+@end ifinfo
+
+@c ---------------------------------------
+@node Overview, Build System, Top, Top
+@chapter Overview
+
+@cindex what is this?
+
+Welcome to Background Debug Mode (BDM) support for GDB. BDM is emulator
+or debugger support in a range of Motorola processors. This package
+deals with the CPU32, and Coldfire family of processors. PowerPC
+processors are not supported by this package. 
+
+CPU32 processors were the first processors to appear with BDM
+support. The Coldfire family's BDM module is similar to the CPU32 family
+of processors. The CPU32 has the BDM module integrated into the
+processor core. The Coldfire is more modular. The debug module is
+separate to the core.
+
+BDM is not JTAG debugging although a serial bug is used. JTAG is a
+standard and operates differently to BDM. BDM uses high level commands
+to control the device. You do not need to clock in and out a loop of
+registers.
+
+BDM is accessed on the procesor via a three wire serial bus. The signals
+are a clock, data in and data out. Various other support signals
+exists. This are used to place the processor into BDM, break the
+prcessor, or monitor the status of a running processor.
+
+The CPU32 standard BDM connector is not the same as the Coldfire
+connector. You need separate plug on modules for each processor
+family. Check the POD you use matches the processors voltage and clock
+speed. This is import for Coldfire users.
+
+Coldfire BDM has support for realtime trace. This package does not
+support realtime trace.
+
+Coldfire BDM can operate in a limited manner while the processor is
+running. The BDM module being separate from the procesor core allows
+this feature.
+
+History
+
+Gunta Magna contributes here is a bit of history of how GDB and BDM
+came to light due to mutual support.
+
+Somewhere in 1994/1995 Gunta Magna wrote (with the help of Michael
+Schraut, at that time a student at lpr.e-technik.tu-muenchen) a first
+version of the m68k Linux BDM device driver. This driver heavily based
+on the work of Scott Howard (scott\@objsw.com), who wrote BD32, a DOS
+tool to access 683xx controllers via BDM. He made the driver available
+in source form, so I could use them.  Scott is currently maintainer of
+the crossgcc mailing list (http://www.objsw.com/CrossGCC/).
+
+Additionally Gunta Magna wrote a BDM backend for gdb-4.13. (Note: Eric
+credits M.Schraut falsly as the author of the GDB patches in the header
+files. This went through until Chris Johns's version for Coldfire).
+
+The driver was only for BDM interfaces compatilble to AN1230, aka as PD
+interfaces. Scott supported also the ICD compatible interface, but due to
+lack of equipment at that time Gunta Magna did not include that.
+
+Eric Norum used those sources to port it to NextStep. He did not like
+my way of interfacing driver and application, and designed a new
+interface. He also introduced an abstraction layer, enabling other
+applications than gdb to take advantage of the BDM driver. He also added
+support for 68360, which is different in detail from the 68332 version
+(MBAR support).
+
+In 1996, Gunta Magna upgraded his driver to ICD by a compile time
+option, and fixed some errors. He also upgraded the gdb backend to
+gdb-4.16, introducing Eric's idea of the abstraction layer. Sources for
+that can be found at the ftp server of lpr.e-technik.tu-muechen.de
+
+In 1997 Eric went Linux and ported his NextStep driver to Linux. He
+also wrote/ported his NextStep gdb backend, incorporating some of the
+ideas (and bugs) introduced in Gunta's 4.16-version. He also published a
+schematic stemming from the Motorola customer center here in Munich
+(bd32new) (See below).
+
+In 1997 I upgraded my driver to simultaneously support ICD and PD
+interfaces. The selection is made by accessing different minor numbers.
+This version has been handed out to several testers (including Chris
+Johns), but has never been officially released.
+
+Chris Johns used Eric's driver and added Coldfire support.
+
+@c ---------------------------------------
+@node Build System, Layout, Overview, Top
+@chapter POD, Pins, Power
+
+@cindex hardware
+
+Various means exist to access a BDM port on a processor. This driver
+provides support for various host operating system, and adapator boards.
+
+The driver support the IDC hardware. A circuit abd PAL equations are
+provided in the package.
+
+The Coldfire support is via the P&E standard interface. You can find
+information about these adaptor from the P&E web site.
+
+<more on CPU32 hardware>
+
+Coldfire
+
+The Coldfire has a 26pin header. The expanded connector is for the
+realtime trace. These signals are the PST or processor status
+signals. Four of these signals provide provide the status of the
+processor in realtime. 
+
+The 5206 and 5206e processor share the PST signals with the parallel
+port on Coldfire. Anr application that uses the Coldfire's parallel
+port, cannot relying on the PST for the realtime status of the
+processor. The P&E module provides a processor halted signal to the PC's
+parallel port based on the PST signals. The P&E Windows driver and DLL
+use this signal. Using this software with the P&E interface and a 5206
+variant of Coldfire requires the parallel port to left for the PST
+signals. The PST signals on the 5307 processor are not shared. They are
+free to be used for debugging.
+
+This driver does not require the use of the PST signals. The parallel
+port on the 5206 processor can be used as a parallel port.
+
+The 5206 and 5206e differ in Vcc voltage. The 5206 is a 5.0V processor
+while the 5206e is a 3.3V processor. You need to check your POD can
+handle your processors voltage. The 5206e can operate at 54MHz. The 5307
+operate at 70MHz. The processor clock is carried up the BDM cable to the
+POD. You need to insure the PLD on the POD is fast enough and the cable
+from the target to the POD is not too long. If the cable is too long or
+the PLD marginal the processor clock could be dragged out of shape
+causing various problems which can be hard to find.
+
+Various people have reported problems when using the driver with 5307
+processors. Building the driver with the Makefile define @code{USE_PST}
+causes the problem to go away. The error is 
+
+@c ---------------------------------------
+@node Build System, Layout, Overview, Top
+@chapter The Driver
+
+@cindex driver
+
+Various means exist to access a BDM port on a processor. This driver
+provides support for various host operating system, and adapator boards.
+
+The code which accesses the pod is 
+
+The driver supports different host operating systems.
+
+@c ---------------------------------------
+@node Layout, Configurations, Build System, Top
+@chapter A Library for Applications
+
+@cindex Library
+
+The library provides an interface to the driver for user
+applications. GDB currently requires this library to build. Future
+release may have the library moved into the GDB patch allowing the BDM
+code reside in the GDB source tree.
+
+The library also contains the client code for talking to the BDM server.
+
+
+@c ---------------------------------------
+@node Layout, Configurations, Build System, Top
+@chapter Testing
+
+@cindex Testing
+
+The driver should be tested with the `chk' program. It provides a
+reasonable test of the software, driver and hardware path to the target.
+
+@c ---------------------------------------
+@node Layout, Configurations, Build System, Top
+@chapter GDB
+
+@cindex GDB
+
+This section covers building GDB and contains some info about using GDB
+with BDM.
+
+@c ---------------------------------------
+@node Layout, Configurations, Build System, Top
+@chapter Server
+
+@cindex Server
+
+This section covers building and installing the GDB server.
+
+Currently only a Unix version exists. It should operate on any platform
+the driver can be built for.
+
+The BDM server operates from inetd. You need to add the following line
+to @file(/etc/services} :
+
+@smallexample
+
+bdm       6543/tcp                    # BDM server
+
+@end smallexample
+
+The port number @code{6543} was a random selection. If for any reason it
+is a bad or taken number, please let me know.
+
+In the file @file{/etc/inetd.con} add the following line :
+
+@smallexample
+
+bdm     stream  tcp     nowait  cjohns  /usr/local/sbin//bdmd bdmd
+
+@end smallexample
+
+I am running this server as me. If the BDM devices have global
+read/write enabled, then it should be ok to use the user @code{nobody},
+or something similar as the user.
+
+The server has not been checked for security holes. If the 
+
+
+@c ---------------------------------------
+@node Reporting Bugs
+@chapter Reporting Bugs
+@cindex bugs in @code{MRB}
+@cindex reporting bugs in @code{MRB}
+
+Your bug reports play an essential role in making @code{MRB} reliable.
+
+Reporting a bug may help you by bringing a solution to your problem, or
+it may not.  But in any case the principal function of a bug report is
+to help the entire community by making the next version of @code{MRB}
+work better.  Bug reports are your contribution to the maintenance of
+@code{MRB}.
+
+In order for a bug report to serve its purpose, you must include the
+information that enables us to fix the bug.
+
+@menu
+* Bug Criteria::                Have you found a bug?
+* Bug Reporting::               How to report bugs
+@end menu
+
+@c ---------------------------------------
+@node Bug Criteria
+@section Have you found a bug?
+@cindex bug criteria
+
+If you are not sure whether you have found a bug, here are some guidelines:
+
+@itemize @bullet
+@item
+If the you select a particular configuration and @code{MRB} does not
+build. It should build if the configuration parameter selection make
+sense. For example building the networking code without configuring a
+network driver.
+
+@item
+The standard targets which are contained in MRB do not run.
+
+@item
+A new release of the GNU tools can break the current code.
+
+@item
+Your suggestions for improvement of @code{MRB} are welcome.
+@end itemize
+
+@c ---------------------------------------
+@node Bug Reporting
+@section How to report bugs
+@cindex bug reports
+@cindex @code{MRB} bugs, reporting
+
+The fundamental principle of reporting bugs usefully is this:
+@strong{report all the facts}. If you are not sure whether to state a
+fact or leave it out, state it!
+
+Often people omit facts because they think they know what causes the
+problem and assume that some details do not matter. Play it safe and
+give a specific, complete example. That is the easiest thing for you to
+do, and the most helpful.
+
+Keep in mind that the purpose of a bug report is to enable us to fix the
+bug if it is new to us. Therefore, always write your bug reports on the
+assumption that the bug has not been reported previously.
+
+Sometimes people give a few sketchy facts and ask, ``Does this ring a
+bell?''  Those bug reports are useless, and we urge everyone to
+@emph{refuse to respond to them} except to chide the sender to report
+bugs properly.
+
+To enable us to fix the bug, you should include all these things:
+
+@itemize @bullet
+@item
+The version of @code{MRB}.
+
+Without this, we will not know whether there is any point in looking for
+the bug in the current version of @code{MRB}.
+
+@item
+Any patches you may have applied to the @code{MRB} source.
+
+@item
+The type of host machine you are using, and the operating system name
+and version number.
+
+@item
+What compiler (and its version) was used to compile @code{MRB}
+--e.g. ``@code{gcc-2.7}''.
+
+@item
+The target you are building. If this is a new target you are developing,
+you may need to provide some details of the changes you have made.
+
+@item
+A description of what behavior you observe that you believe is
+incorrect.
+
+@item
+If you wish to suggest changes to the @code{MRB} source, send us context
+diffs, as generated by @code{diff} with the @samp{-u}, @samp{-c}, or
+@samp{-p} option.  Always send diffs from the old file to the new file.
+If you even discuss something in the @code{MRB} source, refer to it by
+context, not by line number.
+
+The line numbers in our development sources will not match those in your
+sources.  Your line numbers would convey no useful information to us.
+@end itemize
+
+Here are some things that are not necessary:
+
+@itemize @bullet
+@item
+A patch for the bug.
+
+A patch for the bug does help us if it is a good one.  But do not omit
+the necessary information, such as the test case, on the assumption that
+a patch is all we need.  We might see problems with your patch and decide
+to fix the problem another way, or we might not understand it at all.
+
+And if we cannot understand what bug you are trying to fix, or why your
+patch should be an improvement, we will not install it.  A test case will
+help us to understand.
+@end itemize
+
+@c ---------------------------------------
+@node Index
+@unnumbered Index
+
+@printindex cp
+
+@contents
+@bye
+

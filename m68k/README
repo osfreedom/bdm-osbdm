@@ -1,0 +1,921 @@
+
+                     BDM GDB DRIVER AND LIBRARY PACKAGE
+                     ==================================
+
+INTRODUCTION
+============
+
+This package contains everything you need to know to be able to run GDB on
+Linux, FreeBSD, SCO Unix, and Windows and control a Motorola CPU32+ (68360) or
+Coldfire (V2/V3/V4) target through a standard PC parallel port or via a USB
+pod.
+
+ o The CPU32 interfaces supported are PD and the IDC interface. GDB 
+   should now operate with the CPU32 processor without error.
+
+ o The Coldfire interface is the TBLCF USB pod or P&E parallel port type
+   interface.
+
+ o You can build Insight if you apply the Insight patch. See the 
+   Insight README in this directory.
+
+ o For WindowsNT or Window2000 you will need the GiveIO package. You 
+   are best to search the net for the GiveIO (giveio.sys) package. You
+   will also need the INSTDRV.EXE file that is also available on the net.
+   GiveIO has been test on Windows 2000 and Windows XP.
+
+ o For Unix users the library is built with I/O perm support by 
+   default. The same library allows an application to directly 
+   access the hardware or use an installed BDM kernel driver. On FreeBSD
+   this the "/dev/io" support.
+
+   I/O Permission is a means of getting at the parallel port hardware
+   without the need for a kernel driver. This BDM package still provides
+   support to build a kernel driver, but you do not need to if you want to
+   avoid kernel drivers. Some people wish to use kernel drivers and some do
+   not.
+
+   If you wish to learn more about I/O Perm support please refer to the
+   section at the end of the file.
+
+   You can disable I/O perm support by editing the Makefile. It is hoped
+   autoconf support in the future will provide a better way to handle this.
+
+ o To support the TBLCF UDB pod you will need the libusb package. For Windows
+   this means the LibUSB-Win32 package.
+
+ o Support for an initialisation script called '.m68kbdminit'. See the 
+   section on Initialisation Scripts.
+
+The subdirectories contain:
+
+  config
+    Autotools support files.
+
+  driver
+    Source for a Linux, SCO, FreeBSD, I/O Perm, and Windows BDM device 
+    driver module.
+
+  gdbPatches
+    Move to outside this tree. Please refer to the Sourceforge
+    project for the patches.
+
+  gdbScripts
+    Example GDB command scripts that show how to initialize and run
+    a Motorola 68360 system using standard GDB commands.
+
+  gdbserver
+    A GDB Remote protocol server. Needs GDB 6.7 or later.
+
+  lib
+    User-level library routines for accessing the BDM device driver.
+
+  flashlib
+    Library for flash support. This library currently supports host-only
+    and host-assisted operation modes of 29Fxxx and 49Fxxx chips in
+    any combination of bus_width=[1|2|4] and chip_width=[1|2|4]. It is
+    already prepared for target-only operation mode and addition of different
+    flash algorithms.
+
+  local_scripts
+    Scripts to run on the host machine the driver is being installed
+    on.
+
+  server 
+    The BDM server. This is a daemon which interfaces to the local BDM
+    driver remotely. The BDM library can be built to support local and remote,
+    just local or just remote access.
+
+  tblcf
+    The TBLCF code from Daniel Malik. It include the various tools for managing
+    the pod.
+
+  test
+    Programs to test the BDM library and driver routines.
+
+  utils
+    contains some utilities which might be useful.
+
+README Files
+============
+
+There are 4 README files which document the BDM package. They are:
+
+ o README
+    This is the top level README file and the one you are currently readling.
+
+ o README.cvs
+    If you use the code from CVS you should read this file. It explains how
+    to bootstrap the package to create the configure script and Makefiles.
+
+ o README.bdmgdbserver
+    This file documents the BDM GDB Server. It explains why you should use
+    the BDM GDB Server to interface to GDB and how to build GDB.
+
+ o README.insight
+    This is an old README and may be useful to anyone still wanting to 
+    use Insight as a GUI interface to GDB. A current Insight with a current
+    GDB should work with the BDM GDB Server.
+
+WINDOWS
+=======
+
+Windows is supported on Windows 98, Windows 2000 and Windows XP. It may run on
+other version of Windows, but the ones listed have been tested. Windows 2000,
+Windows XP and beyond need to the GiveIO driver to gain direct access to the
+parallel port hardware if you are using a parallel port pod. A USB pod need the
+libusb software for Windows.
+
+You can download the GiveIO package from the net plus you will need the
+INSTDRV.EXE program. To install GiveIO place the 'giveio.sys' and INSTDRV.EXE
+in a directory and log in as an Administrator or equivalent then:
+
+  c:\tmp> insdrv givio c:\tmp\giveio.sys
+
+The package builds under Cygwin and MinGW.
+
+The MinGW support provides you with a version that directly accesses the
+Windows APIs and does not need a Cygwin DLL. To build with MinGW you need to
+get the MinGW and MSYS packages from the MinGW web site:
+
+  http://www.mingw.org/
+
+The MinGW package provides the compiler and MSYS provides a shell capable of
+running the configure script.
+
+To build the TBLCF USB pod support you need to obtain the LibUsb-Win32 package
+from:
+
+  http://libusb-win32.sourceforge.net/
+
+Click the Downloads link and move the Sourceforge download page then select the
+libusb-win32-device-bin package. I have tested with the 0.1.12 version. Unpack
+the tar file to a directory on your machine ready to use. Make sure you do not
+have any spaces in the path. Spaces cause problems with the autoconf test for
+the libusb library.
+
+QUICK START
+===========
+
+You have unpacked the package. Next to the top of the package create an empty
+directory and enter it, configure the package, make, then install. It working
+with a release tarball unpack it:
+
+  $ tar xzf bdm-xx.tar.gz
+  $ mkdir build
+  $ cd build
+  $ ../gdb-bdm-xxx/m68k/configure
+  $ make
+  $ make install
+
+If working from a git checkout you need to bootstrap:
+
+  $ cd bdm/m68k
+  $ config/bootstrap
+  $ cd ../..
+  $ mkdir build
+  $ cd build
+  $ ../bdm/m68k/configure
+  $ make
+  $ make install
+
+Note: this process by default creates an IOPERM type parallel BDM driver and a
+TBLCF USB driver. If you wish to build a Linux kernel driver please follow the
+INSTALLATION directions.
+
+INSTALLATION
+============
+
+The Makefiles in all the subdirectories are set up to install their
+results in /usr/{bin,lib,.....}.
+
+On FreeBSD remember to use `gmake' rather than `make'.
+
+Notes:
+
+   1. For Windows move to Step 2 as the driver is built into the library. You
+      may also need to add `CC=gcc' to make's command line.
+
+   2. For I/O Permission or USB users move to step 2 as the driver is built
+      into the library.
+
+   3. Driver users will still have a library with I/O perm support unless the
+      default of the library Makefile is manually changed.
+
+   4. You can specify a different `prefix' for the installation directory by
+      running all the `make install' commands described below as:
+
+  $ make prefix=/some/directory install
+
+Step 1 -- Compile and install the BDM device driver
+
+  If you do not wish to use a driver and just want the I/O perm support move to
+  Step 2.
+
+  Make sure the kernel source code is installed under the /usr/src path.
+
+  Support for more than Linux has been added. You must enter the OS specific
+  directory then enter the make command. We assume Linux for the remainder of
+  this file.
+
+  If your Linux kernel has been configured for module versions you must
+  uncomment the #MODVERSIONS=-DMODVERSIONS line in driver/linux Makefile.  If
+  the kernel is configured for module versions and you fail to uncomment this
+  line the driver will install and work properly, but depmod will complain
+  about unresolved symbols.
+
+  For Coldfire users the driver now looks for the debug module version and will
+  use the PST signals if it detects a version 1 debug module. The debug version
+  1 is found on the 5307.
+
+  Disable the TBLCF code with the configure option '--disable-tblcf'.
+
+    # cd driver/linux
+    # make all install
+
+  You may get a bunch of error messages like:
+    In file included from /usr/include/linux/fs.h:277,
+       from linux-bdm.c:63:
+    /usr/include/linux/hpfs_fs_i.h:5: parse error before `ino_t'
+    /usr/include/linux/hpfs_fs_i.h:5: warning: no semicolon at \
+            end of struct or union
+    /usr/include/linux/hpfs_fs_i.h:12: parse error before `:'
+
+  If this happens, try adding `-I /usr/include' to the beginning of the CFLAGS
+  definition in the Makefile in driver/linux.
+
+  A script is provided in `local_scripts' called MAKEDEV which create the
+  special files needed for the CPU32 and Coldfire.
+
+  To make the special files by hand you can enter:
+
+    # mknod /dev/bdmcpu320 c 34 0
+                             ^^ ^
+                             |  |
+                             |  +--Minor device number (see below).
+                             |
+                             +--This value must match the
+                                BDM_MAJOR_NUMBER in driver/bdm.h
+
+  To have the module module loaded by kerneld when needed
+  adding to /etc/conf.modules the line:
+
+     alias char-major-34 bdm
+
+  To automaticially load the driver into the kernel every time
+  you reboot you can add the line:
+
+     # /sbin/insmod bdm
+
+  to your startup script, such as /etc/rc.d/rc.local.
+    
+  You will need to create the device names. The local script MAKEDEV can do
+  this for you:
+
+    # ./local_scripts/MAKEDEV
+
+Step 2 -- Compile and install the library and user programs
+
+  The package provides a configure script that you use to build the
+  package. All testing I have performed is not to build in the source tree. For
+  the default configuration just run the configure script:
+
+    $ mkdir build
+    $ cd build
+    $ ../gdb-bdm-xx/m68k/configure
+
+  You will need to change the 'gdb-bdm-xx' to the name of the directory in the
+  version of the package you have downloaded.
+
+  On Windows if building the TBLCF driver you need to provide the location of
+  the libusb package. The details to download and obtain the libusb package for
+  Windows is detail above. Provide the path to the top of the libusb package:
+
+    $ ../gdb-bdm-xx/m68k/configure \
+          --with-usblib-dir="c:/work/libusb-win32-device-bin-0.1.12.1"
+
+  The above command is run inside the MSYS shell.
+
+  Once the package has configured itself you can make it:
+
+    $ make
+
+  To install you may need to obtain the appropriate permissions. Once you have:
+
+    $ make install
+
+  The library can be built to access a BDM driver locally via the kernel's
+  driver interface, remotely via a TCP/IP socket interfacei, or with direct
+  hardware access via the ioperm system call. You can have a library which
+  supports all or a mix of interfaces. This allows you to build the
+  library and therefore gdb on a host which does not support the driver
+  interface.
+
+  On Windows 2000 install the GiveIO driver. This is detailed in the WINDOWS
+  section earlier. To install the USB pod on Windows refer the TBLCF Pod
+  section later.
+
+  The package supports a number of configuration options over and above the
+  standard configure options such as '--prefix'. These are:
+
+    --enable-debug:    Turn on compiler debug information
+                       On by default.
+
+    --enable-remote:   Turn on the remote protocol and build it into
+                       the library. On by default.
+
+    --enable-ioperm:   Turn on direct IOPERM hardware access. Enabled
+                       if the OS provides the ioperm() system call.
+
+    --enable-driver:   Turn on driver access from the library. Enabled
+                       by default on systems that support it.
+
+    --enable-server:   Turn on building the BDM server. On by default.
+
+    --enable-flashlib: Turn on building of the flashlib.
+
+    --enable-bdmctrl:  Turn on building of the bdmctrl utility. Since there
+                       might be problems to locate bfd.h/libbfd.a which
+                       know how to handle target object files, building
+                       the bdmctrl utility is disabled unless you have
+		       specified the configure options --with-libbfd,
+		       --with-libiberty and --with-bfd-include-dir.
+
+     --enable-tblcf:   Turn on building the TBLCF support. On by default.
+                       On Windows the --with-usblib-dir can be used to
+                       provide the location of the unpacked Win32 libusb
+                       package.
+
+     --with-libusb-dir Path, with no spaces to the libusb library if the
+                       library is not installed in the default location.
+
+  To turn off an option use '--disable-*' where '*' is one of the above.
+
+  Some host settings automatically disable some options:
+
+    Linux : All default settings.
+    Cygwin: All default settings.
+    MinGW : Server is not built.
+
+  The prefix defaults to the platform specific default. Please refer to your
+  documentation for this default setting or just try and see what happens.
+
+  Note, the BDM library is now installed under the package directory of 'bdm'
+  under the prefix. For example a prefix of '/usr/local' as found on Linux
+  results in the library being under '/usr/local/lib/bdm/libBDM.a'.
+
+  The BDM package also supports cross-compiling. For example you can build
+  for a mingw32 host on a Linux machine if you have a MinGW cross-compiler
+  and runtime installed:
+
+    $ ../gdb-bdm-xx/m68k/configure --host=ming32 \
+                --build=`./gdb-bdm-xx/m68k/config/config.guess`
+
+Step 3 -- Installing the Server
+
+  You only need the BDM server if you intend to use the ioperm method of
+  accessing the parallel port, or you wish to support remote access. If you
+  wish to use a driver and your access is local to your development machine
+  then this step may be skipped.
+
+  Before using the server, please make sure you understand the implications
+  of such a setup. You probably want to restrict access to the bdmd port
+  to trusted machines.
+
+  The BDM server allows a lab to contain your target hardware and you can
+  access it from your development machine. The BDM server can support clients
+  on different platforms. This means a Linux server can be accessed from MacOS
+  or Windows clients.
+
+  The server runs from the xinetd or inetd daemon, and installs into
+  the 'sbin' directory under the configure prefix when building the user
+  programs in Step 2 above.
+
+  You need to edit the /etc/services file to add the port number bdmd
+  uses. Add this line at the bottom of the /etc/services file:
+
+    bdm             6543/tcp                        # BDM server
+
+  The BDM remote library will check /etc/services to see if a port is
+  provided. If not found the remote library will default to 6543.
+
+  It is recommended you add the entry to /etc/services and you check
+  the client and server match.
+
+  For inetd users such as FreeBSD:
+
+    You need to edit the /etc/inetd.conf file. Add this line at the end of
+    /etc/inetd.conf:
+
+    bdm     stream  tcp     nowait  root  /usr/local/sbin/bdmd bdmd 
+
+    You can specify any user including root. If you are wishing to use the
+    ioperm support then the user must be root.
+
+  For xinetd users as root install the follow in a file called:
+
+    /etc/xinetd.d/bdm
+
+      service bdm
+      {
+        socket_type  = stream
+        port    = 6543 
+        wait    = no
+        user    = root
+        server    = /usr/sbin/bdmd
+        server_args  = -n
+        log_on_failure  += USERID
+        disable    = no
+      }
+
+  then get xinetd to reload its configuration.
+
+  To test the bdmd server open a shell on the machine bdmd has been installed
+  and condigured. At the shell prompt run telnet as follows:
+
+    $ telnet localhost bdm
+    Trying 127.0.0.1...
+    Connected to localhost.
+    Escape character is '^]'.
+ >> helo
+    HELO 2 ted BDM server 1.0.0 ready.
+ >> quit
+    Connection closed by foreign host.
+    $
+
+  The lines marked '>>' you type and press enter. Once the connected to
+  localhost appears enter 'helo' and enter. The server should respond with
+  version etc. To exit enter 'quit' then enter.
+
+  If is not working you are best to check your system log (/var/log/messages)
+  to locate the reason xinetd is not starting the bdmd server. To debug an
+  xinetd setup, as root do:
+
+    # kill -SIGUSR1 $(pidof xinetd)
+    # less /var/run/xinetd.dump
+
+   The look for the BDM entry and check entry is correct. Here is an
+   example:
+
+    Service = bdm
+            State = Active
+            Service configuration: bdm
+                    id = bdm
+                    flags = IPv4
+                    socket_type = stream
+                    Protocol (name,number) = (tcp,6)
+                    port = 6543
+                    Groups = no
+                    Bind = All addresses.
+                    Server = /usr/sbin/bdmd
+                    Server argv = bdmd -n
+                    Only from: All sites
+                    No access: No blocked sites
+                    Logging to syslog. Facility = authpriv, level = info
+                    Log_on_success flags = HOST PID
+                    Log_on_failure flags = HOST USERID
+                    running servers = 1
+                    retry servers = 0
+                    attempts = 0
+                    service fd = 5
+
+Step 4 -- (Optional) Testing the driver.
+
+  It a good idea to build and run the test program called `bdm-chk' for
+  Coldfire processors and 'bdm-cpu32-chk' for CPU32 processors. This will show
+  the library built correctly, the driver loads and functions, and your
+  hardware is connected correctly and functioning.
+
+  You will need to select the correct device for the Coldfire.  The example
+  below is for the CPU32 interface on LPT1. To test a CPU32 processor do:
+
+    $ cd test
+    $ ./bdm-chk /dev/bdmcpu320
+
+  To test a Coldfire processor do:
+
+    $ ./bdm-chk /dev/bdmcf0
+
+  Note, the number at the end of the device path is the parallel 
+  port number your pod hardware is connected too. The device nodes
+  start from 0, while the standard PC LPT ports number from 1. This
+  means '/dev/bdmcf0' will look for a Coldfire processor on LPT1.
+
+  For a TBLCF USB pod on Linux you need to set up udev to create a symlink.
+  The section 'TBLCF USB Support' details how to set up udev. The TBLCF tools
+  tblcf-show returns the following for a single pod connected to a Linux box:
+
+    $ ./tblcf-show
+    TBLCF Turbo BDM Light ColdFire Show
+
+    Found 1 device(s)
+      1: 001-012
+
+  There is one pod and the name is '01-012' and udev links this to
+  /dev/tblcf3. To run check using this pod:
+
+    $ ./bdm-chk /dev/tblcf3
+
+  Note, the name will change on Linux if you disconnect the pod and reconnect
+  it. If want to lock a name down you can use udev.
+
+  To test using a BDM server on a remote host call 'foo':
+
+    $ /bdm-chk foo:/dev/bdmcpu320
+
+  Note, do not use the MSYS rxtv shell to test from. It currently transforms
+  program arguments and the device path used in these example becomes
+  something very different.
+
+Step 5 -- Patch your GDB distribution
+Step 6 -- Compile and install the cross-GDB with BDM support
+
+  These step have been removed. We do not need to patch GDB any more. Use the
+  m68k-bdm-gdbserver executable with GDB built from the FSF sources.
+
+  Please refer to README.bdmgdbserver for instructions on using the BDM GDB
+  Server.
+
+Step 7 -- (Optional) Install the GDB scripts
+
+    $ cd gdbScripts
+    $ make install
+
+  You will have to change the scripts to match your CPU32(+) hardware.
+
+Step 8 -- Build a BDM interface
+
+  See the Schematics directory for an example circuit.
+
+Step 7 -- Try it out
+
+  This is left as an exercise for the reader.....
+
+INITIALISATION SCRIPTS
+======================
+
+The M68K BDM package supports initialisation scripts. The scripts are all
+called '.m68kbdminit' and read from 3 locations during the bdmOpen call. The
+locations are:
+
+ 1. The current directory ($PWD)
+ 2. The user's home directory as specified by the "HOME" environment 
+    variable.
+ 3. A user define location as specified by the "M68K_BDM_INIT" environment
+    variable.
+
+The files are plain text files and are read into a character array on after
+another. The '#' is a comment character and line continuation using the '\' at
+the end of a line is supported.
+
+The configurations supported are:
+
+ dev:
+     "dev         user-name        device-name"
+
+  A line starting with 'dev' followed by white space defines a device mapping
+  or renaming. The user-name is the name a user may use to reference a
+  device. The device-name is the name required by the hardware to access the
+  device. This can be used to map a difficult USB device name that libusb uses
+  to a simpler user friendly name. This helps users because the naming of USB
+  devices vary between host platforms. The device mapping also helps
+  configuration control of debugging scripts. A common script can reference a
+  name and each user in a team can place the actual device they use in the a
+  user specific file in their home directory.
+
+TBLCF USB SUPPORT
+=================
+
+The TBLCF is the Turbo BDM Light Coldfire UDB Pod created by Daniel Malik back
+in 2006. This is a GPL design for both hardware and software. It uses a small
+microcontrolller and firmware in the pod and the open source libusb code to
+provide the low level USB support on various hosts.
+
+The supported hosts are Linux, FreeBSD, and Windows. The specifics of the hosts
+make the set up different for each. The scripts support helps user isolate
+their host specifics. USB device names are helped by the 'dev' entry in the
+M68K BDM script files. These entries allow you to make a simpler entry for a
+more complex name. Use the' tblcf-show tool' to dump the names of the USB
+devices you need to pass to the BDM software. On Linux you may wish to use read
+the Linux section and use the udev interface.
+
+The USB support in the BDM package checks the device name against the devices
+detected by libusb. Linux is an exception where special code is present to
+handle udev created sym-links. The code will partial match the device node
+against the libusb detected devices. For example if the libusb device node
+found on Windows is 'bus-0-\\.\libusb0-0002-0x0425-0x1001' then you could use
+'0002-0x0425-0x1001' to use the device.
+
+If you are a CPU32 user and would like to look at supporting the CPU32
+processor with this pod please contact the BDM mailing list.
+
+Linux
+-----
+
+The USB pod is simple to support on Linux. Just plug it and check the kernel
+messages:
+
+  $ dmesg | tail
+  usb 1-1.2: new low speed USB device using ehci_hcd and address 12
+  usb 1-1.2: config 1 interface 0 altsetting 0 endpoint 0x82 is Bulk; ...
+  usb 1-1.2: config 1 interface 0 altsetting 0 endpoint 0x2 is Bulk; ...
+  usb 1-1.2: configuration #1 chosen from 1 choice
+  usb 1-1.2: New USB device found, idVendor=0425, idProduct=1001
+  usb 1-1.2: New USB device strings: Mfr=1, Product=2, SerialNumber=2
+  usb 1-1.2: Product: Turbo BDM Light ColdFire v0.4
+  usb 1-1.2: Manufacturer: Freescale
+  usb 1-1.2: SerialNumber: Turbo BDM Light ColdFire v0.4
+
+You can see the pod has connected with address 12. Run the 'tblcf-show' command
+to list the names of the pods as seen by libusb. If you disconnect the pod or
+power cycle the pod or system the address of the pod can change. For example a
+disconnect then reconnect moves the address onto the next number on my
+system. This make it difficult to create scripts that take care of this.
+
+The solution is to use udev. This is a user land system present on current
+Linux systems that responds to and manages hot plug kernel events. The
+Wikipedia page on udev (http://en.wikipedia.org/wiki/Udev) provide a nice
+overview of udev.
+
+Create a udev rule for the TBLCF pod to create a node in the 'dev'
+directory. You can customise the node name used to suite your specific
+needs. For me I have a single pod on my local Fedora Core 8 workstation and so
+a basic setup is all that is needed:
+
+  # cat /etc/udev/rules.d/91-tlbcf.rules
+  SUBSYSTEM=="usb" ATTR{manufacturer}=="Freescale" \
+  ATTR{idVendor}=="0425" ATTR{idProduct}=="1001" SYMLINK+="tblcf%n"
+
+    Note: there is a single line in the actual file.
+
+When I plug in my pod udev creates '/dev/tblcf3'. This is:
+
+  # ls -las /dev/tblcf3
+  0 lrwxrwxrwx 1 root root 15 2008-03-06 14:59 /dev/tblcf3 -> bus/usb/001/012
+
+The USB support for Linux in the BDM package checks if the device node is a
+sym-link. If it is the link path is read and checked to see if the prefix is
+'bus/usb'. If it is the device is assumed to be a USB device and the trailing
+part of the path is the device name returned by libusb. The USB driver will
+attempt to open the device. This may fail if the user does not have
+permission. In this case the bdmd server on the local host is used. This is
+similar to the I/O Permission support.
+
+With udev you can create device nodes with any name that suites. You can also
+add more attribute checks to create a specific node. This allows for the
+creation of nodes that match the function the pod is performing. In my example
+above the number in the dev file is based on the USB port on the work station.
+
+The udev configuration required varys for different types of Linux. Please let
+me know of a configuration for your version of Linux and I will add it to the
+list.
+
+Windows
+-------
+
+Plugging the pod into a Windows machine brings up the standard Hardware found
+installer dialog box. I have only done this when an Administrator and I suspect
+you will need to be an Administrator because driver files are installed into
+the Windows directory.
+
+You need to have the LibUsb-Win32 package unpacked some where on your
+machine. Typically you will have done this to build the BDM software and the
+package links the libusb library. The BDM package has a axbdm.inf file and you
+navigate the Hardware installer to say you have a disk then browse to select
+the axbdm.inf file. The installer will then start to install the drivers and if
+it cannot find the files it needs it will ask for them. This time navigate to
+the location of the LibUsb-Win32 files and select the ones asked for by the
+dialog box.
+
+I created the axbdm.inf file for the AxBDM pod from Axiom I have. The
+LibUsb-Win32 package contains a program called inf-installer.exe. To use this
+program with the pod connected to the computer, run the program then select the
+pod and fill in the fields.
+
+Once finished you can run the testlibusb-win.exe and it will show the TBLCF pod
+in the list of devices.
+
+Run the tblcf-show program to get a list of detected pods. The returned name is
+not pretty but it seems to be unique to pod in a specific USB port. You need to
+use this name when using the BDM software:
+
+  > chk-bdm bus-0-\\.\libusb0-0002-0x0425-0x1001
+
+It is not a nice name but this is what libusb returns. You can take this name
+and place in a .m68kbdminit file to make more user friendly:
+
+ dev  bus-0-\\.\libusb0-0002-0x0425-0x1001 usb1
+
+On Windows you may need to add a HOME environment variable. You can do this
+using the Control Panel's System entry. Open the System entry, select the
+Advanced tab, then the Environment Variables button and add to "User Variables"
+a "HOME" entry thats points to your home directory. On Windows this is
+typically your "My Documents" directory. Once set you can create a .m68kbdminit
+file in that directory and the M68K BDM tools will read that file when opening
+a BDM device.
+
+When using GDB you need to escape the '\' character. The above device name in
+gdb and gdb scripts becomes:
+
+   bus-0-\\\\.\\libusb0-0002-0x0425-0x1001
+
+I/O PERM SUPPORT
+================
+
+The I/O Permission support is based around the 'ioperm' system call on Linux
+and the "/dev/io" I/O port access on FreeBSD. The calls allows a root executed
+program direct access to the I/O ports of a PC. Unix programs such as X windows
+use this call to gain control of the video card I/O ports without the need for
+a driver. The term "ioperm" refers to the ioperm call on Linux and the
+"/dev/io" interface on FreeBSD.
+
+The support for the ioperm call has been added to the BDM package because it:
+
+  1. Allows a user to build a BDM application without installing kernel 
+     sources.
+
+  2. The BDM driver is included in the user land application rather than
+     the kernel. A kernel upgrade or change does not require the building
+     of the BDM driver.
+
+  3. Binary programs can be created and distributed removing the need for
+     users to build a driver to use them.
+
+  4. Stops the kernel jitter seen when downloading.
+
+The library that BDM applications link to by default now contains the ioperm
+call as well as the BDM driver code. If you link the default library to GDB it
+will contain the ioperm call. Having an application such as GDB make an ioperm
+call will fail unless GDB is executing as root. The ioperm call requires the
+program making the call be executing as root and executing GDB as root is not
+recommended and is actively discouraged.
+
+The remote protocol that is also built by default into the BDM library provides
+an easy means to have GDB executing as a user and the BDM server executing as
+root. The BDM server being root can make the ioperm call and gain direct
+control of the parallel ports.
+
+To use the ioperm call make sure you install the BDM server. See Step 3 of the
+INSTALLATION procedure above.
+
+The ioperm support performs the following when opening the BDM port:
+
+  1. Issue the ioperm call. If it passes the direct I/O accessing of the
+     parallel port is performed.
+
+  2. If the ioperm call fails, the kernel driver open is attempted. If
+     is succeeds the kernel driver is used.
+
+  3. If the driver call fails an attempt to connect to a local BDM
+     server is performed. Therefore if ioperm and driver opens fail the
+     following check command:
+
+       $ ./chk /dev/bdmcf0
+
+     is transformed into the equivalent command line command of:
+
+       $ ./chk localhost:/dev/bdmcf0
+
+     where we are attempting to open LPT1 for a Coldfire target. The
+     device entry at the end should be changed to suite your specific
+     parallel port and processor.
+
+A side effect of the current I/O perm implementation is the simulation of
+device nodes under the '/dev' tree. This design is copied from the Windows
+version of the BDM package. The Windows build is a kind of I/O perm driver
+where the GiveIO driver provides the Windows application direct access to the
+parallel port rather than the ioperm system call. The simulation of BDM device
+nodes under the '/dev' directory is used to keep the documentation consisent,
+and to allow GDB scripts or BDM programs a common way to operate on different
+platforms. The simulation means you will not find device nodes under a '/dev'
+tree. This can be confusing for experienced Unix users accustomed to finding
+device nodes in the '/dev' directory.
+
+The I/O perm interface has about the same performance as the kernel
+module. This is based on limited testing. The kernel module should be a little
+faster for most block read/write operations. This is mostly due to the kernel
+being blocked while the bit bashing occurs. If you perform a large number of
+small BDM requests the performance will about the same for the ioperm direct
+accesses and the kernel driver.
+
+The Library
+===========
+
+The library provides a higher level interface to the driver without requiring
+you to make low level Linux driver calls.
+
+The library interface consists of two parts:
+
+  1) The driver interface, and
+  2) The remote protocol.
+
+The driver interface make Unix driver calls via the open, close, read, write
+and ioctl system calls.
+
+The library also contains the remote protocol that talks to the BDM
+server. This protocol is not the GDB remote protocol. It operates at a much
+lower level than the GDB remote protocol and is designed to support a server
+operating from xinetd or inetd. It also allows flash programming tools built
+with the BDM library to work remotely.
+
+The library does not contain the download support anymore. The need to contain
+a specific BFD header file is broken. The GDB patch contains the code to
+perform a download to target.
+
+Windows 9x,NT,2000
+==================
+
+The library will build the driver in one pass. There is no driver needed for
+Windows 9x. This should allow GDB to be built. The Cygwin or MinGW packages are
+needed to build the library.
+
+I have tested the package on Windows 98, Windows 2000 and Windows XP using
+MinGW. This is cross-compiled from Linux and also compiled under MinGW on
+Windows XP.
+
+Cygwin should build and work, how-ever at the time of updating this file I
+could get Cygwin installed and working to test.
+
+Setting the minor device number
+===============================
+
+The minor device number (the second number in the mknod command) specifies
+the parallel port to which the BDM interface is connected and the type of
+the target CPU. The least signficant two bits of the minor device  
+number specify the parallel port and the remaining bits specify the target  
+CPU type:
+
+  7    6    5    4    3    2    1    0
++----+----+----+----+----+----+----+----+
+|    |    |    |    |    |    |    |    |
++----+----+----+----+----+----+----+----+
+\                            / \       /
+ \                          /   \     /
+  \                        /     \   /
+   ------------+-----------       -+-
+               |                   |
+               |                   |
+               |                   +-- These two bits select the parallel
+               |                       port to which the BDM interface is
+               |                       connected:    00 - LPT1
+               |                                     01 - LPT2
+               |                                     10 - LPT3
+               |
+               +-- These six bits select the target CPU type:
+                   000000 - CPU32+ (PD adaptor)
+                   000001 - Coldfire
+                   000010 - CPU32+ (ICD adaptor)
+
+Examples
+========
+1. Target processor is a Motorola MC68360 (CPU32+) connected to LPT1.
+   Minor device number is 0.
+
+2. Target processor is a Motorola MC68360 (CPU32+) connected to LPT2.
+   Minor device number is 1.
+
+3. Target processor is a Motorola MC5206(e) or MCF5307 (Coldfire) connected 
+   to LPT1. Minor device number is 4.
+
+ACKNOWLEDGEMENTS
+================
+
+Thanks very much to Motorola for making the parallel port BDM
+interface circuit freely available and to M. Schraut and G. Magin
+for providing the Linux driver and gdb modifications that got this
+all started.
+
+For the Coldfire additions I would like thank Eric for the clean
+driver frame work, and David L Jenkins
+(David.l.jenkins@btinternet.com) for the orginal post to the Coldfire
+mailing list (ColdFire@WildRice.com) with the pin out and functions
+for the P&E interface. It is what started me doing this and a really
+great help. David Fiddes must be thanked for the testing and 5307
+reset bug.  I would also like to thank Dave Morgan of Plessey Asia
+Pacific for the use of some test equipment which helped.
+
+Thanks to David McCullough (davidm@stallion.oz.au) for the SCO
+support.
+
+ICD fixes from Alexander Aganichev <AAganichev@hypercom.com>.
+
+ICD performace fixed from Keith Outwater <vac4050@cae597.rsc.raytheon.com>.
+
+NT and GiveIO support to Rick Haubenstricker <rickh@perceptron.com>.
+
+Thanks to Sue Cozart and Joe Circello for answering question about
+the Coldfire's BDM hardware.
+
+Additional thanks to Freescale for their continued support.
+
+Thanks to Axiom Manufacturing for their support in adding the TBLCF support.
+
+WHERE TO GET HELP
+=================
+
+If you've got any questions about any of this, please contact the BDM project
+mailing list on the SourceForge web site:
+
+  http://sourceforge.net/projects/bdm/
+
+We like to hear any success stories, as well as suggestions for improvements.

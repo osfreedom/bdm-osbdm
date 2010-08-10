@@ -1,0 +1,33 @@
+2008-08-04 Chris Johns <cjohns@users.sourceforge.net>
+
+Plug-in Multilib Map
+=========================
+
+This table provides the mapping table for the plugins for the processors in the
+Coldfire family. This mapping is based on the instruction set supported by each
+processor. A reduction could be made is the FPU was not included. It currently
+is.
+
+processor in
+
+5206:
+   5202, 5204, 5206, 5249, 5250, 5230, 5272
+
+5206e:
+   5206e, 5207, 5208, 5210a, 5211a, 5211, 5212, 5213, 5214, 5216, 52221,
+   52223, 52230, 52231, 52231, 52232, 52233, 52234, 52235, 5224, 5225, 5232,
+   5233, 5234, 5235, 523x, 5270, 5271, 5274, 5274, 5275, 5280, 5281, 5282,
+   528x
+
+5307:
+   5307, 5327, 5328, 5329, 532x, 5372, 5373, 537x
+
+5407:
+   5407
+
+54455:
+   54450, 54451, 54452, 54453, 54454, 54455
+
+5475:
+   5470, 5471, 5472, 5473, 5474, 5475, 547x, 5480, 5481, 5482, 5483, 5484,
+   5485, 548x

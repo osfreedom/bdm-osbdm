@@ -1,0 +1,113 @@
+
+README
+=========================
+
+2003-12-28 Josef Wolf (jw@raven.inka.de)
+2008-06-27 Matthew Riek (matthew.riek@ibiscomputer.com.au)
+
+Flashlib is invoked using bdmctrl.  See the *.test script files in
+bdm/m68k/utils as examples on how to bootstrap a board and invoke flashlib
+for flashing.  See also bdm/m68k/utils/README.bdmctrl
+
+Overview
+=========================
+
+Following is a rough overview of the flashlib architecture:
+
+filter: 
+
+	The filter is the main interface to the application. The application
+	don't really need to know about the flash driver details. Filter's
+	write_memory() function is the flashing aequivalent of the memcpy()
+	function.  write_memory can write to flash or ram, depending on 
+        the memory region of the write.
+
+driver: 
+
+	A driver is the implementation of a specific flashing algorithm.
+        examples are flash29, flashcfm and flashintelc3.  If the algorithm
+        or chip definition for your flash is not supported, you will need
+        to either add a chip to the chip tables (flash29 and flashintelc3)
+        or you will have to write a new driver.
+
+chip description: 
+
+	The chip description describes details of a flash chip. What
+	information needs to be stored in the description is up to
+	the driver. Most drivers will probably want to store at	least 
+	chip-type and bus-interface.  Some flash drivers (such as flashcfm)
+	don't need a chip description table.  Instead, you can configure
+	the required bits such as flash register offsets using flash_set_var.
+
+flash region: 
+
+	A flash region describes specific flash chips (depending on the
+	bus interface). The most important information herein is the
+	base-address, the length, the driver and the chip description.
+
+plugin: 
+
+	A driver that can be downloaded and executed on the target.  
+
+	Note that you don't _need_ plugins.  You can use host only mode,
+	which is very slow, plugins just make flashing much much faster.
+
+	A plugin is simply compiling just the driver '.c' file for your 
+	target.  For example, If you have a 29 series flash chip on your
+	board, you would compile flash29.c using your cross compiler
+	toolchain.  Only a few header files are needed (the associated
+	header file flash29.h, flash_filter.h and stdint.h.  note that
+	when you compile the drivers as a plugin, you must define 
+	HOST_FLASHING as 0. (-DHOST_FLASHING=0 for gcc).  You need to
+	compile with -mpcrel such that the code is relocatable.  I have
+	compiled all current drivers successfully using a m68k-elf gnu
+	toolchain (version 4.3.0), and with the m68k-rtems4.9 toolchain.
+
+	m68k-elf-gcc -DHOST_FLASHING=0 -O2 -Wall -fomit-frame-pointer \ 
+	  -mpcrel -m<CPU> -Wcast-align -Wstrict-prototypes \
+	  -Wmissing-prototypes -c -o <driver>.plugin <driver>.c
+
+	where <driver> is one of flashcfm, flash29 or flashintelc3.
+	and <CPU> is your 68k arch, such as 5200, 5307, 528x etc.
+
+	There is a script provided which compiles the plugins which
+	takes 2 args, your compiler and your target.  eg:
+	>./compile_plugins m68k-elf-gcc 5200
+        or
+	>./compile_plugins m68k-rtems4.9-gcc 5200
+
+	you will need to copy the plugins to the working folder you
+	invoke the bdmctrl scripts from.
+
+host-only mode: 
+
+	All operations are piped through the BDM interface. This is
+	extremely slow but very useful for bootstrapping/debugging. 
+	Spend the time to compile plugins for your target
+
+host-assisted mode: 
+
+	Host downloads plugin. The actual flashing operation is executed
+	by the plugin. This is the preferred operation mode for flashing
+	under host-control.
+
+target-only mode: 
+
+	This mode is for operation without a host. compile filter and 
+	drivers for the target with HOST_FLASHING = 0. This could be used
+	for boot loaders etc.  This option has not been completed, there
+	are a few FIXME's noted in the flash_filter.c where bit's for
+	target-only mode remain unimplemented.  uses of malloc, free,
+	strdup may need to be provided with hooks in this mode.
+
+How to write a new driver
+=========================
+
+Best is to start with a copy of flash29.[ch]. You should rename the
+init_flash29() function and add the new function to the algorithm[] array
+in flash_filter.c. Next is to give a new value to the driver_magic string.
+This name should be unique because it is used to identify the driver
+that belongs to a loaded plugin. Change the download_struct() function to 
+download the chip description structure of the new driver properly to the
+target. Make sure byte orderings and alignment is not messed up while
+downloading.

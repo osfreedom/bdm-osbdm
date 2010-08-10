@@ -1,0 +1,117 @@
+
+OPL2PLA - OPAL design entry compiler V008
+Copyright (c) National Semiconductor Corporation 1991
+Input Pins
+==========
+Pin name         pin number     arch     visible   default
+--------         ----------     ----     -------   -------
+DSI                  2          com      visible              
+DSCLK                3          com      visible              
+BREAK                4          com      visible              
+RESET                5          com      visible              
+OE                   6          com      visible              
+M_FREEZE             7          com      visible              
+M_DSO                8          com      visible              
+SW                   9          com      visible              
+BERR                 11         com      visible              
+
+Output Pins
+===========
+Pin name         pin number     arch     visible   default
+--------         ----------     ----     -------   -------
+M_BERR               19         com      visible      rst     
+M_DSCLK              18         com      visible      rst     
+DSO                  16         com      visible      rst     
+FREEZE               14         com      visible      rst     
+MAGIC                12         com      visible      rst     
+
+Feedback Pins
+=============
+Pin name         pin number     arch     visible   default
+--------         ----------     ----     -------   -------
+M_DSI                17         com      visible      rst     
+M_RESET              15         com      visible      rst     
+FF_BREAK             13         com      visible      rst     
+
+Dot extensions
+==============
+Pin name         pin number     arch     visible   default
+--------         ----------     ----     -------   -------
+M_DSI.oe                        com      visible      rst     
+M_RESET.oe                      com      visible      rst     
+M_BERR.oe                       com      visible      rst     
+
+
+EQN2JED - Boolean Equations to JEDEC file assembler (Version V024)
+Copyright (c) National Semiconductor Corporation 1990,1991
+
+Document file for ICD.eqn
+Device: 16V8
+
+$LABELS 20 nc DSI DSCLK BREAK RESET OE M_FREEZE M_DSO SW GND BERR MAGIC FF_BREAK
+ FREEZE M_RESET DSO M_DSI M_DSCLK M_BERR VCC
+
+
+Pin   Label               Type
+---   -----               ----
+2     DSI                 pos,com input
+3     DSCLK               pos,com input
+4     BREAK               pos,com input
+5     RESET               pos,com input
+6     OE                  pos,com input
+7     M_FREEZE            pos,com input
+8     M_DSO               pos,com input
+9     SW                  unused
+11    BERR                pos,com input
+12    MAGIC               pos,trst,com output
+13    FF_BREAK            pos,trst,com feedback
+14    FREEZE              pos,trst,com output
+15    M_RESET             pos,trst,com feedback
+16    DSO                 pos,trst,com output
+17    M_DSI               pos,trst,com feedback
+18    M_DSCLK             pos,trst,com output
+19    M_BERR              pos,trst,com output
+
+EQN2JED - Boolean Equations to JEDEC file assembler (Version V024)
+Copyright (c) National Semiconductor Corporation 1990,1991
+
+Device Utilization:
+
+No of dedicated inputs used               :  8/10 (80.0%)
+No of dedicated outputs used              :  2/2  (100.0%)
+No of feedbacks used as dedicated outputs :  3/6  (50.0%)
+No of feedbacks used                      :  3/6  (50.0%)
+
+		------------------------------------------
+		Pin   Label                 Terms Usage
+		------------------------------------------
+		19    M_BERR                3/8   (37.5%)
+		18    M_DSCLK               2/8   (25.0%)
+		17    M_DSI                 3/8   (37.5%)
+		16    DSO                   2/8   (25.0%)
+		15    M_RESET               3/8   (37.5%)
+		14    FREEZE                2/8   (25.0%)
+		13    FF_BREAK              4/8   (50.0%)
+		12    MAGIC                 2/8   (25.0%)
+		------------------------------------------
+		Total                      18/64  (28.1%)
+		------------------------------------------
+
+EQN2JED - Boolean Equations to JEDEC file assembler (Version V024)
+Copyright (c) National Semiconductor Corporation 1990,1991
+
+                            Chip diagram (DIP)
+
+                             ._____    _____.
+                             |     \__/     |
+                             |  1        20 | VCC
+                         DSI |  2        19 | M_BERR
+                       DSCLK |  3        18 | M_DSCLK
+                       BREAK |  4        17 | M_DSI
+                       RESET |  5        16 | DSO
+                          OE |  6        15 | M_RESET
+                    M_FREEZE |  7        14 | FREEZE
+                       M_DSO |  8        13 | FF_BREAK
+                          SW |  9        12 | MAGIC
+                         GND | 10        11 | BERR
+                             |______________|

@@ -1,0 +1,16 @@
+2001-02-03  Chris Johns  <ccj@acm.org>
+
+	* bdm.8,
+	  bus_if.h,
+	  .cvsignore,
+	  device_if.h,
+	  freebsd-bdm.c,
+	  isa_if.h,
+	  Makefile,
+	  setdef0.c,
+	  setdef1.c,
+	  setdefs.h,
+	  unbdm,
+	  README:
+	New file.
+

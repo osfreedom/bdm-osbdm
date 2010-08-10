@@ -1,0 +1,79 @@
+diff -urN insight-5.3.orig/gdb/gdbtk/library/targetselection.itb insight-5.3/gdb/gdbtk/library/targetselection.itb
+--- insight-5.3.orig/gdb/gdbtk/library/targetselection.itb	2002-02-12 21:05:14.000000000 +0100
++++ insight-5.3/gdb/gdbtk/library/targetselection.itb	2003-06-14 00:48:01.000000000 +0200
+@@ -104,6 +104,20 @@
+   set gdb_target(remotetcp,runlist) {1 1 0 1}
+   set gdb_target(remotetcp,after_attaching) {}
+ 
++  # BDM
++  set gdb_target(bdm,pretty-name) "BDM/Direct"
++  set gdb_target(bdm,defbaud) "DIRECT"
++  set gdb_target(bdm,baud-rates) {}
++  set gdb_target(bdm,cmd) "bdm /dev/bdmcf0"
++  set gdb_target(bdm,runlist) {1 1 0 1}
++  set gdb_target(bdm,after_attaching) { setup-and-load }
++  set gdb_target(bdmtcp,pretty-name) "BDM/TCP"
++  set gdb_target(bdmtcp,defbaud) "TCP"
++  set gdb_target(bdmtcp,baud-rates) {}
++  set gdb_target(bdmtcp,cmd) "BDM tcpX"
++  set gdb_target(bdmtcp,runlist) {1 1 0 1}
++  set gdb_target(bdmtcp,after_attaching) { setup-and-load }
++
+   # ARM Angel
+   set gdb_target(rdi,pretty-name) "ARM Angel/Serial"
+   set gdb_target(rdi,defbaud) "9600"
+@@ -681,7 +695,20 @@
+   pref define gdb/load/$t-verbose [pref get gdb/load/verbose]
+   $f.fr.verb config -variable [pref varname gdb/load/$t-verbose]
+   # Map the correct entries and comboboxes onto the screen
+-  if {$gdb_target($t,defbaud) == "TCP"} {
++  if {$gdb_target($t,defbaud) == "DIRECT"} {
++    # we have a direct device target
++    # map device
++    if {$mapped1 != "$fr.host"} {
++      grid forget $mapped1
++      set mapped1 $fr.host
++      grid $mapped1 -row 1 -column 1 -sticky w -padx 5 -pady 5
++    }
++    $fr.cbl configure -text "Device:"
++    $fr.host config -textvariable [pref varname gdb/load/$t-device]
++
++    $mapped1 configure -state normal
++#    $mapped2 configure -state normal
++  } elseif {$gdb_target($t,defbaud) == "TCP"} {
+     # we have a tcp target
+     # map host and porte
+     if {$mapped1 != "$fr.host"} {
+@@ -833,7 +860,8 @@
+ body TargetSelection::change_baud {w {baud ""}} {
+   if {$baud != ""} {
+     if {([string compare $baud "TCP"] != 0)
+-        && ([string compare $baud "ETH"] != 0)} {
++        && ([string compare $baud "ETH"] != 0)
++        && ([string compare $baud "DIRECT"] != 0)} {
+       gdb_cmd "set remotebaud $baud"
+       if {[catch {gdb_cmd "show remotebaud"} res]} {
+ 	set newbaud 0
+diff -Nur insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c insight-5.3/gdb/gdbtk/generic/gdbtk-hooks.c
+--- insight-5.3.orig/gdb/gdbtk/generic/gdbtk-hooks.c	2002-07-03 19:38:22.000000000 +0200
++++ insight-5.3/gdb/gdbtk/generic/gdbtk-hooks.c	2003-09-05 14:02:42.000000000 +0200
+@@ -518,6 +518,10 @@
+ gdbtk_call_command (struct cmd_list_element *cmdblk,
+ 		    char *arg, int from_tty)
+ {
++  struct cleanup *old_chain;
++
++  old_chain = make_cleanup (null_cleanup, 0);
++
+   running_now = 0;
+   if (cmdblk->class == class_run || cmdblk->class == class_trace)
+     {
+@@ -532,6 +536,8 @@
+     }
+   else
+     cmd_func (cmdblk, arg, from_tty);
++
++  do_cleanups (old_chain);
+ }
+ 
+ /* Called after a `set' command succeeds.  Runs the Tcl hook

@@ -1,0 +1,1226 @@
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
+	* m68k/test/chk.c: Fix struct name typo.
+
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
+	* m68k/tblcf/Makefile.am: Revert library order for
+	tblcf_unsec.patch.
+
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
+	* m68k/config/bootstrap: Fix automake version detection.
+
+	* m68k/configure.ac, m68k/lib/bdmIO.c: Detect syslog.h from
+	configure.ac.
+	
+	* m68k/test/chk.c: Comment test opcode and check post test regs.
+	
+2010-06-30  Groleo Marius <groleo@gmail.com>
+
+	* m68k/tblcf/Makefile.am: Fix link order.
+	
+2010-06-19  Groleo Marius <groleo@gmail.com>
+
+	* gdbserver/m68k-bdm-low.c: Increase Coldfire number of registers
+	in m68k_bdm_reg_sizes[]. Modified "m68k-bdm: no register found"
+	string to know what kind of search failed.  detect M68K_BDM_VER_D
+	too.
+
+	* gdbserver/m68k-cfv4e-regs.c: Fixed the num field to be
+	sequantial.
+
+	* gdbserver/m68k-cfv4e.xml: Added xtdr and pbasid registers to
+	match bdm/m68k/gdbserver/m68k-cfv4e-regs.c.
+
+2010-04-21  Chris Johns <cjohns@users.sourceforge.net>
+
+	* .cvsignore, bdmabstraction/.cvsignore, config/.cvsignore,
+	driver/freebsd/.cvsignore, driver/linux-2.6/.cvsignore,
+	flashlib/.cvsignore, gdbserver/.cvsignore, lib/.cvsignore,
+	packages/.cvsignore, server/.cvsignore, tblcf/.cvsignore,
+	test/.cvsignore, utils/.cvsignore: Renamed to .gitignore
+
+2010-04-21  Reid Wightman <krwightm@gmail.com>
+
+	* gdbserver/regcache.c: Fix the reading of registers from the
+	target when registers are not accessible.
+
+2009-05-16  Len Sorensen <lsorense@csclub.uwaterloo.ca>
+
+	* flashlib/flash29.c: Added new flash devices.
+
+2008-09-25  Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Add script documentation. Added extra notes on Windows
+	names and using udev on Linux.
+
+	* utils/bdmreset.c, test/chk.c: Print a decimal verison
+	number. Add TBLCF support.
+
+	* server/bdmServer.c: Correct the help. Minor formatting changes.
+
+	* lib/bdmRemote.c: Correct the name parsing. Allow a device name
+	to not have a '/' to allow USB devices on remote machines to be
+	used.
+
+	* lib/bdmIO.c: Add bdmInfo. Add bdmAppendConfiguration,
+	bdmReadConfiguration, bdmConfigSkipWhiteSpace, bdmConfigGet for
+	scipt support. Change bdmOpen to use 'dev' script entries.
+
+	* lib/BDMlib.h: Add bdmInfo. Add bdmAppendConfiguration,
+	bdmReadConfiguration, bdmConfigSkipWhiteSpace, bdmConfigGet for
+	scipt support.
+
+	* driver/ioperm/ioperm.c: Change fprintf calls to bdmInfo calls to
+	stop the server outputting text to the remote client.
+
+	* driver/bdm-tblcf.c: Add support to partially search a device
+	name against the libusb list of devices for the first match.
+
+2008-09-19  Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Updated to state FreeBSD is supported via "/dev/io".
+
+	* config/bootstrap: Remove pushd/popd and use basic shell
+	variables. FreeBSD's /bin/sh is not bash.
+
+	* driver/ioperm/ioperm.c: Add FreeBSD "/dev/io" support. Tested on
+	an AMD64 host running FreeBSD 7.0.
+
+2008-09-13  Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/win/win-bdm.c: Fixed the timer. It was too long by a
+	factor of 10. Add the TBLCF interface to the port checking so it
+	is skipped when a parallel port is being used.
+
+2008-09-09  Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/win/win-bdm.c: Fix the parallel port detect logic. Not
+	tested as much due to the low number of ports I have on Windows
+	machines.
+
+	* flashlib/Makefile.am, flashlib/flash_filter.c: Search the prefix
+	path for plugins. This removes the needs to have a full path name
+	in a bdmctl script.
+
+	* gdbserver/m68k-bdm-low.c: Print the name of the device being
+	opened. Helped see that gdb escapes the name on Windows USB
+	devices which have a '\' in the USB device name. Users needs to
+	add extra '\'s to the device name.
+	
+2008-08-06  Chris Johns <cjohns@users.sourceforge.net>
+
+	* config/bootstrap: Change the -foreign to --foreign option for
+	automake. 
+
+2008-08-04  Chris Johns <cjohns@users.sourceforge.net>
+
+	* flashlib/PLUGIN-MAPPING: New. Provides a mapping for the plugins
+	to the Coldlfire family.
+
+	* flashlib/Makefile.am: Fix the plugin mappings.
+
+	* flashlib/flashintelc3.c: Remove warning.
+
+	* flashlib/m68k-bdm-compile-plugin: Fix CPU option.
+
+	* utils/bdmctrl.c: Fix compile typo.
+
+2008-07-31  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+
+	* INSTALL: New.
+
+	* config/bootstrap, config/config.guess, config/config.sub,
+	config/depcomp, config/install-sh, config/missing,
+	config/mkinstalldirs: Update by a newer autoconf.
+	
+	* flashlib/flashintelc3.c, flashlib/flashintelc3.h,
+	flashlib/m68k-bdm-compile-plugin: New.
+	
+	* configure.ac, flashlib/Makefile.am: Detect a m68k cross-compiler
+	and if found build the various plugins.
+
+	* flashlib/README, flashlib/elf-utils.c, flashlib/elf-utils.h,
+	flashlib/flash29.c, flashlib/flash29.h, flashlib/flash_filter.c,
+	flashlib/flash_filter.h, flashlib/flashcfm.c, flashlib/flashcfm.h:
+	Changed elf-utils to iterate over program headers to get physical
+	addresses. Added flashlib variable support updated flashcfm to use
+	variables moved clock code from flashcfm into mcf52235.test.
+
+	* flashlib/compile_flashcfm, flashlib/tcompile: Removed.
+
+	* utils/Makefile.am, utils/README.bdmctrl, utils/bdmctrl.c,
+	 utils/m68332.test, utils/mcf52235.test: Updated documentation.
+
+	* utils/mcf5235.test, utils/mcf5329.test: New.
+	
+2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+
+	* packages/.cvsignore, packages/gpl.txt, packages/m68k-bdm.nsi:
+	New.
+
+	* flashlib/elf-utils.h: Add elf_handle_init decl.
+	
+	* utils/Makefile.am: Add warnings flags.
+
+	* bdmabstraction/BDMFlash.h, utils/bdmctrl.c, utils/bdmflash.c:
+	Fix warnings.
+
+2008-06-16  Chris Johns <cjohns@users.sourceforge.net>
+
+	* utils/bdmctrl.c: Clean up the load verbose messages.
+
+2008-06-16  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+
+	* gdbserver/m68k-bdm-low.c: Add a bdm-sleep command to create
+	scripts that can wait for various hardware action to complete.
+
+2008-06-08  Chris Johns <cjohns@users.sourceforge.net>
+
+	* libelf/COPYING.LIB, libelf/ChangeLog, libelf/INSTALL,
+	libelf/MANIFEST, libelf/Makefile.in, libelf/README,
+	libelf/VERSION, libelf/acconfig.h, libelf/aclocal.m4,
+	libelf/config.guess, libelf/config.h.in, libelf/config.sub,
+	libelf/configure, libelf/configure.in, libelf/install-sh,
+	libelf/libelf.pc.in, libelf/mkinstalldirs, libelf/stamp-h.in,
+	libelf/lib/32.fsize.c, libelf/lib/32.getehdr.c,
+	libelf/lib/32.getphdr.c, libelf/lib/32.getshdr.c,
+	libelf/lib/32.newehdr.c, libelf/lib/32.newphdr.c,
+	libelf/lib/32.xlatetof.c, libelf/lib/64.xlatetof.c,
+	libelf/lib/Makefile.in, libelf/lib/Makefile.w32,
+	libelf/lib/assert.c, libelf/lib/begin.c, libelf/lib/build.bat,
+	libelf/lib/byteswap.h, libelf/lib/checksum.c, libelf/lib/cntl.c,
+	libelf/lib/config.h.w32, libelf/lib/cook.c, libelf/lib/data.c,
+	libelf/lib/elf_repl.h, libelf/lib/end.c, libelf/lib/errmsg.c,
+	libelf/lib/errno.c, libelf/lib/errors.h, libelf/lib/ext_types.h,
+	libelf/lib/fill.c, libelf/lib/flag.c, libelf/lib/gelf.h,
+	libelf/lib/gelfehdr.c, libelf/lib/gelfphdr.c,
+	libelf/lib/gelfshdr.c, libelf/lib/gelftrans.c,
+	libelf/lib/getarhdr.c, libelf/lib/getarsym.c,
+	libelf/lib/getbase.c, libelf/lib/getdata.c, libelf/lib/getident.c,
+	libelf/lib/getscn.c, libelf/lib/hash.c, libelf/lib/input.c,
+	libelf/lib/kind.c, libelf/lib/libelf.def, libelf/lib/libelf.h,
+	libelf/lib/memset.c, libelf/lib/ndxscn.c, libelf/lib/newdata.c,
+	libelf/lib/newscn.c, libelf/lib/next.c, libelf/lib/nextscn.c,
+	libelf/lib/nlist.c, libelf/lib/nlist.h, libelf/lib/opt.delscn.c,
+	libelf/lib/private.h, libelf/lib/rand.c, libelf/lib/rawdata.c,
+	libelf/lib/rawfile.c, libelf/lib/strptr.c, libelf/lib/swap64.c,
+	libelf/lib/sys_elf.h.in, libelf/lib/sys_elf.h.w32,
+	libelf/lib/update.c, libelf/lib/verdef.h,
+	libelf/lib/verdef_32_tof.c, libelf/lib/verdef_32_tom.c,
+	libelf/lib/verdef_64_tof.c, libelf/lib/verdef_64_tom.c,
+	libelf/lib/verneed.h, libelf/lib/version.c, libelf/lib/x.elfext.c,
+	libelf/lib/x.movscn.c, libelf/lib/x.remscn.c,
+	libelf/po/Makefile.in, libelf/po/de.gmo, libelf/po/de.msg,
+	libelf/po/de.po, libelf/po/gmo2msg.c, libelf/po/libelf.pot,
+	libelf/po/stamp-po: Merge libelf into the BDM package.
+	
+	* configure.ac, utils/Makefile.am, utils/bdmctrl.c,
+	flashlib/Makefile.am, flashlib/bdmfilt.c, flashlib/bdmfilt.h,
+	flashlib/bdmflash.c, flashlib/bdmflash.h, flashlib/flash29.c,
+	flashlib/flash_filter.c, flashlib/flash_filter.h: Remove all BFD
+	references and change to ELF file support.
+	
+	* flashlib/elf-utils.c, flashlib/elf-utils.h: New.
+
+	* driver/bdm.h, driver/bdm-tblcf.c: Add the TBLCF interface
+	number.
+
+	* bdmabstraction/BDMTargetAddress.c: Add a long write call.
+
+	* gdbserver/Makefile.am: Fix the XML to C regen rule.
+	
+2008-06-08  Matthew Riek <matthew.riek@ibiscomputer.com.au>
+	
+	* flashlib/flashcfm.c, flashlib/flashcfm.h,
+	flashlib/compile_flashcfm, utils/mcf52235.test.
+
+2008-05-27  Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c: The cbuf for register supply and
+	collect needs to be unsigned. The collect_register cbuf argument
+	was wrong.
+
+	* gdbserver/regcache.c: Fix the registers_from_string and
+	registers_to_string to handle the data from GDB correctly.
+
+2008-05-27  Matt Riek <matthew.riek@ibiscomputer.com.au>
+
+	* driver/bdm-tblcf.c: Terminate the link returned from
+	readlink with a nul character.
+
+2008-05-26  Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-cf5200-regs.c, gdbserver/m68k-cf52223-regs.c,
+	gdbserver/m68k-cf52223.xml, gdbserver/m68k-cf5235-regs.c,
+	gdbserver/m68k-cf5272-regs.c, gdbserver/m68k-cf5282-regs.c,
+	gdbserver/m68k-cf5307-regs.c, gdbserver/m68k-cfv4e-regs.c,
+	gdbserver/m68k-core-regs.c, gdbserver/m68k-cpu32-regs.c,
+	gdbserver/m68k-cpu32plus-regs.c: New. Moved the registers into
+	separate files. Support for the cf52223 (Debug B+) added.
+
+	* driver/bdm-cf-pe.c: The 4ve is a Version C debug module.
+
+	* gdbserver/m68k-cfv4e.xml: Fixed the register map. Matches the
+	V4E better.
+
+	* gdbserver/regcache.c, gdbserver/regdef.h: Add registers flags to
+	control the types of registers that we need to support.
+
+	* gdbserver/Makefile.am: Added new files.
+
+	* gdbserver/m68k-bdm-low.c: Added support for the
+	cf52223. Added support for the register flags. Reworked the
+	hardware breakpoint and hardware watchpoint to support more than
+	one breakpoint.
+
+2008-05-15 Mark Giacobbe <mcgiacobbe@gmail.com>
+
+	* gdbserver/m68k-cf5307.xml: New.
+
+	* gdbserver/Makefile.am: Add m68k-cf5307.xml.
+
+	* gdbserver/m68k-bdm-low.c: Add 5307 support.
+
+2008-05-15 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Fix the TBLCF documentation.
+
+2008-03-18 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Add the TBLCF documentation.
+
+	* configure.ac: Add support to build the package on Darwin
+	(MacOS).
+
+	* driver/bdm-tblcf.c: Move the usb_bdm_init function into a common
+	spot rather than have 2 copies. Add failure recovery incase it can
+	be made to work. Add symlink support for Linux's udev.
+
+	* driver/ioperm/ioperm.c: Remove usb_bdm_init. Change the way the
+	name is handle to allow for the udev symlink support.
+
+	* driver/win/win-bdm.c: Make the Windows TBLCF name just what
+	libusb returns.
+	
+2008-03-06 Chris Johns <cjohns@users.sourceforge.net>
+
+	* driver/bdm.c: Move the CPU32 and CF specific parts into separate
+	files and add TBLCF. Make all call happen via handlers. Move the
+	common bit bashing routines into common functions for use by the
+	CPU32 and CF driver parts. Add the swap code taken from the
+	library code.
+
+	* driver/bdm.h: Change BDMioctl fields to unsigned long int.
+
+	* driver/bdm-cf-pe.c: Moved from bdm.c. Fixed the system reg read
+	and write routines to detect a non-mapped register.
+
+	* driver/bdm-cpu32: Moved from bdm.c. Fixed the system reg read
+	and write routines to detect a non-mapped register.
+
+	* driver/bdm-tblcf.c: New.
+
+	* driver/ioperm/ioperm.c, driver/win/win-bdm.c: Add USB support.
+
+	* lib/bdmIO.c: Remove swap code. Moved to the driver as TBLCF
+	handles the swap. This is the simplest way to untangle this.
+	
+	* gdbserver/Makefile.am, lib/Makefile.am, server/Makefile.am,
+	test/Makefile.am, utils/Makefile.am: Add TBLCF and libusb support.
+
+	* tblcf/.cvsignore, tblcf/Makefile.am, tblcf/commands.h,
+	tblcf/log.c, tblcf/log.h, tblcf/log_cmdline.c,
+	tblcf/log_cmdline.h, tblcf/srec.c, tblcf/srec.h,
+	tblcf/tblcf-show.c, tblcf/tblcf.c, tblcf/tblcf.h,
+	tblcf/tblcf_bt.c, tblcf/tblcf_bt.h, tblcf/tblcf_hwdesc.h,
+	tblcf/tblcf_unsec.c, tblcf/tblcf_usb.c, tblcf/tblcf_usb.h,
+	tblcf/version.h: New. Taken from the TBLCF project.
+
+	* configure.ac, Makefile.am: Add TBLCF and libusb support.
+	
+2008-02-14 Federico Ulivi <fulivi@lycos.com>
+
+	* gdbserver/m68k-bdm-low.c: Patch to fix the register list for
+	cfv4e core. BDM now works for me with gdb 6.7.1 (targeted to m68k
+	architecture, of course).
+
+2008-01-10 Chris Johns <cjohns@users.sourceforge.net>
+
+	* lib/bdmIO.c: Update byte swap test to work on x64 host
+	machines.
+
+2008-01-06 tom <tmassimi@gmail.com>
+
+	* driver/linux-2.6/bdm.c: It seems that linux kernel 2.6.19
+	eliminates include/linux/config.h, include/linux/autoconf.h should
+	now be used.
+	
+2007-12-10 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README: Add documentation about the README files.
+	
+2007-12-10 Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_insert_breakpoint,
+	m68k_bdm_remove_breakpoint, m68k_bdm_insert_watchpoint,
+	m68k_bdm_remove_watchpoint, m68k_bdm_insert_point,
+	m68k_bdm_remove_point): Add extra info to the debug data to aid
+	debugging watchpoints.
+
+2007-12-07 Mick Davis <mickd@goanna.iinet.net.au>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_parse_reg_value): Fix the
+	parsing of arguments from the bdm-ctl-set command.
+	(m68k_bdm_cmd_help): Add bdm-reset help.
+	(m68k_bdm_commands): Add bdm-reset.
+
+	* gdbserver/remote-utils.c, gdbserver/server.c,
+	gdbserver/server.h: Fix any remote protocol message which includes
+	a binary data part, such as when a value is written into target
+	memory.  Previously, the top bit of any byte received was cleared
+	by a readchar function which enforced ASCII encoding.  This fix
+	has been applied to gdb cvs, from where the code originated.  I've
+	also included a buffer overflow check for the received message.
+	
+2007-11-15 Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/m68k-bdm-low.c (m68k_bdm_create_inferior): Set
+	warning_prefix to show the errors in the debugger better when in
+	pipe mode.
+
+	* gdbserver/server.h (warning_prefix): New.
+
+	* gdbserver/remote-utils.c (socket_read, socket_write): Change the
+	read and write macros on Windows to have a specific read and write
+	to the real read and write on Windows is not hidden. This allows
+	the pipe mode to get at stdout.
+	(remote_open): On Windows set stdin and stdout to binary mode.
+	(remote_close): Only close if not piping.
+	(remote_write): Use write when piping and socket_write if using
+	TCP.
+	(remote_read): New.
+	(putpkt_binary): Provide a better error message. Use remote_read
+	rather than read. Remove the 'gdbserver' and let the warning
+	prefix be used.
+	(input_interrupt): Add the Windows warning to the comment.
+	(readchar): Use remote_read. Remove the 'gdbserver' and let the
+	warning prefix be used.
+
+2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
+
+	* gdbserver/server.c (main): Allow software breakpoints to the
+	backend.
+
+	* gdbserver/m68k-bdm-low.c (M68K_BDM_BREAKPOINT_SIZE_MAX,
+	M68K_BDM_WP_TYPE_BREAK, struct m68k_bdm_break,
+	M68K_BDM_BREAKPOINT_BLOCK_SIZE, m68k_bdm_breakpoints,
+	m68k_bdm_num_breakpoints, m68k_bdm_grow_breakpoints): New.
+	(m68k_bdm_insert_breakpoint, m68k_bdm_remove_breakpoint): Add
+	software breakpoint support.
+	(m68k_bdm_insert_point, m68k_bdm_remove_point): Renamed from
+	m68k_bdm_insert_hardware_point and m68k_bdm_remove_hardware_point.
+	
+2007-11-13 Chris Johns <cjohns@users.sourceforge.net>
+
+	* m68k/gdbserver/m68k-bdm-low.c (m68k_bdm_fetch_registers): Check
+	the result code for the first of the double long transfers and
+	only proceed with the next one if the first is ok.
+	(m68k_bdm_store_registers): Reverse the byte order for the host to
+	the correct order for the target. Also handle the 64bit register
+	transfers.
+	* gdbserver/remote-utils.c (remote_open): Ignore the various
+	signals we could get when in pipe mode.
+
+	* m68k/lib/BDMlib.h: Add bdmHostByteOrder.
+
+	* m68k/lib/bdmIO.c (bdmHostByteOrder): New.
+	(bdmReadControlRegister, bdmReadDebugRegister,
+	bdmReadSystemRegister, bdmReadRegister, bdmWriteControlRegister,
+	bdmWriteControlRegister, bdmWriteSystemRegister, bdmWriteRegister,
+	bdmReadLongWord, bdmReadWord, bdmReadByte): Print in host byte
+	order.
+
+2007-11-08 Chris Johns <cjohns@users.sourceforge.net>
+
+	* README, README.bdmgdbserver, gdbserver/Makefile.am: Change
+	bdmgdbserver to m68k-bdm-gdbserver as this is a better name when
+	this package is part of another package.
+
+	* gdbserver/remote-utils.c: Formatting fixes.
+
+	* lib/bdmRemote.c: Add prints if WinSock fails or no device is
+	located in the path.
+
+2007-11-06 Chris Johns  <cjohns@users.sourceforge.net>
+
+	* COPYING: The GPL license should be Version 2 not Version 3.
+
+2007-11-03 Chris Johns  <cjohns@users.sourceforge.net>
+
+	* .cvsignore:
+	Add config.h.in. A generated file.
+
+	* config/.cvsignore:
+	Add ylwrap. A generated file.
+	
+	* README:
+	Updated with the GDB server status and remove the patching GDB
+	steps.
+	
+	* README.bdmgdbserver:
+	Added some documentation.
+
+	* gdbserver/Makefile.am, gdbserver/remote-utils.c,
+	gdbserver/server.c:
+	Remove the CR in the Makefile.am. Clean up some standard GDB
+	server code so aid getting this code back into GDB.
+
+2007-11-03 Chris Johns <cjohns@users.sourceforge.net>
+
+	* configure.ac:
+	Move to version 1.4.0 of the package.
+	Add header file checks for the gdbserver.
+	Make all parts dependent on libbfd be built only when the library
+	is detected.
+	Add support for the gdbserver.
+
+	* config/bootstrap:
+	Updated to work with the automake version number greater than 9.
+
+	* driver/bdm.c:
+	Changed the raw paramater in the read_sysref/write_sysreg with a
+	mode that allows mapped, control, and debug register access.
+	Added the debug register ioctl support.
+
+	* driver/ioperm/ioperm, driver/win/win-bdm.c:
+	Direct all output to stderr.
+
+	* gdbserver/.cvsignore, gdbserver/feature_to_c.sh,
+	gdbserver/gdb/signals.h, gdbserver/gdbserver-regs.xsl,
+	gdbserver/gdb-target.dtd, gdbserver/inferiors.c,
+	gdbserver/m68k-bdm-low.c, gdbserver/m68k-cf5200.xml,
+	gdbserver/m68k-cf5235.xml, gdbserver/m68k-cf5272.xml,
+	gdbserver/m68k-cf5282.xml, gdbserver/m68k-cfv4e.xml,
+	gdbserver/m68k-core.xml, gdbserver/m68k-fpu.xml,
+	gdbserver/Makefile.am, gdbserver/mem-break.c,
+	gdbserver/mem-break.h, gdbserver/move-if-change,
+	gdbserver/number-regs.xsl, gdbserver/regcache.c,
+	gdbserver/regcache.h, gdbserver/regdef.h,
+	gdbserver/remote-utils.c, gdbserver/server.c, gdbserver/server.h,
+	gdbserver/signals.c, gdbserver/sort-regs.xsl, gdbserver/target.c,
+	gdbserver/target.h, gdbserver/terminal.h, gdbserver/utils.c,
+	gdbserver/version.in, gdbserver/xinclude.dtd:	
+	Add a GDB remote protocol server with pipe support.
+
+	* lib/BDMlib.h:
+	Change bdmDebug to bdmPrint.
+	Added debug register support.
+
+	* lib/bdmIO.c:
+	Change bdmDebug to bdmPrint.
+	Flush stderr after each print.
+	Added debug register support.
+	Initialise variables to keep valgrind happy.
+
+	* lib/bdmRemote.c:
+	Change all printf to bdmPrint's.
+
+	* server/xmalloc.c:
+	Change the STDLIB_H check.
+
+	* test/chk.c, test/cpu32-check.c:
+	Use the correct Windows API call.
+	
+2007-11-03  cjohns  <cjohns@users.sourceforge.net>
+
+	* COPYING: Add the GPL license to the package.
+
+2007-01-17  joewolf  <joewolf@users.sourceforge.net>
+
+	* flashlib/README, flashlib/flash29.c: Add some more flash chips.
+
+	* utils/README.bdmctrl: Fix some typos.
+
+2006-11-20  ppisa  <ppisa@users.sourceforge.net>
+
+	* utils/bdmctrl.c:
+	Modification to allow BDMCTRL to be compiled even with latest BFD library.
+
+	New versions of BFD library use bfd_mach_mcf_isa_{a,b}_xxx names
+	for targets instead of bfd_mach_mcf5200 etc.
+
+2006-02-22  codewiz  <codewiz@users.sourceforge.net>
+
+	* utils/Makefile.am:
+	Fix build for Darwin hosts (-static not supported and discouraged by Apple).
+
+2006-02-20  codewiz  <codewiz@users.sourceforge.net>
+
+	* config/bootstrap, README, configure.ac:
+	Autodetect ioperm() and kernel driver availability (for better Darwin support).
+
+2005-10-24  cjohns  <cjohns@users.sourceforge.net>
+
+	* driver/bdm.c:
+	Add support for the v4e core. This includes detecting version D
+	debug hardware, masking interrupts using the SR register when stepping,
+	invalidating the cache on steps and writes etc, issuing the FORCE_TA command
+	on NVC errors, and flush the pipeline when stopping.
+	Default is to use PST signals.
+
+	* driver/bdm.h: New version number.
+	Add the BDM_FAULT_FORCED_TA error code. Debug version D has a FORCED_TA command to aid
+	BDm recovery. Return this error when it happens.
+
+	* lib/bdmIO.c: Removed warnings when built with gcc 4.x.
+	Add the new BDM_FAULT_FORCED_TA error message.
+
+	* server/bdmServer.c: Removed warnings when built with gcc 4.x
+
+	* bdmabstraction/BDMFlash.c, bdmabstraction/BDMTargetAddress.c, bdmabstraction/bdmops.c:
+	Fixed includes for building in Windows with MinGW.
+
+	* test/chk.c, test/cpu32-check.c:
+	Removed warnings when built with gcc 4.x
+
+	* flashlib/bdmfilt.h, flashlib/bdmflash.h:
+	Add types missing on Windows. Builds with MinGW.
+
+	* utils/bdmflash.c, utils/bdmmon.l:
+	Removed warnings when built with gcc 4.x
+
+2005-10-04  codewiz  <codewiz@users.sourceforge.net>
+
+	* bdmabstraction/Flash.c:
+	Add M29F400BB. (Patch by Robert McPherson <robm@actarg.com>)
+
+2005-09-20  codewiz  <codewiz@users.sourceforge.net>
+
+	* driver/bdm.c: Remove duplicate comment.
+
+2005-07-29  codewiz  <codewiz@users.sourceforge.net>
+
+	* flashlib/flash29.c:	
+	Add some new flash chips; Fix bug in programming algorithm (Patch
+	contributed by Andrea Tarani <andrea.tarani@gilbarco.com>)
+
+2005-03-17  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac: Update to latest auto tools.
+
+2004-12-05  codewiz  <codewiz@users.sourceforge.net>
+
+	* utils/bdmctrl.c, flashlib/flash_filter.c:
+	Replace bfd_get_section_size_before_reloc() with bdm_section_size()
+	as the former has been removed from binutils-2.15.94.x.
+	The new macro appears returns the very same value and also exists
+	in binutils 2.14.x, therefore this change should be backwards
+	compatible.
+
+2004-06-25  codewiz  <codewiz@users.sourceforge.net>
+
+	* flashlib/Makefile.am:
+	Add README and tcompile to the distribution archive.
+
+2004-06-06  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac: Upgrade as suggested by autoupdate-2.57.
+
+2004-06-01  codewiz  <codewiz@users.sourceforge.net>
+
+	* Makefile.am:
+	Simpler, more effective way to include dirs in the distribution.
+
+2004-06-01  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/bdmIO.c: debug_syslog: conditional on the host supporting syslog.
+
+	* driver/win/win-bdm.c: PRINTF: removed. Now in bdmIO.c
+
+2004-05-31  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/bdmRemote.c, server/bdmServer.c:
+	Added the PST ioctl to the remote protocol.
+
+	* lib/bdmIO.c: Typo from Bernardo's review.
+
+2004-05-30  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/bdmIO.c, driver/bdm.h: Typo fixes as Josef's review
+
+2004-05-29  codewiz  <codewiz@users.sourceforge.net>
+
+	* Makefile.am:
+	Use dist-hook to distribute local_scripts/, ../gdb/ and ../schematics/.
+
+	* config/bootstrap: Enable all autoconf warnings.
+
+2004-05-16  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/bdmIO.c: Changed fd to bdm_fd to aid debugging.
+	Including syslog is conditional on host platform. Not all platforms support
+	syslog.
+	Add the PST and control register calls.
+	White space clean up.
+
+	* lib/bdmRemote.c:
+	Added the contro/debug/PST ioctls to the translation table.
+	Minor formatting changes.
+
+	* lib/BDMlib.h: Provided a prototype for the bdmDebug print call.
+	Add the control register and PST prototypes.
+
+	* server/bdmServer.c: White space and minor formatting changes.
+	Added the contro/debug/PST ioctl calls to the translation table.
+
+	* driver/bdm.c:
+	Added the control register access to allow a user to get
+	any control register.
+
+	* driver/bdm.h:
+	Added the PST ioctl defines to allow the PST mode to be controlled from
+	user land.
+	Added the control and debug register ioctl defines.
+
+	* driver/ioperm/ioperm.c: Whitespace clean up. Remove tailing spaces.
+	The bdm init code returns different error code if the driver is
+	already open or no hardware is found. This stops the kernel driver
+	or bdmd being tried to also find the hardware does not exist.
+
+	* driver/win/win-bdm.c: The delay time is wrong. The result is the
+	BDM driver does not reset a target correctly.
+
+	* README: Moved the /etc/services change to the common part of server
+	installation to document.
+	Added doco on testing the bdmd is answering.
+
+2004-05-14  codewiz  <codewiz@users.sourceforge.net>
+
+	* Makefile.am:
+	Add local_scripts files (reported by Massimiliano Cialdi).
+
+	* configure.ac: Bump revision
+
+2004-04-27  joewolf  <joewolf@users.sourceforge.net>
+
+	* driver/bdm.c: - m68k/driver/bdm.c:
+	  * Fix segfault caused by uninizialized pointer.
+
+2004-04-25  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac: Bump revision.
+
+	* Makefile.am: Add OpenBSD driver to distribution.
+
+	* driver/ioperm/ioperm.c, driver/linux-2.6/bdm.c:
+	Use LPT4 for PCI parallel port cards.
+
+2004-04-24  codewiz  <codewiz@users.sourceforge.net>
+
+	* driver/ChangeLog, driver/bdm.c:
+	Fix CPU32 with ICD cable.  Contributed by Aaron J. Grier
+
+2004-04-18  codewiz  <codewiz@users.sourceforge.net>
+
+	* driver/openbsd/Makefile, driver/openbsd/README,
+	driver/openbsd/bdm-install.sh, driver/openbsd/openbsd-bdm.c,
+	driver/ChangeLog:
+	Add OpenBSD driver.
+
+2004-04-09  codewiz  <codewiz@users.sourceforge.net>
+
+	* config/bootstrap: Check for correct automake version.
+
+2004-04-06  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- bdm/m68k/utils/README.bdmctrl, bdm/m68k/utils/m68332.test:
+	  * Fix usage information.
+	  * Fix description of bdmbtrl's non-option parameters.
+
+2004-03-30  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac:
+	Add backward-compatibility workaround for automake 1.4; Bump revision for new release.
+
+	* Makefile.am: Fix embarassing omission in the distribution archives.
+
+2004-03-28  codewiz  <codewiz@users.sourceforge.net>
+
+	* utils/Makefile.am:
+	Include bdmctrl documentation and test script to distribution archives.
+
+	* configure.ac: Bump revision for next release.
+
+2004-03-26  joewolf  <joewolf@users.sourceforge.net>
+
+	* BUGS: - m68k/BUGS:
+	  * Updated.
+
+	* utils/README.bdmctrl, utils/bdmctrl.c, utils/m68332.test, flashlib/tcompile:
+	- m68k/utils/bdmctrl.c:
+	  * Add "open" command to specify device name.
+	  * Remove device specification from command line.
+	  * Add -c command line option to execute commands.
+	  * Source non-option command line switches instead of interpreting them as a
+	    command.
+
+	- bdm/utils/README.bdmctrl, bdm/utils/m68332.test, bdm/flashlib/tcompile:
+	  * Update to match new bdmctrl behavior.
+
+2004-03-25  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- m68k/utils/README.bdmctrl, m68k/utils/bdmctrl.c:
+	  * Add -h option to request command descriptions.
+	  * Move command descriptions from README.bdmctrl to bdmctrl's -h option.
+
+2004-03-24  joewolf  <joewolf@users.sourceforge.net>
+
+	* flashlib/tcompile, utils/README.bdmctrl, utils/bdmctrl.c:
+	- crossgcc/bdm/m68k/utils/bdmctrl.c:
+	  * Add command summary to the usage output.
+	  * Add "random-patterns CNT" command and deprecate "patterns random CNT".
+	  * Add "erase-wait" command and deprecate "erase BASE wait".
+
+	- crossgcc/bdm/m68k/utils/README.bdmctrl:
+	  * Sync up command descriptions to the format from usage output.
+	  * Add description for "random-patterns" and "erase-wait" commands.
+	  * Clarify difference in behavior when a command is given on command line.
+	  * Clarify octal/hex number parsing.
+	  * Add little description what the patterns are good for.
+
+	- crossgcc/bdm/m68k/flashlib/tcompile:
+	  * Change deprecated "erase BASE wait" to "erase-wait BASE"
+
+2004-03-21  codewiz  <codewiz@users.sourceforge.net>
+
+	* bdmabstraction/Flash.c: Add 39VF/LF160 chip.
+
+	* configure.ac: Update package version.
+
+	* Makefile.am: Add some new files to the distribution archives
+
+	* lib/Makefile.am, flashlib/Makefile.am:
+	Install libBDM.a and libbdmflash.a in $(libdir).
+
+2004-01-21  joewolf  <joewolf@users.sourceforge.net>
+
+	* flashlib/flash29.c, flashlib/flash_filter.c, utils/bdmctrl.c:
+	- Fix return code from flash29_prog() when size%bus_width!=0.
+	- Fix return code in flash_filter:write_memory() when last chunk was
+	  written partially.
+
+2004-01-20  codewiz  <codewiz@users.sourceforge.net>
+
+	* README.cvs: Hacker's documentation.
+
+2004-01-15  joewolf  <joewolf@users.sourceforge.net>
+
+	* flashlib/tcompile: Remove local configurations from tcompile script.
+
+	* flashlib/flash_filter.c, flashlib/flash_filter.h, utils/bdmctrl.c:
+	Improve error checking in and diagnostic output in flashlib/bdmctrl.
+
+2004-01-14  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/Makefile.am:
+	- Enable bdmctrl to find BDMlib.h and bdm.h in source tree.
+
+	* lib/bdmRemote.c: - Get port number from /etc/services.
+
+2004-01-12  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac: Release tweaks:
+	 - generate distribution archives in .tar.gz, .tar.bz2 and .zip formats;
+	 - change version from 2.0 to 20040112;
+	 - change package name from bdm to m68k-bdm.
+
+2004-01-11  joewolf  <joewolf@users.sourceforge.net>
+
+	* driver/bdm.c, lib/bdmIO.c: - Clean up some debug output.
+	- Csaba Kormendy's fix for compile error when BDM_DEVICE_REMOTE is not set.
+
+2004-01-08  codewiz  <codewiz@users.sourceforge.net>
+
+	* configure.ac: Enable automake warnings.
+
+	* bdmabstraction/Makefile.am, flashlib/Makefile.am,
+	lib/Makefile.am, server/Makefile.am, test/Makefile.am:
+	Fix warnings reported by automake about obsolete INCLUDE and CFLAGS variables.
+
+	* utils/Makefile.am:
+	Avoid mixing up bdmflash headers with bdm_abstraction headers (breaks Cygwin builds).
+
+	* config/ax_cflags_warn_all.m4:
+	autoconf macro to enable compiler warnings (imported from ac-archive).
+
+	* utils/bdmmon.l:
+	Avoid duplicate definition of TRUE/FALSE. Remove trailing whitespace.
+
+	* config/.cvsignore: Ignore automake provided 'compile' script.
+
+	* configure.ac: Fix "configure --help" information for bdmmon.
+	(submitted by Csaba Kormendy <cgkormendy@warpmail.net>)
+
+2004-01-07  codewiz  <codewiz@users.sourceforge.net>
+
+	* bdmabstraction/Makefile.am:
+	Reoder includes to ensure local headers are always found first.
+
+	* configure.ac:
+	Reorder subdirs and avoid double specification of flashlib/.
+
+2004-01-07  joewolf  <joewolf@users.sourceforge.net>
+
+	* flashlib/Makefile.am:
+	- Fix segfault in flash_filter.c caused by inclusion of wrong bfd.h.
+
+2004-01-07  codewiz  <codewiz@users.sourceforge.net>
+
+	* driver/win/win-bdm.c:
+	Apply patch to enable ICD cable for cygwin (Scott Newell <newell@cei.net>);
+	Remove trailing white-space.
+
+	* utils/Makefile.am, README, configure.ac:
+	New configure options: --with-libbfd, --with-libiberty, --with-bfd-include-dir.
+
+2003-12-29  codewiz  <codewiz@users.sourceforge.net>
+
+	* bdmabstraction/.cvsignore, configure.ac, utils/.cvsignore, utils/Makefile.am:
+	Add bdmmon and bdmflash.
+
+2003-12-29  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/Makefile.am, utils/README.bdmctrl, utils/bdmctrl.c, configure.ac:
+	- Add host-only and target-assisted flash support (second try, first try was
+	  aborted for some reason).
+
+	* README, flashlib/Makefile.am, flashlib/README,
+	flashlib/flash29.c, flashlib/flash29.h, flashlib/flash_filter.c,
+	flashlib/flash_filter.h, flashlib/tcompile:
+	- Add host-only and target-assisted flash support.
+
+2003-12-29  codewiz  <codewiz@users.sourceforge.net>
+
+	* utils/bdmflash.c, utils/bdmmon.l:
+	Move bdmmon and bdmflash to m68k/utils.
+
+	* bdmabstraction/BDMDriver.h, bdmabstraction/BDMFlash.c,
+	bdmabstraction/BDMFlash.h, bdmabstraction/BDMTargetAddress.c,
+	bdmabstraction/BDMTargetAddress.h, bdmabstraction/Debug.h,
+	bdmabstraction/Flash.c, bdmabstraction/Flash.h,
+	bdmabstraction/Makefile.am, bdmabstraction/bdmcf.h,
+	bdmabstraction/bdmops.c, bdmabstraction/bdmops.h:
+	Move tools/bdm_abstraction to m68k/bdmabstraction and autoconfiscate.
+
+2003-12-11  cjohns  <cjohns@users.sourceforge.net>
+
+	* driver/bdm.c: If a NVC is received clock some nops to see if the data
+	stream can be recovered. Also added some code to try and
+	detect the 17th bit which should be 0 and clock the extra
+	bits to realign the bit stream. The real cause of this type
+	of error is a bad pod or poor signal quality so the code
+	is not enabled by default.
+
+2003-12-02  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/bdmctrl.c, utils/README.bdmctrl:
+	- Add "step" command to bdmctrl.
+
+2003-11-30  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/bdmctrl.c:
+	- Delay pattern generation until they are really needed. Helps avoid noise.
+
+2003-11-26  codewiz  <codewiz@users.sourceforge.net>
+
+	* lib/Makefile.am: Include files required for source distribution.
+
+	* flashlib/.cvsignore: Ignore generated files.
+
+	* server/Makefile.in: Remove generated file.
+
+2003-11-26  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/bdmctrl.c:
+	- Make progress output of bdmctrl's load command a little more readable.
+
+2003-11-26  codewiz  <codewiz@users.sourceforge.net>
+
+	* server/.cvsignore, test/.cvsignore, utils/.cvsignore,
+	.cvsignore, lib/.cvsignore:
+	Ignore generated files.
+
+	* Makefile.in, aclocal.m4, configure, flashlib/Makefile.in,
+	lib/Makefile.in, test/Makefile.in, utils/Makefile.in:
+	Remove generated files from CVS.
+
+2003-11-25  cjohns  <cjohns@users.sourceforge.net>
+
+	* driver/ioperm/ioperm.c: Fixed spelling mistakes.
+
+2003-11-25  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- Add command "time" to bdmctrl.
+	- Make bdmctrl's progress outbut look better.
+
+2003-11-25  cjohns  <cjohns@users.sourceforge.net>
+
+	* driver/ioperm/ioperm.c: The delay is wrong by a factor or 10.
+
+	* lib/bdmRemote.c: Fix the error in the remote open.
+
+2003-11-24  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/bdmctrl.c: - Output progress information while loading.
+
+	* test/Makefile.in, test/chk.c:
+	- fix register number for address registers.
+
+2003-11-22  codewiz  <codewiz@users.sourceforge.net>
+
+	* .cvsignore, test/.cvsignore, utils/.cvsignore, lib/.cvsignore,
+	server/.cvsignore:
+	Ignore generated files.
+
+	* server/.cvsignore: Ignore .deps dir.
+
+2003-11-15  cjohns  <cjohns@users.sourceforge.net>
+
+	* flashlib/Makefile.in, lib/Makefile.in, server/Makefile.in,
+	test/Makefile.in, utils/Makefile.in, Makefile.in, configure,
+	configure.ac:
+	Flash configure updated.
+
+2003-11-12  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- Add warning for unknown architecture in bdmctrl's "load" command.
+	- minor bugfixes/extensions to bdmctrl and its README
+
+2003-11-10  ppisa  <ppisa@users.sourceforge.net>
+
+	* flashlib/Makefile.am, flashlib/Makefile.in, flashlib/bdmfilt.c,
+	flashlib/bdmfilt.h, flashlib/bdmflash.c, flashlib/bdmflash.h:
+	Initial step to add support for the FLASH programming in m68k tools branch.
+	The flash description structures will be probably rearranged in the near
+	future.
+
+2003-11-08  cjohns  <cjohns@users.sourceforge.net>
+
+	* Makefile.in, configure, lib/Makefile.in, server/Makefile.in,
+	test/Makefile.in, utils/Makefile.in:
+	Configure bootstrap.
+
+2003-11-07  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- extend "dump-mem" command of bdmctrl to optionally write dumped memory
+	  contents into a file.
+
+	* README, configure.ac, utils/Makefile.am, driver/bdm.c:
+	- Add --enable-bdmctrl option to configure. Default is off.
+
+2003-11-06  joewolf  <joewolf@users.sourceforge.net>
+
+	* README:
+	- add a warning in the server installation section of the README.
+
+	* utils/README.bdmctrl, utils/bdmctrl.c:
+	- Add (rudimentary) variable support to bdmctrl.
+	- Add commands "set", "read", "exit" to bdmctrl.
+
+	* server/bdmServer.c, lib/bdmRemote.c:
+	- fix bdmWriteMemory() and bdmReadMemory() with large size.
+
+	* server/bdmServer.c, lib/BDMlib.h, lib/bdmIO.c,
+	driver/ioperm/ioperm.c, driver/bdm.c:
+	- Fix problem with bdmSetDriverDebugFlag() when bdmd is
+	used. Remote diagnostics are sent to syslog now.
+
+	* lib/Makefile.am, server/Makefile.am, test/Makefile.am,
+	utils/Makefile.am, configure.ac, Makefile.am:
+	- Remove overriding of CFLAGS by CFLAGS_BDM in autoconf.  - add
+	evaluation of INCLUDES="-I /foo/bar" to autoconf.
+
+2003-11-03  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/bdmctrl.c: - fix two typos in bdmctrl.c.
+	- add echo command to bdmctrl.c.
+
+2003-10-28  joewolf  <joewolf@users.sourceforge.net>
+
+	* utils/README.bdmctrl, utils/bdmctrl.c, utils/m68332.test:
+	Add bdmctrl.c, its README and an example script for m68332.
+
+2003-09-21  codewiz  <codewiz@users.sourceforge.net>
+
+	* lib/BDMlib.h: Add missing prototype for bdmCheck().
+
+2003-09-20  joewolf  <joewolf@users.sourceforge.net>
+
+	* driver/freebsd/freebsd-bdm.c: Fix more idc<->icd typos.
+
+2003-09-20  codewiz  <codewiz@users.sourceforge.net>
+
+	* driver/linux-2.6/.cvsignore, driver/linux-2.6/Makefile,
+	driver/linux-2.6/bdm.c, driver/linux-2.5/.cvsignore,
+	driver/linux-2.5/Makefile, driver/linux-2.5/bdm.c: Rename
+	linux-2.5 to linux-2.6.
+
+	* driver/linux-2.5/bdm.c: Fix for 2.6.0-test5
+
+2003-09-19  joewolf  <joewolf@users.sourceforge.net>
+
+	* driver/linux-2.5/bdm.c, driver/linux/linux-bdm.c:
+	Fix some gcc warnings.
+
+	* README, driver/ioperm/ioperm.c, lib/bdmIO.c, lib/bdmRemote.c,
+	server/bdmServer.c, test/chk.c, test/cpu32-check.c: Fix some typos
+	and gcc warnings.
+
+	* utils/bdmreset.c: Insert check for ICD interface.
+
+	* driver/linux/Makefile, driver/linux/linux-bdm.c:
+	Adopted Pavels Makefile to m68k/driver/linux.
+
+2003-09-18  joewolf  <joewolf@users.sourceforge.net>
+
+	* README, test/README, test/chk.c, test/cpu32-check.c:
+	Fix some minor typos.
+
+	* local_scripts/MAKEDEV, driver/ioperm/ioperm.c:
+	- Fix typos in MAKEDEV script.
+	- Add parsing for icd adaptor in ioperm_bdm_open().
+
+	* driver/ioperm/ioperm.c:
+	Fix argument type in ioctl() interface from ioperm to driver.
+
+2003-09-18  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/.cvsignore, lib/Makefile.in, server/.cvsignore,
+	server/Makefile.in, test/.cvsignore, test/Makefile.in,
+	utils/.cvsignore, utils/Makefile.in, .cvsignore, Makefile.in:
+	Makefile.in files are needed. Adjusted .cvsignore as well.
+
+2003-09-17  cjohns  <cjohns@users.sourceforge.net>
+
+	* .cvsignore, Makefile.am, aclocal.m4, config/bootstrap,
+	config/config.guess, config/config.sub, config/depcomp,
+	config/install-sh, config/missing, config/mkinstalldirs,
+	configure, configure.ac, lib/Makefile, lib/Makefile.am,
+	server/.cvsignore, server/Makefile, server/Makefile.am,
+	test/.cvsignore, test/Makefile, test/Makefile.am,
+	utils/.cvsignore, utils/Makefile, utils/Makefile.am: Autoconf and
+	automake support.
+
+	* README: Updated with WIN32 and autotools info.
+
+	* test/cpu32-check.c:
+	Changed interface to iface. It looks like winsock2.h has an
+	interface defined.
+	Add WIN32 sleep define.
+
+	* test/chk.c: Add a hello message.
+	Display the version number is decimal rather than hex.
+	Add a WIN32 sleep define.
+
+	* lib/bdmRemote.c: Removed extra white space at the end of lines.
+	Added WIN32 support for Winsock. This means sending by a single function
+	call bdmSocketSend.
+
+	* lib/bdmIO.c: Include win-bdm.c when building WIN32 or Cygwin.
+
+	* lib/.cvsignore: Ignores added.
+
+	* driver/win/win-bdm.c: Moved the _IOWR and friend to bdm.h.
+	Add HZ if not defined. This happens on WIN32.
+	The nop is for GCC rather than just Cygwin.
+
+	* driver/bdm.h: Added WIN32 support for _IO macros.
+
+2003-07-16  cjohns  <cjohns@users.sourceforge.net>
+
+	* README: Updated with I/O Perm support.
+
+	* lib/bdmIO.c: Remote support is linked in rather than included.
+	Removed the atexit call to bdmClose.
+	Changed the open to not stat a file and support ioperm.
+
+	* lib/Makefile: Support for the separate remote code.
+
+	* lib/BDMlib.h: Added the GPL notice to the beginning.
+
+	* lib/bdmRemote.c, lib/bdmRemote.h:
+	The remote protocol is now a separate file rather than
+	being included.
+
+	* driver/linux/Makefile:
+	Add a check for kernel sources being installed.
+
+	* driver/bdm.c: Only the print the debugFlag message when allowed.
+
+	* server/bdmServer.c: Remove the unused cread local variable.
+	Add a call to bdmClose. The lack of a call will now not close the BDM driver
+	and so not reset the target. The target is not left running.
+
+	* server/Makefile: relink if libBDM.a has changed.
+
+	* server/.cvsignore: Ignore the bdmd server when present.
+
+	* BUGS: Updated with the SF project for reporting bugs.
+	Added the 5407 problems.
+	Reformat with emacs.
+
+	* driver/ioperm/ioperm.c:
+	IO perm support file to provide the support code for the BDM driver. This
+	is based on the Windows version but has support to try a driver and a local
+	BDM server if the ioperm call fails.
+
+2003-07-11  cjohns  <cjohns@users.sourceforge.net>
+
+	* lib/BDMlib.h, lib/Makefile, lib/ansidecl.h, lib/bdmBFD.c,
+	lib/bfd.h: Remove the bdmLoadImage call. This means the BFD
+	support and the hack of the local BFD headers can be removed.
+
+2003-06-28  cjohns  <cjohns@users.sourceforge.net>
+
+	* driver/win/win-bdm.c:
+	This version fixes the stat call problem on Windows. This helps
+	Insight run on Cygwin.
+
+	* server/bdmServer.c: Close the server if the remote end disappears.
+
+2003-06-03  codewiz  <codewiz@users.sourceforge.net>
+
+	* utils/.cvsignore, driver/freebsd/.cvsignore: Ignore generated files.
+
+2003-06-02  codewiz  <codewiz@users.sourceforge.net>
+
+	* test/.cvsignore, driver/linux-2.5/.cvsignore: Ignore generated files.
+
+	* server/Makefile, server/bdmServer.c, server/xmalloc.c,
+	test/ChangeLog, test/Makefile, test/README,
+	test/README.cpu32-check, test/chk.c, test/coldfire-trace,
+	test/cpu32-check.c, test/cpu32-memtest.list, test/sram-test.S,
+	utils/ChangeLog, utils/Makefile, utils/bdmreset.c,
+	driver/linux-2.5/bdm.c, driver/sco/Makefile, driver/sco/Master,
+	driver/sco/Node, driver/sco/README, driver/sco/Space.c,
+	driver/sco/System, driver/sco/sco.c, driver/win/ChangeLog,
+	driver/win/win-io.h, lib/BDMlib.h, lib/ChangeLog, lib/Makefile,
+	lib/ansidecl.h, lib/bdmBFD.c, lib/bdmIO.c, lib/bdmRemote.c,
+	lib/bfd.h, local_scripts/MAKEDEV, local_scripts/README,
+	local_scripts/build-it, local_scripts/makegdb68kbdm,
+	local_scripts/rtsetup, server/ChangeLog, driver/freebsd/ChangeLog,
+	driver/freebsd/Makefile, driver/freebsd/README,
+	driver/freebsd/bdm, driver/freebsd/bdm.8,
+	driver/freebsd/freebsd-bdm.c, driver/freebsd/unbdm,
+	driver/linux-2.5/Makefile, driver/linux/ChangeLog,
+	driver/linux/Makefile, driver/linux/linux-bdm.c, BUGS, README,
+	README.insight, driver/ChangeLog, driver/bdm.c, driver/bdm.h:
+	Import gdb-bdm-20020210 by Chris Johns.
+

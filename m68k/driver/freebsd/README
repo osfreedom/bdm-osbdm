@@ -1,0 +1,39 @@
+
+	     Motorola Background Debug Mode Driver for FreeBSD
+
+ By Greg Tunnock <gtunnock@RedfernNetworks.com> on 5-Sep-00.
+ Redfern Broadband Networks, Eveleigh, NSW, Australia
+ http://www.RedfernNetworks.com
+ 
+ The BDM driver is built as a FreeBSD kernel module. Not as a driver that
+ can be linked into the kernel. The BDM kernel module is loaded and unloaded
+ at runtime, with the bdm and unbdm scripts.
+
+ The BDM kernel module is built as part of the FreeBSD kernel sources. The
+ /usr/src/sys sources distribution needs to be installed before the BDM
+ kernel module can be built. The Makefile assumes the kernel sources are
+ installed at /usr/src/sys.
+
+ The device special files need to be created as root, with
+ ../../local_scripts/MAKEDEV.
+
+ The BDM kernel module has been built and tested with FreeBSD 4.0, the
+ Coldfire processor and P&E Coldfire interface.
+
+ To build:
+
+     $ make
+
+ To install (as root):
+
+     # make install
+     #  ../../local_scripts/MAKEDEV
+
+ To load BDM kernel module:
+
+     $ /usr/bin/bdm
+
+ To unload BDM kernel module:
+
+     $ /usr/bin/unbdm
+

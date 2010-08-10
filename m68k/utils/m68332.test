@@ -1,0 +1,78 @@
+#!/usr/local/bin/bdmctrl
+# 
+# This script is for use with the bdmctrl utility and allows loading
+# boot loading the 68332.
+#
+# NOTE: see other scripts for flash loading examples.
+#
+# Usage ./bdmctrl m68332.test /dev/bdmicd0 object-file-to-load
+#
+# see flashlib/README and bdmctrl/README.bdmctrl for more information
+#
+
+open $1
+
+reset
+
+# reset sometimes leaves %dfc and %sfc in a broken state. This happens rarely,
+# but _when_ it happens, the target will just crash. I have never seen this
+# with the m683xx branch of the bdm software, so I assume that the problem is
+# related to the m68k branch. More investigation will be needed on this issue.
+#
+write %dfc 5 b
+write %sfc 5 b
+
+check-register %a0 a1 a2 a3 a4 a5 a6 a7
+check-register d0 d1 d2 d3 d4 d5 d6 d7
+check-register vbr pcc rpc
+dump-register vbr rpc dfc sfc
+
+write 0x0fffb04 0x1000 w   # set RAMBAR to map internal RAM to 0x100000
+check-mem 0x100000 0x0800  # check internal RAM
+
+# From here on, the tests are hardware dependant. You will probably need to
+# customize.
+
+reset              # reset again, since RAMBAR is writable only once
+write %dfc 5 b
+write %sfc 5 b
+
+# ROM definition
+write 0x00fffa48 0x000066830 l # CSBOOT 512K,asy,both,r,as,0wait,s/u
+
+# RAM definiton
+write 0x00fffa4c 0x080076830 l # CS0: 1024KB,$800000,asy,both,r,as,0wait,s/u
+write 0x00fffa50 0x080073030 l # CS1: 1024KB,$800000,asy,lower,w,as,0wait,s/u
+write 0x00fffa54 0x080075030 l # CS2: 1024KB,$800000,asy,upper,w,as,0wait,s/u
+
+# disable remaining chip selects
+write 0x00fffa58 0x0fff80000 l
+write 0x00fffa5c 0x0fff80000 l
+write 0x00fffa60 0x0fff80000 l
+write 0x00fffa64 0x0fff80000 l
+write 0x00fffa68 0x0fff80000 l
+write 0x00fffa6c 0x0fff80000 l
+write 0x00fffa70 0x0fff80000 l
+write 0x00fffa74 0x0fff80000 l
+write 0x00fffa78 0x0fff80000 l
+
+dump-mem 0x0fffa40 48 l  # show the chipselect definitions
+
+check-mem 0x800000 0x0800  # check external RAM
+
+load -v $2 .text .data
+
+write main 0x04afa 2  # BGND instruction should stop target on main()
+
+dump-register a0 a1 a2 a3 a4 a5 a6 a7
+dump-register d0 d1 d2 d3 d4 d5 d6 d7
+dump-register vbr pcc rpc sfc dfc ssp
+
+execute
+
+wait
+
+dump-register a0 a1 a2 a3 a4 a5 a6 a7
+dump-register d0 d1 d2 d3 d4 d5 d6 d7
+dump-register vbr pcc rpc sfc dfc ssp
+

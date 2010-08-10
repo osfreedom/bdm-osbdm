@@ -1,0 +1,89 @@
+#!/usr/local/bin/bdmctrl
+# 
+# This script is for use with the bdmctrl utility and allows flashing of
+# 5223x family devices from linux.
+#
+# Usage ./bdmctrl mcf52235.test /dev/tblcf2 elf_file
+#
+# see flashlib/README and bdmctrl/README.bdmctrl for more information
+#
+# you will need to run flashlib/compile_plugins with 5200 as a target
+# and copy the resulting intelc3 plugin to the working folder
+#
+
+open $1
+
+reset
+
+# VBR
+write-ctrl 0x0801 0x20000000
+
+# RAMBAR
+write-ctrl 0x0C05 0x20000021
+
+# FLASHBAR
+write-ctrl 0x0C04 0x00000061
+
+# Enable PST[3:0] signals
+write 0x40100074 0x0F 1
+
+# Divide 25.0000 MHz clock to get 5.00 MHz PLL input clock
+write 0x40120008 0x04 1
+
+# Set RFD+1 to avoid frequency overshoot and wait for PLL to lock
+write 0x40120000 0x4103 2
+sleep 400
+
+# Set desired RFD=0 and MFD=4 and wait for PLL to lock
+write 0x40120000 0x4003 2
+sleep 400
+
+# Switch to using PLL
+write 0x40120000 0x4007 2
+
+# Set the flash clock
+write 0x401D0002 0x55 1
+
+# Unprotect all sectors
+#CFMPROT
+write 0x401D0010 0x00000000 4
+#CFMSACC
+write 0x401D0014 0x00000000 4
+#CFMDACC
+write 0x401D0018 0x00000000 4
+#CFMMCR
+write 0x401D0000 0x00000000 2
+
+# Set flash algorithm vars
+set IPSBAR            0x40000000
+set MCF_CFM_CFMCLKD   0x1D0002
+set MCF_CFM_CFMUSTAT  0x1D0020
+set MCF_CFM_CFMCMD    0x1D0024
+set FLASHBAR_REG      0x0C04
+set FLASH_SIZE        0x40000
+set FLASH_BACKDOOR    0x04000000
+
+# notify flashlib that we have flash at address 0, plugin is flashcfm
+flash 0 flashcfm
+
+# erase the entire flash
+erase 0 -1
+
+# wait for the erase operation to complete
+erase-wait 0
+
+# perform a blank check
+blank-chk 0 -1
+
+# load our flash plugin to SRAM
+flash-plugin 0x20000000 0x4000 flashcfm_5200.plugin
+
+# load and verify
+load -v $2
+
+# dump some memory at the start of flash for debugging
+dump-mem 0 48 l
+
+execute
+
+wait

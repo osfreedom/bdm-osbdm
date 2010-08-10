@@ -1,0 +1,23 @@
+The subdirectories contain:
+
+  m68k/
+    The ColdFire/CPU32 BDM driver and tools originally developed by
+    W. Eric Norum and later enhanced by Chris Johns.
+
+  m683xx/
+    The CPU32 BDM driver enhanced by Pavel Pisa.  This version
+    offers better CPU32 support and some features not available
+    in the m68k driver.
+
+  gdb/patches/
+    Patches to add BDM support to GDB.
+
+  gdb/scripts/
+    Example GDB command scripts that show how to initialize and run
+    a Motorola 68360 system using standard GDB commands.
+
+  doc/
+    GDB BDM documentation.
+
+  schematics/
+    Sample schematics for building ColdFire/CPU32 BDM pods.

@@ -1,0 +1,117 @@
+bdmctrl utility
+===============
+
+Josef Wolf <jw@raven.inka.de> 2003-10-26
+Matthew Riek <matthew.riek@ibiscomputer.com.au> 2008-06-27
+
+The intention of the bdmctrl utility is to do basic control of the target
+over the BDM interface. It can be used for various tasks. Examples are
+loading code to the target and executing it or do hardware tests. I have
+even used it to do rudimentary debugging.
+
+Flashing
+===============
+
+Most useful, is for using bdmctrl as a flashing utility!  You can load
+elf files into flash (and-or ram) and execute them from the bdm interface.
+Please see the example *.test scripts for examples on using bdmctrl as
+a flash loader.  Also see flashlib/README
+
+Invoking
+===============
+
+Bdmctrl is invoked like this:
+
+    Usage: bdmctrl [options] [<script> [arguments [...]]]
+     where options are one or more of:
+       -h <cmd>   Get additional description for command <cmd>.
+       -d <level> Choose driver debug level (default=0).
+       -v <level> Choose verbosity level (default=1).
+       -D <delay> Delay count for BDM clock generation (default=0).
+       -c <cmd>   Split <cmd> into args and execute resulting command.
+       -f         Turn warnings into fatal errors.
+
+If a script is specified on the command line, bdmctrl reads and executes
+commands from the script file.  Otherwise commands are read and executed
+from stdin until EOF is encountered.  If you have a file /foo/bar/baz then
+there are several ways to let bdmctrl execute commands from this file:
+
+  bdmctrl /foo/bar/baz /dev/bdmicd0 myfirmware.coff
+
+or like this:
+
+  echo source /foo/bar/baz /dev/bdmicd0 myfirmware.coff | bdmctrl
+
+or like this:
+
+  bdmctrl -c "source /foo/bar/baz /dev/bdmicd0 myfirmware.coff" -c "echo done"
+
+or even like this (if /foo/bar/baz is executable and uses bdmctrl as its
+shebang-shell):
+
+  /foo/bar/baz /dev/bdmicd0 myfirmware.coff
+
+The first two examples above are semantically almost identical. Please check
+the discussion about stdin in the description to the "source" command for the
+exception.
+
+For example, the bundeled test scripts can be executed with
+
+  bdmctrl m68332.test /dev/bdmicd0 /path/to/my/executable.coff
+  bdmctrl mcf52235.test /dev/bdmcf0 /path/to/my/executable.elf
+  bdmctrl mcf5235.test /dev/tblcf2 /path/to/my/executable.elf
+
+  etc.
+
+If you set the executable bit, you can execute it with:
+
+  m68332.test /dev/bdmicd0 /path/to/my/executable.coff
+
+This script will do some basic hardware checks, load the named executable
+into the target and execute it.
+
+The bdmctrl utility shouldn't contain any target specific code and should
+therefore work on coldfire as well as on the variuos cpu32 based CPUs.
+Currently, it is tested only on 68332, and a few coldfire targets.
+Please test it on your target and report the results so that either the 
+problem can be fixed or the list of working targets can be extended.
+
+Basic syntax of the commands
+============================
+
+A command line is split by whitespace into the command and its arguments in
+a similar way like bourne shell does. the '#' character starts a comment.
+No quoting is supported. After the split, variable substitution (see the
+"source" command) is done.
+
+Register names are prefixed by a '%' (for example %sp) and can be in mixed
+case. The '%' can be omitted in most cases, but this is not recommended.
+
+Some commands accept a VAL. If VAL begins with a digit, it will be
+parsed as a number. If it begins with "0x" it is parsed as a hex number.
+If it begins with "0" it is parsed as an octal number. If it begins
+with "%", it will be parsed as a register name and the contents of the named
+register will be taken. Otherwise it is assumed to be a symbol and its value
+will be looked up in the open symbol files.
+
+
+Supported commands and their parameters
+=======================================
+
+Please use "bdmctrl -h" to get a list of available commands.
+Please use "bdmctrl -h COMMAND" to get information on specific command.
+
+
+Plans for the future
+=======================================
+
+- Add srec loading support!
+- Add more flash chips (for existing drivers) and more drivers!
+
+
+Miscelaneus
+===========
+
+Bugfixes, bugreports, improvements, suggestions and opinions (in this
+order ;-) are welcome.
+

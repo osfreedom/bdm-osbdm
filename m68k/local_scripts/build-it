@@ -1,0 +1,135 @@
+#!/bin/sh
+
+#
+#  Checks the status returned by executables and exits if it is non-zero.
+#
+
+check_fatal()
+{
+  if [ $1 -ne 0 ] ; then
+    shift
+    echo "error: $*" >&2
+    exit 1
+  fi
+}
+
+#
+# What OS are we on.
+#
+
+OS=`uname`
+
+case ${OS} in
+  Linux)
+    DO_DRIVER=Yes
+    DRIVER=linux
+    DO_LIB=Yes
+    DO_SERVER=Yes
+    DO_TEST=Yes
+    DO_UTILS=Yes
+    ;;
+  FreeBSD)
+    DO_DRIVER=Yes
+    DRIVER=freebsd
+    DO_LIB=Yes
+    DO_SERVER=Yes
+    DO_TEST=Yes
+    DO_UTILS=Yes
+    ;;
+  CYGWIN*)
+    DO_LIB=Yes
+    DO_TEST=Yes
+    DO_UTILS=Yes
+    ;;
+  *)
+    echo "error: operating system not supported"
+    exit 1
+    ;;
+esac
+
+#
+#  Figure out if GNU make is available. This is for FreeBSD.
+#
+
+gmake_found=no
+for name in gmake make
+do
+  if [ ${gmake_found} = "no" ] ; then
+    ${name} --version > /dev/null 2>&1
+    if [ $? -eq 0 ] ; then
+      MAKE=${name}
+      gmake_found=yes
+    fi
+  fi
+done
+
+if [ ${gmake_found} = "no" ] ; then
+   echo "Unable to locate a version of GNU make in your PATH"
+   echo "GNU Make is required to build these tools."
+   exit 1
+fi
+
+if [ x${DO_DRIVER} = "xYes" ]; then
+  echo "Building BDM Driver for ${OS}"
+  cd driver/${DRIVER}
+  check_fatal $? "cannot cd to \`driver/${DRIVER}'."
+  echo ${MAKE} clean
+  ${MAKE} clean
+  check_fatal $? "cannot clean \`driver/${DRIVER}'."
+  echo ${MAKE}
+  ${MAKE}
+  check_fatal $? "cannot make \`driver/${DRIVER}'."
+  cd ../../
+fi
+
+if [ x${DO_LIB} = "xYes" ]; then
+  echo "Building BDM Library for ${OS}"
+  cd lib
+  check_fatal $? "cannot cd to \`lib'."
+  echo ${MAKE} clean
+  ${MAKE} clean
+  check_fatal $? "cannot clean \`lib'."
+  echo ${MAKE}
+  ${MAKE}
+  check_fatal $? "cannot make \`lib'."
+  cd ../
+fi
+
+if [ x${DO_SERVER} = "xYes" ]; then
+  echo "Building BDM Server for ${OS}"
+  cd server
+  check_fatal $? "cannot cd to \`server'."
+  echo ${MAKE} clean
+  ${MAKE} clean
+  check_fatal $? "cannot clean \`server'."
+  echo ${MAKE}
+  ${MAKE}
+  check_fatal $? "cannot make \`server'."
+  cd ../
+fi
+
+if [ x${DO_TEST} = "xYes" ]; then
+  echo "Building BDM Tests for ${OS}"
+  cd test
+  check_fatal $? "cannot cd to \`test'."
+  echo ${MAKE} clean
+  ${MAKE} clean
+  check_fatal $? "cannot clean \`test'."
+  echo ${MAKE}
+  ${MAKE}
+  check_fatal $? "cannot make \`test'."
+  cd ../
+fi
+
+if [ x${DO_UTILS} = "xYes" ]; then
+  echo "Building BDM Utilites for ${OS}"
+  cd utils
+  check_fatal $? "cannot cd to \`utils'."
+  echo ${MAKE} clean
+  ${MAKE} clean
+  check_fatal $? "cannot clean \`utils'."
+  echo ${MAKE}
+  ${MAKE}
+  check_fatal $? "cannot make \`utils'."
+  cd ../
+fi

@@ -1,0 +1,58 @@
+
+         Motorola Background Debug Mode Driver for OpenBSD
+
+ The BDM driver is built as a OpenBSD loadable kernel module, not as
+ a driver that can be linked into the kernel.  The BDM kernel module
+ is loaded and unloaded at runtime, with the modload and modunload
+ commands.
+
+ The BDM kernel module has been built and tested with OpenBSD 2.9,
+ the Coldfire processor and P&E Coldfire interface.  The code is
+ a port of the current FreeBSD driver.
+
+ To build:
+ =========
+   - ensure kernel was builit with 'option LKM'
+   - ensure /etc/rc.securelevel securelevel=-1 to allow loading modules
+   - compile driver using following command
+     cc -O2 -D_KERNEL -I/sys -c openbsd-bdm.c
+
+ To install (as root):
+ =====================
+   - mkdir /usr/lkm
+   - cp openbsd-bdm.o /usr/lkm/.
+   - cp bdm-install.sh /usr/lkm/.
+   - add the following to /etc/rc.securelevel (for auto load on startup)
+     if [ -r /usr/lkm/openbsd-bdm.o ]
+     then
+       echo -n ' openbsd-bdm'
+       /sbin/modload -o bdm.o -ebdm -p /usr/lkm/bdm-install.sh /usr/lkm/openbsd-bdm.o >/dev/null
+     fi
+
+   - add the following to /etc/rc.shutdown (for auto unload on shutdown)
+     if [ -r /usr/lkm/openbsd-bdm.o ]
+     then
+       /sbin/modunload -n bdm >/dev/null
+     fi
+
+
+ To load BDM kernel module:
+ ==========================
+   - modload -o bdm.o -ebdm -p bdm-install.sh openbsd-bdm.o
+
+
+ To unload BDM kernel module:
+ ============================
+   - modunload -n bdm
+
+
+ To build gdb5.0:
+ ================
+   - apply gdb-bdm patches
+   - edit $GDBSRC/gdb/configure.host
+     - copy following netbsd line to add support for openbsd host
+       i[3456]86-*-netbsd*) ... to
+       i[3456]86-*-openbsd*) ...
+   - build gdb using standard configure/make all/make install
+
+

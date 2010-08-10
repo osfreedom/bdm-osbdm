@@ -1,0 +1,43 @@
+#! /bin/sh
+#
+# $Id: bootstrap,v 1.8 2008/09/19 07:17:29 cjohns Exp $
+#
+# Copyright (c) 2002, Cybertec Pty Ltd.
+# All rights reserved.
+#
+# Bootstrap the auto* stuff.
+#
+
+configure_list=`find . -name configure.ac | sed -e "s/^\.\///g"`
+
+if [ ! -d config ]; then
+  mkdir config || \
+   { echo "error: cannot make a config directory" >&2
+   { (exit 1); exit 1; }; }
+fi
+
+
+am_version=$(automake --version 2>&1 | head -n 1 | awk '{ print $4 }' | sed -e 's/\([0-9]\)\.\([0-9]\+\).*/\1\2/')
+if test $am_version -lt 17;
+then
+  echo "Automake 1.7 or higher is required! Aborting...";
+  exit 1;
+fi
+
+for c in $configure_list 
+do
+  echo "Processing $c"
+
+  config=`echo $c | sed -e "s/[^\/]*\//..\//g" -e "s/configure.ac/config/g"`
+
+  curr_pwd=$(pwd)
+  cd `dirname $c`
+
+  aclocal -I config
+  grep -q "AC_CONFIG_HEADERS" configure.ac && autoheader
+  automake  -Wno-portability -Wno-unsupported --foreign --add-missing --copy
+  autoconf --warnings=all -Wno-portability
+  autoheader
+
+  cd $curr_pwd
+done

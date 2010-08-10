@@ -1,0 +1,282 @@
+M68K BDM GDB Server
+                                                                   Chris Johns
+                                                                    3 Nov 2007
+
+ The 'gdbserver' directory contains a GDB Remote protocol server which provides
+ BDM support for GDB for a range of Coldfire and CPU32 processors. The server
+ called 'm68k-bdm-gdbserver' will have been installed when you installed the
+ M68K BDM package. Make sure the installed server executable's path is in your
+ environment's path variable.
+
+ The BDM GDB server support Linux and Windows using GDB's socket or pipe
+ interfaces. The socket interface is the standard way GDB talks to a GDB remote
+ server. The pipe mode is also supported. With the pipe mode GDB spawns the BDM
+ GDB server and pipe the remote protocol to the new process.
+
+ The BDM GDB Server support the BDM library's direct or remote protocol mode of
+ operation. If you use the BDM library remote protocol the actual hardware will
+ be 2 processes away from GDB.
+
+ The GDB with the BDM GDB Server will break existing GDB scripts. All the
+ features that the patched version had have been carried over to the BDM GDB
+ Server with the added advantage of no patch to maintain plus a means to add
+ support for new Coldfire processors simply with out the need to upgrade GDB.
+
+GDB Patched verses GDB Remote
+
+ The old patched GDB and the newer GDB using the remote protocol will break
+ existing BDM GDB scripts. All the features present in the patched GDB are
+ present how-ever the commands to access the features have changed. There was
+ no way to avoid this.
+
+ The BDM GDB Server using a remote GDB has many advantages. The advantages are:
+
+  - No need to patch GDB.
+  - BDM fixes and updates with out the need to update GDB.
+  - Simpler means of adding support for new Coldfire processors.
+
+ The hardware break and watch points are supported.
+
+ The registers shown by the standard 'info reg' command is now restricted to
+ registers that are in normal use with-in a program. For example the 5235
+ processor shows:
+
+  (gdb) info reg
+  d0             0xcf206080       -819961728
+  d1             0x15001080       352325760
+  d2             0x19     25
+  d3             0x3f6afffc       1063976956
+  d4             0xffffedce       -4658
+  d5             0xff77af57       -8933545
+  d6             0x5e0658c7       1577474247
+  d7             0xf9f3dcff       -101458689
+  a0             0x0      0x0
+  a1             0xffe254d4       0xffe254d4
+  a2             0x79a7dae5       0x79a7dae5
+  a3             0xf75e4dbf       0xf75e4dbf
+  a4             0x637a   0x637a
+  a5             0xf3df7b7f       0xf3df7b7f
+  fp             0x627a   0x627a
+  sp             0x627a   0x627a
+  ps             0x2704   9988
+  pc             0xffe254de       0xffe254de
+  macsr          0x0      0
+  mask           0xffffff9b       -101
+  acc0           0xef3b7df8       -281313800
+  acc1           0xe50bdd7a       -452207238
+  acc2           0x3b7df47b       998110331
+  acc3           0xdbb7cff8       -608710664
+  accext01       0x3b7df87c       998111356
+  accext32       0xc1e2f47b       -1042090885
+
+ The full list of available registers are:
+
+  (gdb) info all-registers
+  d0             0xcf206080       -819961728
+  d1             0x15001080       352325760
+  d2             0x19     25
+  d3             0x3f6afffc       1063976956
+  d4             0xffffedce       -4658
+  d5             0xff77af57       -8933545
+  d6             0x5e0658c7       1577474247
+  d7             0xf9f3dcff       -101458689
+  a0             0x0      0x0
+  a1             0xffe254d4       0xffe254d4
+  a2             0x79a7dae5       0x79a7dae5
+  a3             0xf75e4dbf       0xf75e4dbf
+  a4             0x637a   0x637a
+  a5             0xf3df7b7f       0xf3df7b7f
+  fp             0x627a   0x627a
+  sp             0x627a   0x627a
+  ps             0x2704   9988
+  pc             0xffe254de       0xffe254de
+  vbr            0x3f8    1016
+  cacr           0x0      0
+  acr0           0x16ed4064       384647268
+  acr1           0xf1bd2080       -239263616
+  rambar         0x20000020       536870944
+  othera7        0xedfafefb       -302317829
+  csr            0x1000000        16777216
+  xcsr           0x8400000        138412032
+  aatr           0x5      5
+  tdr            0x40000000       1073741824
+  pbr            0x0      0
+  pbmr           0x0      0
+  abhr           0x0      0
+  ablr           0x0      0
+  dbr            0x0      0
+  dbmr           0x0      0
+  macsr          0x0      0
+  mask           0xffffff9b       -101
+  acc0           0xef3b7df8       -281313800
+  acc1           0xe50bdd7a       -452207238
+  acc2           0x3b7df47b       998110331
+  acc3           0xdbb7cff8       -608710664
+  accext01       0x3b7df87c       998111356
+  accext32       0xc1e2f47b       -1042090885
+
+ The special BDM command are available. These are accessed using the GDB
+ 'monitor' command. To get a list of available commands connect to the target
+ then issue 'monitor bdm-help'.
+
+ Note: At this point in time some commands are missing. They will be added.
+
+Building GDB
+
+ The BDM GDB Server requires GDB 6.7 or later built for a m68k-elf or similar
+ target. The standard FSF sources are the only sources the BDM GDB Server is
+ tested with. You do not need to patch GDB but you will need to insure the
+ 'expat' XML library is installed and GDB's configure script detecteds it
+ correctly. Build and install GDB the normal way. For example:
+
+  $ tar jxf gdb-6.7.1.tar.bz2
+  $ mkdir localhost
+  $ cd localhost
+  $ ../gdb-6.7.1/configure
+  $ make all install
+
+Connecting with GDB
+
+ Connect your pod to the PC and to your target hardware then power on the
+ hardware. This example session is with the Axman 5235 board and using the
+ remote target's pipe interface.
+
+ Test you BDM hardware and software configuration by running one of the test
+ programs in the M68K BDM package.
+
+ Start GDB and obtain the standard GDB prompt.
+
+  $ m68k-elf-gdb
+  GNU gdb 6.7
+  Copyright (C) 2007 Free Software Foundation, Inc.
+  License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+  This is free software: you are free to change and redistribute it.
+  There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+  and "show warranty" for details.
+  This GDB was configured as "--host=i686-pc-linux-gnu --target=m68k-elf".
+  (gdb)
+
+ Connect to the target:
+
+  (gdb) target remote | m68k-bdm-gdbserver pipe /dev/bdmcf0
+  Remote debugging using | m68k-bdm-gdbserver pipe /dev/bdmcf0
+  trying kernel driver: /dev/bdmcf0
+  trying bdm server: localhost:/dev/bdmcf0
+  m68k-bdm: detected MCF5235
+  m68k-bdm: architecture CF5235 connected to /dev/bdmcf0
+  m68k-bdm: Coldfire debug module version is 0 (5206(e)/5235/5272/5282)
+  Process /dev/bdmcf0 created; pid = 0
+  Remote debugging using pipe
+  0xffe254e2 in ?? ()
+  (gdb) 
+
+ The 'target remote |' command tells GDB to use the remote protocol via the
+ pipe interface. GDB will then use the remainder of the command line to invoke
+ the BDM GDB Server. The command line used is the simplest one that can be
+ used. It is:
+
+    m68k-bdm-gdbserver pipe /dev/bdmcf0
+
+ The 'm68k-bdm-gdbserver' is required to be in your environment's path. You can also
+ use a full path. The first parameter is the type of communications the GDB
+ server is to use. In this case if the 'pipe' interface. It could be a
+ socket and we will cover this later.
+
+ The BDM GDB Server can accept other command line options. They are:
+
+   m68k-bdm-gdbserver -vVhDd -t <time> <device>
+        -v      Verbose. More than one the more verbose.
+        -V      Version.
+        -h      This help.
+        -D      Driver debug level. More than one for more debug.
+        -d      BDM Library debug level. More than one for more debug.
+        -t time Delay timing for the parallel ports.
+        device  The device to connect to such as /dev/bdmcf0.
+
+ These options are mostly development and testing options. The following steps
+ instructions, shows assembler, set a hardware breakpoint then runs until the
+ break point:
+
+  (gdb) display /i $pc
+  1: x/i $pc
+  0xffe254de:     moveb %a0@(516),%d1
+  (gdb) si
+  0x00000404 in ?? ()
+  1: x/i $pc
+  0x404:  jmp 0xffe25c04
+  (gdb)
+  0xffe25c04 in ?? ()
+  1: x/i $pc
+  0xffe25c04:     movew #9984,%sr
+  (gdb) x /20i $pc
+  0xffe25c04:     movew #9984,%sr
+  0xffe25c08:     movel #1073741825,%d0
+  0xffe25c0e:     movel %d0,0x40000000
+  0xffe25c14:     movel #536870945,%d0
+  0xffe25c1a:     movec %d0,%rambar1
+  0xffe25c1e:     movel #536870912,%d0
+  0xffe25c24:     addil #65536,%d0
+  0xffe25c2a:     moveal %d0,%sp
+  0xffe25c2c:     jsr 0xffe3ca08
+  0xffe25c32:     moveal #25530,%sp
+  0xffe25c38:     jmp 0xffe3d5f0
+  0xffe25c3e:     bras 0xffe25c3e
+  0xffe25c40:     nop
+  0xffe25c42:     nop
+  0xffe25c44:     halt
+  0xffe25c46:     nop
+  0xffe25c48:     movel #16777216,%d0
+  0xffe25c4e:     movec %d0,%cacr
+  0xffe25c52:     rts
+  0xffe25c54:     linkw %fp,#0
+  (gdb) hb *0xffe3d5f0
+  Hardware assisted breakpoint 1 at 0xffe3d5f0
+  (gdb) c
+  Continuing.
+  
+  Breakpoint 1, 0xffe3d5f0 in ?? ()
+  1: x/i $pc
+  0xffe3d5f0:     linkw %fp,#0
+  (gdb) q
+  The program is running.  Exit anyway? (y or n) y
+  gdb: Killing inferior
+  $ 
+
+BDM GDB Server Commands
+
+ The BDM GDB Server contains a number of commands. The current help is:
+
+  (gdb) monitor bdm-help
+  m68k-bdm: monitor commands:
+    bdm-help
+      This help message.
+    bdm-debug <level>
+      Set the M68K BDM debug level.
+    bdm-lib-debug <level>
+      Set the BDM library debug level.
+    bdm-driver-debug <level>
+      Set the BDM driver debug level. This may result in a
+      remote BDm server logging to syslog if this is enabled.
+    bdm-ctl-get <reg>
+      Get the control register where <reg> is a register value
+      supported by the target. For example: bdm-ctl-get 0x801
+      will return the VBR register for most Coldfire processors.
+    bdm-ctl-set <reg <value>>
+      Set the control reigster where <reg> is a register value
+      supported by the target. For example: bdm-ctl-set 0x801 0
+    bdm-dbg-get <reg>
+      Get the debug register where <reg> is a register value
+      supported by the target. For example: bdm-dbg-get 0x1
+      will return the XCSR register on Coldfire with Debug B+.
+    bdm-dbg-set <reg> <value>
+      Set the debug reigster where <reg> is a register value
+      supported by the target. For example: bdm-dbg-set 0x1 0
+
+ To get the VBR register you enter:
+
+   (gdb) monitor bdm-ctl-get 0x801
+   m68k-bdm: control reg: 0x801 = 1016 (0x3f8)
+  
+ To set the VBR register you enter:
+
+   (gdb) monitor bdm-ctl-set 0x801 0x12345678

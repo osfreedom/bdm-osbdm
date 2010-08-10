@@ -1,0 +1,111 @@
+2002-02-10  Chris Johns  <cjohns@cybertec.com.au>
+
+	* bdmIO.c: If on cygwin use our local stat.
+
+	* Makefile:
+	Copy the bdm.h driver file to the user include as the lib headers need it.
+
+2001-09-01  Chris Johns  <cjohns@cybertec.com.au>
+
+	* bdmIO.c: Changed Win9x to Win as Windows 2000 is supported.
+
+	* Makefile:
+	Added a path to the Cygwin Win32 API. This is a bug in Cygwin.
+	Fixed the paths to Win9x by changing to Win only.
+
+2001-03-29  Chris Johns  <cjohns@kiwi.objectivedesign.com.au>
+
+	* Makefile: Fixed the assignments so /usr prefix is used.
+
+2001-03-29  Chris Johns  <cjohns@cybertec.com.au>
+
+	* Makefile: Fixed the assignments so /usr prefix is used.
+
+2001-02-11  Chris Johns  <cjohns@cybertec.com.au>
+
+	* bdmRemote.c:
+	Seemed to lose the TCP_DELAY header when making Windows work.
+
+2001-02-03  Chris Johns  <cjohns@cybertec.com.au>
+
+	* bdmRemote.c,
+	  bdmIO.c: Enabled remote support for Win9x.
+
+2001-02-03  Chris Johns  <ccj@acm.org>
+
+        * bdmRemote.c,
+          bdmIO.c: Enabled remote support for Win9x.
+
+2000-11-15  Chris Johns  <ccj@acm.org>
+
+        * bdmRemote.c: Support nesting of servers. Helps get around firewalls.
+        Use ioctl numbers which are operating system independent.
+
+2000-08-31  Chris Johns  <ccj@acm.org>
+
+        * bdmRemote.c: Made the ioctl numbers os independent.
+
+        * Makefile: Clean up.
+
+22000-06-25  Chris Johns  <ccj@acm.org>
+
+        * bfd.h: From a 5.0 build.
+
+2000-06-07  Chris Johns  <ccj@acm.org>
+
+        * bdmIO.c:
+        Moved the Win9x open/close etc override defines to the driver file.
+        Swap the bytes back after a write so the buffer is as the user passed
+        it.
+
+2000-05-27  Chris Johns  <ccj@acm.org>
+
+        * bdmIO.c: Added Win9x support.
+
+        * Makefile: Remote/local are controlled by (y/n).
+        A copy does not fail on a read only file.
+        Added the Win9x dependency.
+
+2000-05-18  Chris Johns  <ccj@acm.org>
+
+        * Makefile: Added remote support.
+
+        * BDMlib.h: Added low-level interface.
+
+        * bdmRemote.c: Fixed odd length data left in buffer bug.
+
+2000-03-30  Chris Johns  <ccj@acm.org>
+
+        * bdmIO.c, Makefile: Added remote server support.
+
+        * bdmRemote.c: New file.
+
+1999-05-16  Eric Norum   <eric@cls.usask.ca>
+
+        * bfd.h: Version from gdb-4.18.
+
+Tue Apr 27 11:56:39 CST 1999  Eric Norum    <eric@cls.usask.ca>
+
+	* bdmBFD.c:
+        Download code to Load Memory Address (LMA) rather than Virtual
+        Memory Address (VMA).
+
+Tue Jan 12 01:23:43 1999  Chris Johns  <ccj@acm.org>
+
+	* bdmBFD.c, Makefile:
+	Use a local bfd.h file to compile the download functions.
+
+	* ansidecl.h, bfd.h: Initial revision
+
+Sat Jan  9 02:59:53 1999  Chris Johns  <ccj@acm.org>
+
+	* Makefile:
+	Detect if a coff or rtems BFD library is present and build the download functions.
+
+	* bdmBFD.c: Initial revision
+
+	* bdmIO.c:
+	Split the download functions into a separate file to remove the BFD lib dependence.
+
+	* BDMlib.h, Makefile, bdmIO.c: Initial revision
+

@@ -1,0 +1,12 @@
+.deps
+Makefile
+Makefile.in
+bdmreset
+bdmreset.exe
+bdmctrl
+bdmctrl.exe
+bdmflash
+bdmflash.exe
+bdmmon
+bdmmon.exe
+bdmmon.c

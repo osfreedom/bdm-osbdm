@@ -1,0 +1,8 @@
+If you've checked out the sources from CVS, you need
+recent versions of autoconf, automake and libtool.
+
+To create configure, run the following command from
+the source directory:
+
+  config/bootstrap
+

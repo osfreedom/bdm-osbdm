@@ -1,0 +1,81 @@
+Name       eficdbdm;
+Partno     U;
+Date       25.11.98;
+Revision   0-1;
+Designer   Gunter Magin;
+Company    private;
+Assembly   efi332icd;
+Location   X;
+Device     p22v10;
+Format     j;
+
+/* $Id: eficdbdm.pld,v 1.1 2003/06/04 01:31:32 ppisa Exp $ */
+/*
+ * $Log: eficdbdm.pld,v $
+ * Revision 1.1  2003/06/04 01:31:32  ppisa
+ * Import of m683xx specific vesion of BDM support
+ *
+ * Revision 1.2  1998/12/28 11:06:48  magin
+ * no longer efi-aware test
+ *
+ * Revision 1.1  1998/12/27 22:50:43  magin
+ * diag_led must be inverted, because we pretend an OC output
+ *
+ * Revision 1.0  1998/11/25 15:26:20  magin
+ * Initial revision
+ *
+ */
+
+/**  pin definitions   **/
+
+PIN 1          = _not_used_01;
+PIN 2          = dsi_pp;
+PIN 3          = dsclk_pp;
+PIN 4          = step_pp;
+PIN 5          = reset_pp;
+PIN 6          = oe_pp;
+PIN 7          = led_pp;
+PIN 8          = berr_in_pp;
+PIN 9          = _not_used_09;
+PIN 10         = _not_used_10;
+PIN 11         = dso_bdm;
+PIN 13         = freeze_bdm;
+
+
+PIN 14         = freeze_led;
+PIN 15         = diag_led;
+PIN 16         = berr_bdm;
+PIN 17         = dsclk_bdm;
+PIN 18         = helper;
+PIN 19         = _not_used_19;
+PIN 20         = dsi_bdm;
+PIN 21         = reset_bdm;
+PIN 22         = dso_pp;
+PIN 23         = freeze_pp;
+
+/** Equations **/
+
+berr_bdm.oe    =  berr_in_pp;
+berr_bdm       = !berr_in_pp;
+
+dsclk_bdm      =  step_pp & !freeze_bdm & !helper & reset_bdm #
+                 dsclk_pp &  freeze_bdm &  helper & reset_bdm;
+
+dsi_bdm.oe     = oe_pp & freeze_bdm;
+dsi_bdm        = oe_pp & dsi_pp;
+
+dso_pp         =  dso_bdm;
+ 
+reset_bdm      =  reset_pp;
+reset_bdm.oe   = !reset_pp;
+
+freeze_pp      =  freeze_bdm;
+freeze_led     =  !freeze_bdm;
+freeze_led.oe  =  freeze_bdm;
+
+diag_led       = !led_pp;
+diag_led.oe    =  led_pp;
+
+helper         =  freeze_bdm  &  helper #
+                 !dsclk_pp      & freeze_bdm;
+

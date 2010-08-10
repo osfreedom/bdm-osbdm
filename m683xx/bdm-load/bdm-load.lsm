@@ -1,0 +1,25 @@
+Begin4
+Title:		bdm-load
+Version:	030815
+Entered-date:	2003-08-15
+Description:	Flash writer utility for 683xx target systems through
+		Background Debug Mode interface for Motorola CPU32 and Linux
+		Both Public Domain and ICD interfaces are supported.
+		Code contains first experimental tests of GPLed TPU debugger
+		project.
+		* More info about related software and BDM driver at
+		    http://cmp.felk.cvut.cz/~pisa
+		    http://cmp.felk.cvut.cz/~pisa/m683xx/bdm_driver.html
+Keywords:	debugger GDB m68k 68332 683xx BDM flash embedded TPU
+Author:		jeff@uclinux.org (D.Jeff Dionne)
+		adennison@swin.edu.au (Andrew Dennison)
+		pisa@cvlinux.felk.cvut.cz (Pavel Pisa)
+Maintained-by:	pisa@cvlinux.felk.cvut.cz (Pavel Pisa)
+Primary-site:	metalab.unc.edu /pub/Linux/devel/debuggers
+		210 kB bdm-load-030519.tar.gz
+Alternate-site:	ftp.cygnus.com /pub/embedded
+		210 kB bdm-load-030519.tar.gz
+Original-site:	freeware.aus.sps.mot.com
+Platforms:	Linux 2.0.xx, 2.2.yy, 2.4.zz ( last tested 2.5.69 )
+Copying-policy:	GPL
+End
