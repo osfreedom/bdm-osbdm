@@ -211,59 +211,6 @@ cf_pe_get_direct_status (struct BDM *self)
 }
 
 /*
- * Invalidate the cache.
- */
-
-static int
-cf_pe_invalidate_cache (struct BDM *self)
-{
-  struct BDMioctl cacr_ioc;
-
-  cacr_ioc.address = BDM_REG_CACR;
-
-  if (cf_pe_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  /*
-   * Set the invalidate bit.
-   */
-
-  if (cacr_ioc.value) {
-    /* CCJ: Add version C as I think the version D was wrong. */
-    if ((self->cf_debug_ver == CF_REVISION_C) ||
-        (self->cf_debug_ver == CF_REVISION_D))
-      cacr_ioc.value |= 0x01040100;
-    else
-      cacr_ioc.value |= 0x01000100;
-
-    if (self->debugFlag > 2)
-      PRINTF (" cf_pe_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
-  
-    if (cf_pe_write_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-  }
-  
-  return 0;
-}
-
-/*
- * PC read check. This is used to see if the processor has halted.
- */
-
-static int
-cf_pe_pc_read_check (struct BDM *self)
-{
-  struct BDMioctl pc_ioc;
-
-  pc_ioc.address = BDM_REG_RPC;
-
-  if (cf_pe_read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  return 0;
-}
-
-/*
  * Get target status
  */
 
@@ -304,7 +251,7 @@ cf_pe_get_status (struct BDM *self)
    * flush the cache.
    */
   if (cf_last_running && !self->cf_running)
-    cf_pe_invalidate_cache (self);
+    bdm_invalidate_cache (self);
   
   if (self->debugFlag > 2)
     PRINTF (" cf_pe_get_status -- Status:0x%x, csr:0x%08x, cf_csr:0x%08x\n",
@@ -588,8 +535,8 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
          * for providing access to Joe. Thanks. (CCJ 15-05-2000)
          */
 
-        if ((cf_pe_pc_read_check (self) == 0) &&
-            (cf_pe_pc_read_check (self) == 0)) {
+        if ((bdm_pc_read_check (self) == 0) &&
+            (bdm_pc_read_check (self) == 0)) {
           self->cf_csr     = ioc->value;
           self->cf_running = 0;
         
@@ -599,7 +546,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
            * if we are using PST,  I am not sure yet : davidm
            */
           
-          cf_pe_invalidate_cache (self);
+          bdm_invalidate_cache (self);
         }
         else {
           /*
@@ -832,7 +779,7 @@ cf_pe_run_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  cf_pe_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:4 or the SSM bit to off then issue a go.
@@ -912,7 +859,7 @@ cf_pe_step_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  cf_pe_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   /*
    * Change the CSR:4 or the SSM bit to on then issue a go.
    * Mask pending interrupt to stop stepping into an interrupt.

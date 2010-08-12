@@ -916,6 +916,66 @@ bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
 #endif
 
 /*
+ * Invalidate the cache.
+ */
+
+/*
+ ************************************************************************
+ *      Driver Functions which are common to different PODs             *
+ ************************************************************************
+ */
+static int
+bdm_invalidate_cache (struct BDM *self)
+{
+  struct BDMioctl cacr_ioc;
+
+  if (self->debugFlag > 1)
+    PRINTF (" bdm_invalidate_cache\n");
+
+  cacr_ioc.address = BDM_REG_CACR;
+
+  if (tblcf_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
+      return BDM_TARGETNC;
+
+  /*
+   * Set the invalidate bit.
+   */
+
+  if (cacr_ioc.value) {
+    if (self->cf_debug_ver == CF_REVISION_D)
+      cacr_ioc.value |= 0x01040100;
+    else
+      cacr_ioc.value |= 0x01000100;
+
+    if (self->debugFlag > 2)
+      PRINTF (" bdm_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
+
+    if (self->write_sysreg(self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
+      return BDM_TARGETNC;
+  }
+
+  return 0;
+}
+
+/*
+ * PC read check. This is used to see if the processor has halted.
+ */
+
+static int
+bdm_pc_read_check (struct BDM *self)
+{
+  struct BDMioctl pc_ioc;
+
+  pc_ioc.address = BDM_REG_RPC;
+
+  if (self->read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
+      return BDM_TARGETNC;
+
+  return 0;
+}
+
+
+/*
  ************************************************************************
  *      Driver Functions which are common to the different OS's         *
  ************************************************************************

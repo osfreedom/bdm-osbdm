@@ -31,60 +31,6 @@ static int tblcf_reset_chip (struct BDM *self);
 static int tblcf_stop_chip (struct BDM *self);
 
 /*
- * Invalidate the cache.
- */
-
-static int
-tblcf_invalidate_cache (struct BDM *self)
-{
-  struct BDMioctl cacr_ioc;
-
-  if (self->debugFlag > 1)
-    PRINTF (" tblcf_invalidate_cache\n");
-  
-  cacr_ioc.address = BDM_REG_CACR;
-
-  if (tblcf_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  /*
-   * Set the invalidate bit.
-   */
-
-  if (cacr_ioc.value) {
-    if (self->cf_debug_ver == CF_REVISION_D)
-      cacr_ioc.value |= 0x01040100;
-    else
-      cacr_ioc.value |= 0x01000100;
-
-    if (self->debugFlag > 2)
-      PRINTF (" tblcf_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
-  
-    if (tblcf_write_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-  }
-  
-  return 0;
-}
-
-/*
- * PC read check. This is used to see if the processor has halted.
- */
-
-static int
-tblcf_pc_read_check (struct BDM *self)
-{
-  struct BDMioctl pc_ioc;
-
-  pc_ioc.address = BDM_REG_RPC;
-
-  if (tblcf_read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  return 0;
-}
-
-/*
  * Get target status
  */
 
@@ -137,7 +83,7 @@ tblcf_get_status (struct BDM *self)
    * flush the cache.
    */
   if (cf_last_running && !self->cf_running)
-    tblcf_invalidate_cache (self);
+    bdm_invalidate_cache (self);
   
   if (self->debugFlag > 2)
     PRINTF (" tblcf_get_status -- Status:0x%x, csr:0x%08x, cf_csr:0x%08x\n",
@@ -307,8 +253,8 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
          * for providing access to Joe. Thanks. (CCJ 15-05-2000)
          */
 
-        if ((tblcf_pc_read_check (self) == 0) &&
-            (tblcf_pc_read_check (self) == 0)) {
+        if ((bdm_pc_read_check (self) == 0) &&
+            (bdm_pc_read_check (self) == 0)) {
           self->cf_csr     = ioc->value;
           self->cf_running = 0;
         
@@ -318,7 +264,7 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
            * if we are using PST,  I am not sure yet : davidm
            */
           
-          tblcf_invalidate_cache (self);
+          bdm_invalidate_cache (self);
         }
         else {
           /*
@@ -531,7 +477,7 @@ tblcf_run_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  tblcf_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:4 or the SSM bit to off then issue a go.
@@ -610,7 +556,7 @@ tblcf_step_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  tblcf_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:5 or the IPI bit to on. The SSM bit is handled
