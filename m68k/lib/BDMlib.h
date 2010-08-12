@@ -3,7 +3,6 @@
  * Copyright (C) 1998  Chris Johns
  *
  * Chris Johns
- * Cybertec Pty Ltd
  *
  * cjohns@users.sourceforge.net
  *

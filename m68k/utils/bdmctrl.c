@@ -73,7 +73,7 @@ static int loaded_elf_cnt = 0;
 static elf_handle *loaded_elfs = NULL;
 
 static void
-wait (int msecs)
+wait_here (int msecs)
 {
 #if defined (__MINGW32__)
   Sleep (msecs);
@@ -1158,7 +1158,7 @@ static void
 cmd_wait (size_t argc, char **argv)
 {
   while (!((bdmStatus ()) & (BDM_TARGETSTOPPED | BDM_TARGETHALT)))
-    wait (250);
+    wait_here (250);
 
   if (verbosity)
     printf ("OK\n");
@@ -1177,7 +1177,7 @@ cmd_time (size_t argc, char **argv)
 static void
 cmd_sleep (size_t argc, char **argv)
 {
-  wait (strtoul (argv[1], NULL, 0));
+  wait_here (strtoul (argv[1], NULL, 0));
   if (verbosity)
     printf ("OK\n");
 }

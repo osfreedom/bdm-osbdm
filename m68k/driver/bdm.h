@@ -265,4 +265,160 @@ struct BDMioctl {
 #define BDM_REG_A6    0xe
 #define BDM_REG_A7    0xf  /* use this for the stack pointer */
 
+/*
+ * Coldfire revisions of BDM hardware.
+ */
+#define CF_REVISION_A (0)
+#define CF_REVISION_B (1)
+#define CF_REVISION_C (2)
+#define CF_REVISION_D (3)
+
+/*
+ * Default debug level.
+ */
+#define BDM_DEFAULT_DEBUG 0
+
+/*
+ * Private BDM structure.
+ */
+/*
+ ************************************************************************
+ *     BDM driver control structure                                     *
+ ************************************************************************
+ */
+
+struct BDM {
+  /*
+   * Device name, processor and interface type
+   */
+  char name[20];
+  int  processor;
+  int  interface;
+
+  /*
+   * Device I/O ports
+   */
+  int  exists;
+  int  portsAreMine;
+  int  portBase;
+  int  dataPort;
+  int  statusPort;
+  int  controlPort;
+  int  usbDev;
+
+  /*
+   * Control debugging messages
+   */
+  int  debugFlag;
+
+  /*
+   * Device is exclusive-use
+   */
+  int  isOpen;
+
+  /*
+   * Serial I/O delay timer
+   */
+  int  delayTimer;
+
+  /*
+   * I/O buffer
+   */
+  char         ioBuffer[512];
+  unsigned int readValue;
+  
+  /*
+   * Interface specific handlers
+   */
+  int (*get_status)(struct BDM *self);
+  int (*init_hardware) (struct BDM *self);
+  int (*serial_clock) (struct BDM *self, unsigned short wval, int holdback);
+  int (*gen_bus_error) (struct BDM *self);
+  int (*restart_chip) (struct BDM *self);
+  int (*release_chip) (struct BDM *self);
+  int (*reset_chip) (struct BDM *self);
+  int (*stop_chip) (struct BDM *self);
+  int (*run_chip) (struct BDM *self);
+  int (*step_chip) (struct BDM *self);
+  int (*fill_buf) (struct BDM *self, int count);
+  int (*send_buf) (struct BDM *self, int count);
+  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
+  int (*read_proreg) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_long_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*read_byte) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
+  int (*write_proreg) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_long_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_word) (struct BDM *self, struct BDMioctl *ioc);
+  int (*write_byte) (struct BDM *self, struct BDMioctl *ioc);
+
+  /*
+   * Some system registers are write only so we need to shadow them
+   */
+  unsigned long shadow_sysreg[BDM_MAX_SYSREG];
+
+  /*
+   * Coldfire processors have different versions of the debug module.
+   * These also require special operations to occur.
+   */
+  int           cf_debug_ver;
+  int           cf_use_pst;
+  
+  /*
+   * Need to get the status from the csr, how-ever the status bits are a
+   * once read then clear so we need logic to store this state to know
+   * the status.
+   */
+  int           cf_running;
+  unsigned long cf_csr;
+  
+  /*
+   * Revision D BDM hardware does not have a bit to mask interrupts so
+   * we must save the SR when we step and then restore when we go.
+   */
+  unsigned long cf_sr_mask_cache;
+  int           cf_sr_masked;
+
+  /*
+   * Address for the current transfer. The TBLCF pod always
+   * takes the address rather than streaming. This should be changed.
+   */
+  unsigned long address;
+
+#ifdef BDM_BIT_BASH_PORT
+  
+  int (*bit_bash) (struct BDM *self, unsigned short mask, unsigned short value);
+
+  /*
+   * The current state of the bit bash bits. Easier than figuring out
+   * if the bit should be on or off by reading the PC port. I am sure
+   * this could be done, but I am not a PC parallel port expert.
+   */
+
+  unsigned short bit_bash_bits;
+
+#endif
+};
+
+/*
+ * BDM call when built into user-land.
+ */
+int bdm_open (unsigned int minor);
+int bdm_close (unsigned int minor);
+int bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg);
+int bdm_read (unsigned int minor, unsigned char *buf, int count);
+int bdm_write (unsigned int minor, unsigned char *buf, int count);
+
+struct BDM* bdm_get_device_info (int minor);
+int bdm_get_device_info_count ();
+
+/*
+ * Pod Interface initialisation calls.
+ */
+int bdm_cpu32_pd_init_self (struct BDM *self);
+int bdm_cpu32_icd_init_self (struct BDM *self);
+int bdm_cf_pe_init_self (struct BDM *self);
+int bdm_tblcf_init_self (struct BDM *self);
+
 #endif /* _BDM_H_ */

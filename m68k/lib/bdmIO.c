@@ -43,9 +43,6 @@
  *
  * Coldfire support by:
  * Chris Johns
- * Objective Design Systems
- *
- * ccj@acm.org
  *
  */
 
@@ -53,18 +50,19 @@
  * If no remote/local directive is supplied, default to the
  * existing local only mode.
  */
-#if !defined (BDM_DEVICE_REMOTE) && !defined (BDM_DEVICE_LOCAL)
-#define BDM_DEVICE_LOCAL
+#if !defined (BDM_DEVICE_REMOTE) && !defined (BDM_DEVICE_USB) && !defined (BDM_DEVICE_LOCAL)
+#error "No interface defined. A configuration error. Please report."
 #endif
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include "config.h"
+#include "bdm-iface.h"
 
 /*
  * This test should be done by autoconf. Please fix if you
@@ -72,14 +70,6 @@
  */
 #if defined HAVE_SYSLOG_H
 #include <syslog.h>
-#endif
-
-#include "BDMlib.h"
-
-#if defined (BDM_DEVICE_REMOTE)
-
-#include "bdmRemote.h"
-
 #endif
 
 /*
@@ -90,33 +80,41 @@
 
 #define PRINTF bdmPrint
 
-/*
- * If on Cygwin assume Windows.
- */
+#include "BDMlib.h"
 
-#if defined (__WIN32__) || defined (__CYGWIN__)
-
-#include "../driver/win/win-bdm.c"
-
-#else
-
-/*
- * See if this is an ioperm build.
- */
-#if defined (BDM_IOPERM)
-
-#include "../driver/ioperm/ioperm.c"
-
+#if defined (BDM_DEVICE_REMOTE)
+#include "bdmRemote.h"
 #endif
 
+/*
+ * If USB is supported.
+ */
+#if defined (BDM_DEVICE_USB)
+#include "bdm-usb.h"
+#endif
+
+/*
+ * If on Cygwin assume Windows. If on Windows use the specific driver else
+ * see if ioperm is supported.
+ */
+#if defined (BDM_DEVICE_IOPERM)
+#include "ioperm.h"
+#endif
+
+/*
+ * Local devices are kernel drivers.
+ */
+#if defined (BDM_DEVICE_LOCAL)
+#include "localIface.h"
 #endif
 
 /*
  * Limit of one BDM per process
  */
-static int bdm_fd    = -1;
-static int cpu       = BDM_CPU32;
-static int iface     = BDM_CPU32_PD;
+static int       bdm_fd = -1;
+static int       cpu    = BDM_CPU32;
+static int       pod    = BDM_CPU32_PD;
+static bdm_iface *iface = NULL;
 
 /*
  * The configuration data read from the configuration file.
@@ -124,15 +122,11 @@ static int iface     = BDM_CPU32_PD;
 static char*  config;
 static size_t config_buffer_size = 0;
 
-#if defined (BDM_DEVICE_REMOTE)
-static int bdmRemote = 0;
-#endif
-
 /*
- * Have to make global to allow the bdmBFD function have
- * access.
+ * Have to make global to allow access.
  */
-const char *bdmIO_lastErrorString = "No BDM error (yet!)";
+const char *bdmNoError = "No BDM error";
+const char *bdmIO_lastErrorString;
 
 /*
  * Debugging
@@ -225,6 +219,10 @@ bdmCheck (void)
     bdmIO_lastErrorString = "BDM not open";
     return 0;
   }
+  if (!iface) {
+    bdmIO_lastErrorString = "BDM no iface";
+    return 0;
+  }
   return 1;
 }
 
@@ -234,6 +232,8 @@ bdmCheck (void)
 static const char *
 bdmStrerror (int error_no)
 {
+  if (error_no == 0)
+    return bdmNoError;
   switch (error_no) {
     case BDM_FAULT_UNKNOWN:   return "Unknown BDM error";
     case BDM_FAULT_POWER:     return "No power to BDM adapter";
@@ -244,39 +244,23 @@ bdmStrerror (int error_no)
     case BDM_FAULT_NVC:       return "Invalid target command";
     case BDM_FAULT_FORCED_TA: return "Invalid target command - Forced TA";
   }
-#if defined (BDM_DEVICE_REMOTE)
-  return bdmRemoteStrerror (error_no);
-#else
+  if (iface && iface->error_str)
+    return iface->error_str(error_no);
   return strerror (error_no);
-#endif
 }
 
 /*
- * Do an int-argument  BDM ioctl
+ * Do an int-argument BDM ioctl
  */
 int
 bdmIoctlInt (int code, int *var)
 {
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    if (bdmRemoteIoctlInt (bdm_fd, code, var) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
+  if (iface->ioctl_int (bdm_fd, code, var) < 0) {
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (bdm_fd, code, var) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
   return 0;
 }
 
@@ -288,24 +272,10 @@ bdmIoctlCommand (int code)
 {
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    if (bdmRemoteIoctlCommand (bdm_fd, code) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
+  if (iface->ioctl_cmd (bdm_fd, code) < 0) {
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (bdm_fd, code, NULL) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
   return 0;
 }
 
@@ -317,24 +287,10 @@ bdmIoctlIo (int code, struct BDMioctl *ioc)
 {
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    if (bdmRemoteIoctlIo (bdm_fd, code, ioc) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
+  if (iface->ioctl_io (bdm_fd, code, ioc) < 0) {
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (ioctl (bdm_fd, code, ioc) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
   return 0;
 }
 
@@ -346,24 +302,10 @@ bdmRead (unsigned char *cbuf, unsigned long nbytes)
 {
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    if (bdmRemoteRead (bdm_fd, cbuf, nbytes) != nbytes) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
+  if (iface->read (bdm_fd, cbuf, nbytes) != nbytes) {
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (read (bdm_fd, (char*) cbuf, nbytes) != nbytes) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
   return nbytes;
 }
 
@@ -375,24 +317,10 @@ bdmWrite (unsigned char *cbuf, unsigned long nbytes)
 {
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    if (bdmRemoteWrite (bdm_fd, cbuf, nbytes) != nbytes) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
+  if (iface->write (bdm_fd, cbuf, nbytes) != nbytes) {
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (write (bdm_fd, (char*) cbuf, nbytes) != nbytes) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
   return nbytes;
 }
 
@@ -425,22 +353,6 @@ writeTarget (int command, unsigned long address, unsigned long l)
   return 0;
 }
 
-static int
-remoteOpen (const char *name)
-{
-  int fd = -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemoteName (name)) {
-    bdmRemote = 1;
-    if ((fd = bdmRemoteOpen (name)) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      bdmRemote = 0;
-    }
-  }
-#endif
-  return fd;
-}
-
 /*
  * Return string describing most recent error
  */
@@ -448,6 +360,15 @@ const char *
 bdmErrorString (void)
 {
   return bdmIO_lastErrorString;
+}
+
+/*
+ * Return true is no last error.
+ */
+const int
+bdmNoLastError (void)
+{
+  return bdmIO_lastErrorString == bdmNoError;
 }
 
 /*
@@ -561,7 +482,7 @@ bdmReadConfiguration ()
 
   if (env && strlen (env))
   {
-    char* fname = malloc (strlen (env) + 1 + strlen (M68K_BDM_INIT_FILE));
+    char* fname = malloc (strlen (env) + 1 + strlen (M68K_BDM_INIT_FILE) + 1);
 
     if (fname)
     {
@@ -641,6 +562,55 @@ bdmConfigGet (const char* label, const char* last)
   return next;
 }
 
+static int
+remoteOpen (const char *name)
+{
+  int fd = -1;
+#if defined (BDM_DEVICE_REMOTE)
+  if (bdmRemoteName (name)) {
+    if ((fd = bdmRemoteOpen (name, &iface)) < 0)
+      bdmIO_lastErrorString = bdmStrerror (errno);
+  }
+#endif
+  return fd;
+}
+
+static int
+usbOpen (const char *name)
+{
+  int fd = -1;
+#if defined (BDM_DEVICE_USB)
+  if (bdmNoLastError () && ((fd = bdm_usb_open (name, &iface)) < 0))
+    if (errno != ENOENT)
+      bdmIO_lastErrorString = bdmStrerror (errno);
+#endif
+  return fd;
+}
+
+static int
+iopermOpen (const char *name)
+{
+  int fd = -1;
+#if defined (BDM_DEVICE_IOPERM)
+  if (bdmNoLastError () && ((fd = bdm_ioperm_open (name, &iface)) < 0))
+    if (errno != ENOENT)
+      bdmIO_lastErrorString = bdmStrerror (errno);
+#endif
+  return fd;
+}
+
+static int
+localOpen(const char* name)
+{
+  int fd = -1;
+#if defined (BDM_DEVICE_LOCAL)
+  if (bdmNoLastError () && ((fd = bdmLocalOpen (name, &iface)) < 0))
+    if (errno != ENOENT)
+      bdmIO_lastErrorString = bdmStrerror (errno);
+#endif
+  return fd;
+}
+
 /*
  * Open the specified BDM device
  */
@@ -652,6 +622,8 @@ bdmOpen (const char *user_name)
 #endif
   char* name = NULL;
   const char* mapping = NULL;
+
+  bdmIO_lastErrorString = bdmNoError;
 
   /*
    * Load the configurations.
@@ -695,36 +667,26 @@ bdmOpen (const char *user_name)
    * supported. If this fails we attempt to open the driver.
    */
 
-  if (bdm_fd >= 0) {
-#if defined (BDM_DEVICE_REMOTE)
-    if (bdmRemote)
-      bdmRemoteClose (bdm_fd);
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    else
-      close (bdm_fd);
-#endif
+  if (iface && (bdm_fd >= 0)) {
+    iface->close (bdm_fd);
   }
 
   bdm_fd = -1;
 
   if ((bdm_fd = remoteOpen (name)) < 0) {
-#if !defined (BDM_DEVICE_LOCAL)
-    bdmIO_lastErrorString = bdmStrerror (2);
-    free (name);
-    return -1;
-#endif
-  }
-
-#if defined (BDM_DEVICE_LOCAL)
-  if (bdm_fd < 0) {
-    if ((bdm_fd = open (name, O_RDWR)) < 0) {
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      free (name);
-      return -1;
+    if ((bdm_fd = usbOpen(name)) < 0) {
+      if ((bdm_fd = iopermOpen(name)) < 0) {
+        if ((bdm_fd = localOpen (name)) < 0) {
+          if (bdmNoLastError ())
+            bdmIO_lastErrorString = bdmStrerror (2);
+          else
+            bdmIO_lastErrorString = bdmStrerror (errno);
+          free (name);
+          return -1;
+        }
+      }
     }
   }
-#endif
 
   free (name);
 
@@ -756,7 +718,7 @@ bdmOpen (const char *user_name)
     bdmClose ();
     return -1;
   }
-  if (bdmGetInterface (&iface) < 0) {
+  if (bdmGetInterface (&pod) < 0) {
     bdmIO_lastErrorString = bdmStrerror (errno);
     bdmClose ();
     return -1;
@@ -780,26 +742,12 @@ bdmClose (void)
 
   if (!bdmCheck ())
     return -1;
-#if defined (BDM_DEVICE_REMOTE)
-  if (bdmRemote) {
-    bdmRemote = 0;
-    if (bdmRemoteClose (bdm_fd) < 0) {
-      bdm_fd = -1;
-      return -1;
-    }
+  if (iface->close (bdm_fd) < 0) {
+    bdm_fd = -1;
+    bdmIO_lastErrorString = bdmStrerror (errno);
+    return -1;
   }
-  else {
-#endif
-#if defined (BDM_DEVICE_LOCAL)
-    if (close (bdm_fd) < 0) {
-      bdm_fd = -1;
-      bdmIO_lastErrorString = bdmStrerror (errno);
-      return -1;
-    }
-#endif
-#if defined (BDM_DEVICE_REMOTE)
-  }
-#endif
+
   bdm_fd = -1;
   return 0;
 }
@@ -810,7 +758,7 @@ bdmClose (void)
 int
 bdmIsOpen (void)
 {
-  return (bdm_fd >= 0);
+  return iface && (bdm_fd >= 0);
 }
 
 /*
@@ -1274,10 +1222,10 @@ bdmGetProcessor (int *processor)
  * Get Interface type
  */
 int
-bdmGetInterface (int *iface)
+bdmGetInterface (int *pod)
 {
-  if (bdmIoctlInt (BDM_GET_IF_TYPE, iface) < 0)
+  if (bdmIoctlInt (BDM_GET_IF_TYPE, pod) < 0)
     return -1;
-  PRINTF ("Interface type: %d\n", *iface);
+  PRINTF ("Interface type: %d\n", *pod);
   return 0;
 }

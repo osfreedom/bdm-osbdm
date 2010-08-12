@@ -32,6 +32,7 @@
 #include <BDMlib.h>
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <netdb.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -413,7 +414,7 @@ ioio (char *message)
     syslog (LOG_INFO, "ioio error: %s (%d)", bdmErrorString (), errno);
   }
 
-  printf ("IOIO %d,0x%x,0x%x.", errno, ioc.address, ioc.value);
+  printf ("IOIO %d,0x%" PRIxMAX ",0x%" PRIxMAX ".", errno, ioc.address, ioc.value);
 }
 
 /*
@@ -421,7 +422,7 @@ ioio (char *message)
  */
 
 void
-bdm_read (char *message)
+bdm_server_read (char *message)
 {
   long          read_nbytes;
   unsigned char *buf;
@@ -457,7 +458,7 @@ bdm_read (char *message)
  */
 
 void
-bdm_write (char *message, int msg_len, int msg_buf_len)
+bdm_server_write (char *message, int msg_len, int msg_buf_len)
 {
   long          written_nbytes;
   unsigned char *buf;
@@ -606,11 +607,11 @@ process_message (char *message, int msg_len, int msg_buf_len)
       break;
 
     case READ:
-      bdm_read (message);
+      bdm_server_read (message);
       break;
 
     case WRITE:
-      bdm_write (message, msg_len, msg_buf_len);
+      bdm_server_write (message, msg_len, msg_buf_len);
       break;
 
     case QUIT:

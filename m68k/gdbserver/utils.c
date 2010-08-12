@@ -112,7 +112,7 @@ warning (const char *string,...)
 {
   va_list args;
   va_start (args, string);
-  fprintf (my_stderr, warning_prefix);
+  fprintf (my_stderr, "%s", warning_prefix);
   fprintf (my_stderr, ": ");
   vfprintf (my_stderr, string, args);
   fprintf (my_stderr, "\n");

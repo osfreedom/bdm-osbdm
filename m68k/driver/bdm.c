@@ -80,126 +80,6 @@
 
 /*
  ************************************************************************
- *     BDM driver control structure                                     *
- ************************************************************************
- */
-
-struct BDM {
-  /*
-   * Device name, processor and interface type
-   */
-  char name[20];
-  int  processor;
-  int  interface;
-
-  /*
-   * Device I/O ports
-   */
-  int  exists;
-  int  portsAreMine;
-  int  portBase;
-  int  dataPort;
-  int  statusPort;
-  int  controlPort;
-  int  usbDev;
-
-  /*
-   * Control debugging messages
-   */
-  int  debugFlag;
-
-  /*
-   * Device is exclusive-use
-   */
-  int  isOpen;
-
-  /*
-   * Serial I/O delay timer
-   */
-  int  delayTimer;
-
-  /*
-   * I/O buffer
-   */
-  char         ioBuffer[512];
-  unsigned int readValue;
-  
-  /*
-   * Interface specific handlers
-   */
-  int (*get_status)(struct BDM *self);
-  int (*init_hardware) (struct BDM *self);
-  int (*serial_clock) (struct BDM *self, unsigned short wval, int holdback);
-  int (*gen_bus_error) (struct BDM *self);
-  int (*restart_chip) (struct BDM *self);
-  int (*release_chip) (struct BDM *self);
-  int (*reset_chip) (struct BDM *self);
-  int (*stop_chip) (struct BDM *self);
-  int (*run_chip) (struct BDM *self);
-  int (*step_chip) (struct BDM *self);
-  int (*fill_buf) (struct BDM *self, int count);
-  int (*send_buf) (struct BDM *self, int count);
-  int (*read_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
-  int (*read_proreg) (struct BDM *self, struct BDMioctl *ioc);
-  int (*read_long_word) (struct BDM *self, struct BDMioctl *ioc);
-  int (*read_word) (struct BDM *self, struct BDMioctl *ioc);
-  int (*read_byte) (struct BDM *self, struct BDMioctl *ioc);
-  int (*write_sysreg) (struct BDM *self, struct BDMioctl *ioc, int mode);
-  int (*write_proreg) (struct BDM *self, struct BDMioctl *ioc);
-  int (*write_long_word) (struct BDM *self, struct BDMioctl *ioc);
-  int (*write_word) (struct BDM *self, struct BDMioctl *ioc);
-  int (*write_byte) (struct BDM *self, struct BDMioctl *ioc);
-
-  /*
-   * Some system registers are write only so we need to shadow them
-   */
-  unsigned long shadow_sysreg[BDM_MAX_SYSREG];
-
-  /*
-   * Coldfire processors have different versions of the debug module.
-   * These also require special operations to occur.
-   */
-  int           cf_debug_ver;
-  int           cf_use_pst;
-  
-  /*
-   * Need to get the status from the csr, how-ever the status bits are a
-   * once read then clear so we need logic to store this state to know
-   * the status.
-   */
-  int           cf_running;
-  unsigned long cf_csr;
-  
-  /*
-   * Revision D BDM hardware does not have a bit to mask interrupts so
-   * we must save the SR when we step and then restore when we go.
-   */
-  unsigned long cf_sr_mask_cache;
-  int           cf_sr_masked;
-
-  /*
-   * Address for the current transfer. The TBLCF pod always
-   * takes the address rather than streaming. This should be changed.
-   */
-  unsigned long address;
-
-#ifdef BDM_BIT_BASH_PORT
-  
-  int (*bit_bash) (struct BDM *self, unsigned short mask, unsigned short value);
-
-  /*
-   * The current state of the bit bash bits. Easier than figuring out
-   * if the bit should be on or off by reading the PC port. I am sure
-   * this could be done, but I am not a PC parallel port expert.
-   */
-
-  unsigned short bit_bash_bits;
-
-#endif
-};
-
-/*
- ************************************************************************
  *     System Register Modes                                            *
  ************************************************************************
  */
@@ -300,6 +180,41 @@ static struct BDM bdm_device_info[BDM_NUM_OF_MINORS];
 static int mustSwap;
 
 /*
+ * Coldfire system register mapping. See bdm.h for the user values.
+ *
+ * Note, this is only for the common ones.
+ *
+ * For a RCREG 0x1 is invalid.
+ */
+
+static int cf_sysreg_map[BDM_REG_DBMR + 1] =
+{ 0x80f,    /* BDM_REG_RPC      */
+  -1,       /* BDM_REG_PCC      */
+  0x80e,    /* BDM_REG_SR       */
+  -1,       /* BDM_REG_USP      */
+  -1,       /* BDM_REG_SSP, use A7    */
+  -1,       /* BDM_REG_SFC      */
+  -1,       /* BDM_REG_DFC      */
+  -1,       /* BDM_REG_ATEMP    */
+  -1,       /* BDM_REG_FAR      */
+  0x801,    /* BDM_REG_VBR      */
+  0x2,      /* BDM_REG_CACR     */
+  0x4,      /* BDM_REG_ACR0     */
+  0x5,      /* BDM_REG_ACR1     */
+  0xc04,    /* BDM_REG_RAMBAR   */
+  0xc0f,    /* BDM_REG_MBAR     */
+  0x0,      /* BDM_REG_CSR      */
+  0x6,      /* BDM_REG_AATR     */
+  0x7,      /* BDM_REG_TDR      */
+  0x8,      /* BDM_REG_PBR      */
+  0x9,      /* BDM_REG_PBMR     */
+  0xc,      /* BDM_REG_ABHR     */
+  0xd,      /* BDM_REG_ABLR     */
+  0xe,      /* BDM_REG_DBR      */
+  0xf       /* BDM_REG_DBMR     */
+};
+
+/*
  ************************************************************************
  *     Genric Bit Bash Functions Decls                                  *
  ************************************************************************
@@ -328,24 +243,25 @@ static int bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc);
  *     CPU32 for PD/ICD interface support routines                      *
  ************************************************************************
  */
-
+#if BDM_DEVICE_IOPERM
 #include "bdm-cpu32.c"
+#endif
 
 /*
  ************************************************************************
  *     Coldfire P&E support routines                                    *
  ************************************************************************
  */
-
+#if BDM_DEVICE_IOPERM
 #include "bdm-cf-pe.c"
+#endif
 
 /*
  ************************************************************************
  *     Coldfire P&E support routines                                    *
  ************************************************************************
  */
-
-#if BDM_TBLCF_USB
+#if BDM_DEVICE_USB
 #include "bdm-tblcf.c"
 #endif
 
@@ -1011,7 +927,7 @@ bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
  * do nothing and return an error code of 0.
  */
 
-static int
+BDM_STATIC int
 bdm_open (unsigned int minor)
 {  
   struct BDM *self;
@@ -1112,7 +1028,7 @@ bdm_open (unsigned int minor)
  * since the target freezes as soon as the debugger, or downloader,
  * exits.
  */
-static int
+BDM_STATIC int
 bdm_close (unsigned int minor)
 {
   struct BDM *self = &bdm_device_info[minor];
@@ -1132,7 +1048,7 @@ bdm_close (unsigned int minor)
   return 0;
 }
 
-static int
+BDM_STATIC int
 bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
 {
   struct BDM      *self = &bdm_device_info[minor];
@@ -1337,8 +1253,8 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
   return err;
 }
 
-static int
-bdm_read (unsigned int minor, char *buf, int count)
+BDM_STATIC int
+bdm_read (unsigned int minor, unsigned char *buf, int count)
 {
   struct BDM *self = &bdm_device_info[minor];
   int        nleft, ncopy;
@@ -1364,8 +1280,8 @@ bdm_read (unsigned int minor, char *buf, int count)
   return 0;
 }
 
-static int
-bdm_write (unsigned int minor, char *buf, int count)
+BDM_STATIC int
+bdm_write (unsigned int minor, unsigned char *buf, int count)
 {  
   struct BDM *self = &bdm_device_info[minor];
   int        nleft, ncopy;
@@ -1389,4 +1305,18 @@ bdm_write (unsigned int minor, char *buf, int count)
 #endif
   }
   return 0;
+}
+
+struct BDM*
+bdm_get_device_info (int minor)
+{
+  if (minor < BDM_NUM_OF_MINORS)
+    return &bdm_device_info[minor];
+  return NULL;
+}
+
+int
+bdm_get_device_info_count ()
+{
+  return BDM_NUM_OF_MINORS;
 }

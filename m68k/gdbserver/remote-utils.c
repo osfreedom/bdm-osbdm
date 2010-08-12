@@ -19,6 +19,7 @@
 
 #include "server.h"
 #include "terminal.h"
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #if HAVE_SYS_IOCTL_H
@@ -606,7 +607,7 @@ putpkt_binary (char *buf, int cnt)
       
       if (wrote != p - buf2)
 	{
-	  warning("putpkt(write): count:%d, wrote:%d", p - buf2, wrote);
+	  warning("putpkt(write): count:%" PRIdMAX ", wrote:%" PRIdMAX , p - buf2, wrote);
 	  free (buf2);
 	  return -1;
 	}

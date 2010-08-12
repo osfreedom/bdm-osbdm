@@ -34,6 +34,7 @@
 
 #if HOST_FLASHING
 # include <errno.h>
+# include <inttypes.h>
 # include <stdint.h>
 # include <stdio.h>
 # include <limits.h>
@@ -420,7 +421,7 @@ prog_clone(area_t * area, uint32_t adr, unsigned char *data, uint32_t size)
     bdmReadRegister (BDM_REG_D0, &wrote_num);
 
     if (num != (uint32_t) wrote_num) {
-      printf ("Returned 0x%08x\n", wrote_num);   
+      printf ("Returned 0x%08" PRIxMAX "\n", wrote_num);   
       break;                            /* write failed */
     }
     

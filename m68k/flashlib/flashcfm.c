@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #if HOST_FLASHING
+# include <inttypes.h>
 # include <stdio.h>
 # include <BDMlib.h>
 # include <string.h>
@@ -304,8 +305,8 @@ flashcfm_search_chip(void *chip_descr, char *description, uint32_t pos)
       ct->flash_address = pos;
 
       if (description) {
-        sprintf(description, "Coldfire flash module @ 0x%08lx..0x%08lx "
-                "size:0x%08lx",
+        sprintf(description, "Coldfire flash module @ 0x%08" PRIx32 \
+                "..0x%08" PRIx32 " size:0x%08" PRIx32,
                 pos, pos + ct->flash_size, ct->flash_size);
       }
 

@@ -1,13 +1,6 @@
 /*
- * Motorola Background Debug Mode Remote Library
- * Copyright (C) 1998  Chris Johns
- *
- * Based on `ser-tcp.c' in the gdb sources.
- *
- * 31-11-1999 Chris Johns (ccj@acm.org)
- * Extended to support remote operation. See bdmRemote.c for details.
- *
  * Chris Johns <cjohns@users.sourceforge.net>
+ * Copyright 2010
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,23 +17,33 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ifndef _BDM_REMOTE_LIB_H_
-#define _BDM_REMOTE_LIB_H_
+#ifndef _BDM_IFACE_H_
+#define _BDM_IFACE_H_
 
 #if __cplusplus
 extern "C" 
 {
 #endif
 
-#include "bdm-iface.h"
-#include "BDMlib.h"
+#include "bdm.h"
 
 /*
- * Internal to the BDM library.
+ * An interface defintion.
  */
+  typedef struct _bdm_iface {
+    int (*open)(const char* name, struct _bdm_iface** iface);
+    int (*close)(int fd);
+    int (*read)(int fd, unsigned char *cbuf, int nbytes);
+    int (*write)(int fd, unsigned char *cbuf, int nbytes);
+    int (*ioctl_int)(int fd, int code, int *var);
+    int (*ioctl_io)(int fd, int code, struct BDMioctl *ioc);
+    int (*ioctl_cmd)(int fd, int code);
 
-int bdmRemoteName (const char *name);
-int bdmRemoteOpen (const char *name, bdm_iface** iface);
+    /*
+     * Can be NULL.
+     */
+    const char* (*error_str)(int error_no);
+  } bdm_iface;
 
 #if __cplusplus
 }

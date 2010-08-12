@@ -131,47 +131,9 @@
 #define CF_PE_CR_NOT_PST2   0x02
 #define CF_PE_CR_NOT_PST3   0x04
 
-/*
- * Coldfire system register mapping. See bdm.h for the user values.
- *
- * For a RCREG 0x1 is invalid.
- */
-
-static int cf_sysreg_map[BDM_REG_DBMR + 1] =
-{ 0x80f,    /* BDM_REG_RPC      */
-  -1,       /* BDM_REG_PCC      */
-  0x80e,    /* BDM_REG_SR       */
-  -1,       /* BDM_REG_USP      */
-  -1,       /* BDM_REG_SSP, use A7    */
-  -1,       /* BDM_REG_SFC      */
-  -1,       /* BDM_REG_DFC      */
-  -1,       /* BDM_REG_ATEMP    */
-  -1,       /* BDM_REG_FAR      */
-  0x801,    /* BDM_REG_VBR      */
-  0x2,      /* BDM_REG_CACR     */
-  0x4,      /* BDM_REG_ACR0     */
-  0x5,      /* BDM_REG_ACR1     */
-  0xc04,    /* BDM_REG_RAMBAR   */
-  0xc0f,    /* BDM_REG_MBAR     */
-  0x0,      /* BDM_REG_CSR      */
-  0x6,      /* BDM_REG_AATR     */
-  0x7,      /* BDM_REG_TDR      */
-  0x8,      /* BDM_REG_PBR      */
-  0x9,      /* BDM_REG_PBMR     */
-  0xc,      /* BDM_REG_ABHR     */
-  0xd,      /* BDM_REG_ABLR     */
-  0xe,      /* BDM_REG_DBR      */
-  0xf       /* BDM_REG_DBMR     */
-};
-
 static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
 static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
 static int cf_pe_reset_chip (struct BDM *self);
-
-#define CF_REVISION_A (0)
-#define CF_REVISION_B (1)
-#define CF_REVISION_C (2)
-#define CF_REVISION_D (3)
 
 /*
  * Get direct target status, that is from the parallel port.
@@ -1052,8 +1014,8 @@ cf_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
 /*
  * Initialise the BDM structure for a Coldfire in the P&E interface
  */
-static int
-cf_pe_init_self (struct BDM *self)
+int
+bdm_cf_pe_init_self (struct BDM *self)
 {
   int reg;
   
