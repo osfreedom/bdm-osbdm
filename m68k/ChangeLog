@@ -1,3 +1,7 @@
+2010-08-13  Chris Johns <cjohns@users.sourceforge.net>
+
+	* tblcf/tblcf_usb.c: Fix memory problems in find.
+	
 2010-08-12  Chris Johns <cjohns@users.sourceforge.net>
 
 	* bdmabstraction/bdmops.h: Do not change the calls, just use the

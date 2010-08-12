@@ -59,9 +59,8 @@ void tblcf_usb_init(void) {
 
 /* find all TBLCF devices attached to the computer */
 void tblcf_usb_find_devices(unsigned short int product_id) {
-  libusb_device *dev;
-  int           i = 0;
-  int           count;
+  int i;
+  int count;
   
   if (usb_devs) return;
   
@@ -70,7 +69,8 @@ void tblcf_usb_find_devices(unsigned short int product_id) {
       return;
   
   /* scan through all busses then devices counting the number found */
-  while ((dev = usb_libusb_devs[i++]) != NULL) {
+  for (i = 0; i < count; i++) {
+      libusb_device *dev = usb_libusb_devs[i];
       struct libusb_device_descriptor desc;
       int r = libusb_get_device_descriptor(dev, &desc);
       if (r < 0) {
@@ -89,17 +89,19 @@ void tblcf_usb_find_devices(unsigned short int product_id) {
   usb_dev_count = 0;
   
   /* scan through all busses and devices adding each one */
-  i = 0;
-  while ((dev = usb_libusb_devs[i++]) != NULL) {
+  for (i = 0; i < count; i++) {
+      libusb_device *dev = usb_libusb_devs[i];
+      struct libusb_device_descriptor desc;
       tblcf_usb_dev *udev = &usb_devs[usb_dev_count];
-      int r = libusb_get_device_descriptor(dev, &udev->desc);
+      int r = libusb_get_device_descriptor(dev, &desc);
       if (r >= 0) {
-          if ((udev->desc.idVendor == TBLCF_VID) && (udev->desc.idProduct == product_id)) {
+          if ((desc.idVendor == TBLCF_VID) && (desc.idProduct == product_id)) {
               /* found a device */
+              udev->desc = desc;
               udev->device = dev;
               udev->bus_number = libusb_get_bus_number(dev);
               udev->device_address = libusb_get_device_address(dev);
-              snprintf(udev->name, sizeof(udev->name), "%04x-%04x", udev->bus_number, udev->device_address);
+              snprintf(udev->name, sizeof(udev->name), "%03d-%03d", udev->bus_number, udev->device_address);
               usb_dev_count++;
           }
       }
