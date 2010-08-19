@@ -402,6 +402,13 @@ struct BDM {
 };
 
 /*
+ * Driver Functions which are common to different PODs
+ */
+
+int bdm_invalidate_cache (struct BDM *self);
+int bdm_pc_read_check (struct BDM *self);
+
+/*
  * BDM call when built into user-land.
  */
 int bdm_open (unsigned int minor);

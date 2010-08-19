@@ -916,15 +916,15 @@ bdmDrvBitBash (struct BDM *self, struct BDMioctl *ioc)
 #endif
 
 /*
- * Invalidate the cache.
- */
-
-/*
  ************************************************************************
  *      Driver Functions which are common to different PODs             *
  ************************************************************************
  */
-static int
+
+/*
+ * Invalidate the cache.
+ */
+BDM_STATIC int
 bdm_invalidate_cache (struct BDM *self)
 {
   struct BDMioctl cacr_ioc;
@@ -961,7 +961,7 @@ bdm_invalidate_cache (struct BDM *self)
  * PC read check. This is used to see if the processor has halted.
  */
 
-static int
+BDM_STATIC int
 bdm_pc_read_check (struct BDM *self)
 {
   struct BDMioctl pc_ioc;
