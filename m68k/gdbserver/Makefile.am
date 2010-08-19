@@ -48,9 +48,11 @@ if TBLCF_USB
 TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
 endif
 
-if LIBUSB_PATH
+if BDM_USB
 AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
 AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+LIBS += -l@LIBUSB_LIB_NAME@
+
 endif
 
 if GDBSERVER

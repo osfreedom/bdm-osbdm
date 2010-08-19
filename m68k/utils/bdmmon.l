@@ -64,6 +64,7 @@
  */
 
 #include <BDMFlash.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -180,7 +181,7 @@ int mem_dump(unsigned long from, int count)
 	for(i=0; i<read; i++) {
 	    if(i%16==0) {
         strcpy((char*)line, "                ");
-	        printf("%08x: ", from);
+	        printf("%08" PRIxMAX ": ", from);
 	    }
 	    printf("%02x ", buffer[i]);
 	    if(buffer[i]<' ' || buffer[i]>0x7f) {
@@ -326,7 +327,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
         printf("ERROR\n");
     } else {
 	bdm_read_reg(reg_names[i].id, &j);
-	printf("%8s=0x%08x\n", reg_names[i].name, j);
+	printf("%8s=0x%08" PRIxMAX "\n", reg_names[i].name, j);
     }
     prompt();
 }
@@ -342,7 +343,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	    if(reg_names[n].id == i)
 		break;
 	}
-	printf("%8s=%08x ", reg_names[n].name, j);
+	printf("%8s=%08" PRIxMAX " ", reg_names[n].name, j);
 	if(i%4==3) printf("\n");
     }
     if(i%4!=3) printf("\n");
@@ -357,7 +358,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     bdm_stop();
     tokenize(yytext, args);
     j=0;
-    if(sscanf(args[2], "%x", &j) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &j) != 1) {
 	printf("ERROR\n");
     } else {
         if(args[1][0] == '%') args[1]++; /* skip optional % */
@@ -371,7 +372,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	if(!strlen(reg_names[i].name)) {
 	    printf("ERROR\n");
 	} else {
-	    printf("Writing 0x%08x to %s.\n", j, reg_names[i].name);
+	    printf("Writing 0x%08" PRIxMAX " to %s.\n", j, reg_names[i].name);
 	    i = reg_names[i].id;
 	    bdm_write_reg(i, &j);
 	}
@@ -385,11 +386,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &len) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &len) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -412,11 +413,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &len) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &len) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -439,15 +440,15 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     tokenize(yytext, args);
 
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &len) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &len) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[3], "%x", &val) != 1) {
+    if(sscanf(args[3], "%" PRIxMAX, &val) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -476,13 +477,13 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     char *args[20];
     unsigned char x;
     tokenize(yytext, args);
-    if(sscanf(args[1], "%x", &me_addr)!=1) {
+    if(sscanf(args[1], "%" PRIxMAX, &me_addr)!=1) {
 	printf("ERROR\n> ");
     } else {
 	if(bdm_read_mem(me_addr, &x, 1)<0) {
 	    printf("Bus error or target disconnected.\n> ");
 	} else {
-	    printf("%08x: %02x = ", me_addr, x);
+	    printf("%08" PRIxMAX ": %02" PRIx32" = ", me_addr, x);
 	    BEGIN(EDIT);
 	}
     }
@@ -494,7 +495,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     unsigned long value;
     unsigned char x;
     tokenize(yytext, args);
-    if(sscanf(args[0], "%x", &value)!=1) {
+    if(sscanf(args[0], "%" PRIxMAX, &value)!=1) {
 	printf("ERROR\n> ");
     } else {
 	x = (unsigned char)(0xff & value);
@@ -506,7 +507,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 		printf("Bus error or target disconnected.\n> ");
 		BEGIN(INITIAL);
 	    } else {
-		printf("%08x: %02x = ", me_addr, x);
+		printf("%08" PRIxMAX": %02" PRIx32 " = ", me_addr, x);
 	    }
 	}
     }
@@ -534,8 +535,8 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
         case 'l': case 'L': size = 4; break;
         default: goto error;
     }
-    if(sscanf(args[1], "%x", &addr) != 1 || (addr & (size-1)) != 0) goto error;
-    if(sscanf(args[2], "%x", &tmp ) != 1) goto error;
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1 || (addr & (size-1)) != 0) goto error;
+    if(sscanf(args[2], "%" PRIxMAX, &tmp ) != 1) goto error;
     switch(size) {
         case 1:
             value[0] = (tmp>> 0) & 0xFF;
@@ -692,7 +693,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     unsigned long addr;
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -724,11 +725,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     unsigned long addr, len;
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &len) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &len) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -785,7 +786,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	    if(reg_names[n].id == i)
 		break;
 	}
-	printf("%8s=%08x ", reg_names[n].name, j);
+	printf("%8s=%08" PRIxMAX " ", reg_names[n].name, j);
 	if(i%4==3) printf("\n");
     }
     if(i%4!=3) printf("\n");
@@ -849,7 +850,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     unsigned long addr;
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -905,7 +906,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	error=1;
     }
     if(!error) {
-        printf("maximum stack position is 0x%08lx.\n", val);
+        printf("maximum stack position is 0x%08" PRIx32 ".\n", val);
         maxstack=val;
     }
     printf("\n");
@@ -921,7 +922,7 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
 	     printf("Bus error or target disconnected.\n");
 	     break;
 	 } else {
-	     printf("\t0x%08lx\n", ntohl(buf));
+	     printf("\t0x%08" PRIx32 "\n", ntohl(buf));
 	 }
      }
      prompt(); 
@@ -935,11 +936,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     bdm_stop();
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &mask) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &mask) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -959,11 +960,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     bdm_stop();
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &from) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &from) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &to) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &to) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -983,11 +984,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     bdm_stop();
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &value) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &value) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &mask) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &mask) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -1022,11 +1023,11 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
     bdm_stop();
     tokenize(yytext, args);
     error=0;
-    if(sscanf(args[1], "%x", &addr) != 1) {
+    if(sscanf(args[1], "%" PRIxMAX, &addr) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
-    if(sscanf(args[2], "%x", &len) != 1) {
+    if(sscanf(args[2], "%" PRIxMAX, &len) != 1) {
 	printf("ERROR\n");
 	error=1;
     }
@@ -1040,8 +1041,8 @@ EXIT (exit|EXIT|Exit|quit|QUIT|Quit|Q|q)
             }
 	} else {
 	    for(i=0; i<16; i++) {
-		if(i%16==0) printf("\r%08x: ", addr);
-		printf("%02x ", buffer[i]);
+		if(i%16==0) printf("\r%08" PRIxMAX ": ", addr);
+		printf("%02" PRIx32 " ", buffer[i]);
 		if(i%16==15) printf("\r");
 		/* addr++; */
 	    }

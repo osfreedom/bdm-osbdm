@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #if HOST_FLASHING
+# include <inttypes.h>
 # include <stdio.h>
 # include <BDMlib.h>
 # include <string.h>
@@ -63,7 +64,7 @@ static const chip_t chips[] = {
     static uint32_t funcname (uint32_t adr) { \
       vartype val; \
       if (bdmfunc (adr, &val) < 0) \
-        fprintf (stderr, #bdmfunc "(0x%08lx,xxx): %s\n", \
+        fprintf (stderr, #bdmfunc "(0x%08" PRIx32 ",xxx): %s\n", \
 		    adr, bdmErrorString()); \
       return (uint32_t) val; \
     }
@@ -71,7 +72,7 @@ static const chip_t chips[] = {
 # define DEFINE_WRITE_FUNC(funcname,vartype,bdmfunc) \
     static void funcname (uint32_t adr, uint32_t val) { \
       if (bdmfunc (adr, val) < 0) \
-        fprintf (stderr, #bdmfunc "(0x%08lx,0x%08x): %s\n", \
+        fprintf (stderr, #bdmfunc "(0x%08" PRIx32 ",0x%08" PRIx32 "): %s\n", \
                  adr, val, bdmErrorString()); \
     }
 
@@ -357,8 +358,8 @@ flashintelc3_search_chip(void *chip_descr, char *description, uint32_t pos)
       size = chip->size;
       
       if (description) {
-        sprintf(description, "%10s @ 0x%08lx..0x%08lx "
-                "manuf:0x%02lx device:0x%04lx size:0x%08lx",
+        sprintf(description, "%10s @ 0x%08" PRIx32 "..0x%08" PRIx32 " "
+                "manuf:0x%02" PRIx32 " device:0x%04" PRIx32 " size:0x%08" PRIx32,
                 chip->name, pos, pos + chip->size, m, d, chip->size);
       }
       

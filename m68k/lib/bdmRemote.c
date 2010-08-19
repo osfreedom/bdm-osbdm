@@ -31,6 +31,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <stdio.h>
@@ -135,7 +136,7 @@ bdmInitWinSock ()
 /*
  * Like strerror(), but knows about BDM driver errors, too.
  */
-const char *
+static const char *
 bdmRemoteStrerror (int error_no)
 {
   switch (error_no) {
@@ -280,12 +281,394 @@ bdmRemoteName (const char *name)
 }
 
 /*
+ * Close a remote link.
+ */
+static int
+bdmRemoteClose (int fd)
+{
+  char buf[BDM_REMOTE_BUF_SIZE];
+
+  strcpy (buf, "QUIT Later.");
+  bdmSocketSend (fd, buf, strlen (buf) + 1);
+
+  return close (fd);
+}
+
+/*
+ * Do an int-argument BDM ioctl
+ */
+static int
+bdmRemoteIoctlInt (int fd, int code, int *var)
+{
+  char buf[BDM_REMOTE_BUF_SIZE];
+  int  buf_len;
+  char *s;
+  int  id;
+
+  /*
+   * Get a network id for the IO code.
+   */
+
+  id = bdmGenerateIOId (code);
+
+  if (id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /*
+   * Pack the message and send.
+   */
+
+  buf_len = 1 + sprintf (buf, "IOINT 0x%x,0x%x", id, *var);
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
+    return -1;
+
+  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
+    return -1;
+
+  /*
+   * Unpack the result.
+   */
+
+  s = strstr (buf, "IOINT");
+
+  if (!s) {
+    /* FIXME: need error message */
+    return -1;
+  }
+
+  s += sizeof "IOINT";
+
+  errno = strtoul (s, NULL, 0);
+
+  s = strchr (s, ',') + 1;
+
+  *var = strtoul (s, NULL, 0);
+
+  if (errno)
+    return -1;
+
+  return 0;
+}
+
+/*
+ * Do a command (no-argument) BDM ioctl
+ */
+static int
+bdmRemoteIoctlCommand (int fd, int code)
+{
+  char buf[BDM_REMOTE_BUF_SIZE];
+  int  buf_len;
+  char *s;
+  int  id;
+
+  /*
+   * Get a network id for the IO code.
+   */
+
+  id = bdmGenerateIOId (code);
+
+  if (id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /*
+   * Pack the message and send.
+   */
+
+  buf_len = 1 + sprintf (buf, "IOCMD 0x%x", id);
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
+    return -1;
+
+  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
+    return -1;
+
+  /*
+   * Unpack the result.
+   */
+
+  s = strstr (buf, "IOCMD");
+
+  if (!s) {
+    /* FIXME: need error message */
+    return -1;
+  }
+
+  s += sizeof "IOCMD";
+
+  errno = strtoul (s, NULL, 0);
+
+  if (errno)
+    return -1;
+
+  return 0;
+}
+
+/*
+ * Do a BDMioctl-argument BDM ioctl
+ */
+static int
+bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
+{
+  char buf[BDM_REMOTE_BUF_SIZE];
+  int  buf_len;
+  char *s;
+  int  id;
+
+  /*
+   * Get a network id for the IO code.
+   */
+
+  id = bdmGenerateIOId (code);
+
+  if (id < 0) {
+    errno = EINVAL;
+    return -1;
+  }
+
+  /*
+   * Pack the message and send.
+   */
+
+  buf_len = 1 + sprintf (buf, "IOIO 0x%" PRIxLEAST32 ",0x%" PRIxMAX ",0x%" PRIxMAX "",
+                         id, ioc->address, ioc->value);
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
+    return -1;
+
+  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
+    return -1;
+
+  /*
+   * Unpack the result.
+   */
+
+  s = strstr (buf, "IOIO");
+
+  if (!s) {
+    /* FIXME: need error message */
+    return -1;
+  }
+
+  s += sizeof "IOIO";
+
+  errno = strtoul (s, NULL, 0);
+
+  s = strchr (s, ',') + 1;
+
+  ioc->address = strtoul (s, NULL, 0);
+
+  s = strchr (s, ',') + 1;
+
+  ioc->value = strtoul (s, NULL, 0);
+
+  if (errno)
+    return -1;
+
+  return 0;
+}
+
+/*
+ * Do a BDM read
+ */
+static int
+bdmRemoteRead (int fd, unsigned char *cbuf, int nbytes)
+{
+  char          buf[BDM_REMOTE_BUF_SIZE];
+  int           buf_index;
+  int           buf_len;
+  unsigned long remote_nbytes;
+  unsigned long bytes;
+  unsigned char octet;
+  char          *s;
+
+  /*
+   * Pack the message and send. For a read send the address and length.
+   * The server will return a protocol status code, the read protocol
+   * label, errno, the length then the data.
+   */
+
+  buf_len = 1 + sprintf (buf, "READ %d", nbytes);
+
+  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
+    return -1;
+
+  buf_len = bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE);
+
+  if (buf_len < 0)
+    return -1;
+
+  /*
+   * Unpack the result.
+   */
+
+  s = strstr (buf, "READ");
+
+  if (!s) {
+    /* FIXME: need error message */
+    return -1;
+  }
+
+  s += sizeof "READ";
+
+  errno = strtoul (s, NULL, 0);
+
+  s = strchr (s, ',') + 1;
+
+  remote_nbytes = strtoul (s, NULL, 0);
+
+  /*
+   * We could receive an odd number of characters in a buffer
+   * and we need an even number of characters to complete a
+   * byte. So if a single character is left move it to the
+   * start of the buffer and append the next buffer of data.
+   */
+
+  if (remote_nbytes) {
+    bytes     = 0;
+    buf_index = strchr (s, ',') - buf + 1;
+
+    while (bytes < nbytes) {
+      if (buf_len < 2) {
+        int new_read;
+        new_read = bdmRemoteWait (fd, buf + buf_len,
+                                  BDM_REMOTE_BUF_SIZE - buf_len);
+        if (new_read < 0)
+          return -1;
+        buf_len += new_read;
+      }
+
+      while ((bytes < nbytes) && ((buf_len - buf_index) > 1)) {
+        if (buf[buf_index] > '9') {
+          buf[buf_index] = tolower (buf[buf_index]);
+          octet = buf[buf_index] - 'a' + 10;
+        }
+        else
+          octet = buf[buf_index] - '0';
+
+        buf_index++;
+
+        octet <<= 4;
+
+        if (buf[buf_index] > '9') {
+          buf[buf_index] = tolower (buf[buf_index]);
+          octet |= buf[buf_index] - 'a' + 10;
+        }
+        else
+          octet |= buf[buf_index] - '0';
+
+        buf_index++;
+
+        *cbuf = octet;
+
+        cbuf++;
+        bytes++;
+      }
+
+      if (buf_index < buf_len) {
+        buf[0]  = buf[buf_index];
+        buf_len = 1;
+      }
+      else
+        buf_len = 0;
+
+      buf_index = 0;
+    }
+  }
+  return nbytes;
+}
+
+/*
+ * Do a BDM write
+ */
+static int
+bdmRemoteWrite (int fd, unsigned char *cbuf, int nbytes)
+{
+  char          buf[BDM_REMOTE_BUF_SIZE];
+  int           buf_len;
+  unsigned long bytes;
+  char          *s;
+
+  /*
+   * Pack the message and send. A write is a matter of
+   * formatting buffers of BDM_REMOTE_BUF_SIZE and streaming them to the
+   * server. This server uses the number of bytes at the start
+   * of the message to detect the number of bytes being sent.
+   */
+
+  if (nbytes == 0)
+    return 0;
+
+  buf_len = sprintf (buf, "WRITE %d,", nbytes);
+  bytes = 0;
+
+  while (bytes < nbytes) {
+    while ((bytes < nbytes) && ((BDM_REMOTE_BUF_SIZE - buf_len) > 2)) {
+      buf[buf_len] = hex[(*cbuf >> 4) & 0xf];
+      buf_len++;
+      buf[buf_len] = hex[*cbuf & 0xf];
+      buf_len++;
+      cbuf++;
+      bytes++;
+    }
+
+    buf[buf_len] = 0;
+    if (bdmSocketSend (fd, buf, buf_len) != buf_len)
+      return -1;
+
+    buf_len = 0;
+  }
+
+  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
+    return -1;
+
+  /*
+   * Unpack the result.
+   */
+
+  s = strstr (buf, "WRITE");
+
+  if (!s) {
+    /* FIXME: need error message */
+    return -1;
+  }
+
+  s += sizeof "WRITE";
+
+  errno = strtoul (s, NULL, 0);
+
+  s = strchr (s, ',') + 1;
+
+  nbytes = strtoul (s, NULL, 0);
+
+  return nbytes;
+}
+
+/*
+ * The remote interface handlers.
+ */
+static bdm_iface remoteIface = {
+  .open = bdmRemoteOpen,
+  .close = bdmRemoteClose,
+  .read = bdmRemoteRead,
+  .write = bdmRemoteWrite,
+  .ioctl_int = bdmRemoteIoctlInt,
+  .ioctl_io = bdmRemoteIoctlIo,
+  .ioctl_cmd = bdmRemoteIoctlCommand,
+  .error_str = bdmRemoteStrerror
+};
+
+/*
  * Open a remote link. The name is of the form :
  *
  *       host:port/device
  */
 int
-bdmRemoteOpen (const char *name)
+bdmRemoteOpen (const char *name, bdm_iface** iface)
 {
   int                fd = -1;
   char               lname[256];
@@ -302,6 +685,8 @@ bdmRemoteOpen (const char *name)
   int                buf_len;
   char               *s;
 
+  *iface = NULL;
+  
 #if defined (__WIN32__)
   if (!bdmInitWinSock ()) {
     bdmPrint ("bdm-remote:open: failed to initialise WinSock\n");
@@ -508,374 +893,8 @@ bdmRemoteOpen (const char *name)
     fd = -1;
     errno = save_errno;
   }
+
+  *iface = &remoteIface;
   
   return fd;
-}
-
-/*
- * Close a remote link.
- */
-int
-bdmRemoteClose (int fd)
-{
-  char buf[BDM_REMOTE_BUF_SIZE];
-
-  strcpy (buf, "QUIT Later.");
-  bdmSocketSend (fd, buf, strlen (buf) + 1);
-
-  return close (fd);
-}
-
-/*
- * Do an int-argument BDM ioctl
- */
-int
-bdmRemoteIoctlInt (int fd, int code, int *var)
-{
-  char buf[BDM_REMOTE_BUF_SIZE];
-  int  buf_len;
-  char *s;
-  int  id;
-
-  /*
-   * Get a network id for the IO code.
-   */
-
-  id = bdmGenerateIOId (code);
-
-  if (id < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /*
-   * Pack the message and send.
-   */
-
-  buf_len = 1 + sprintf (buf, "IOINT 0x%x,0x%x", id, *var);
-
-  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
-    return -1;
-
-  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
-    return -1;
-
-  /*
-   * Unpack the result.
-   */
-
-  s = strstr (buf, "IOINT");
-
-  if (!s) {
-    /* FIXME: need error message */
-    return -1;
-  }
-
-  s += sizeof "IOINT";
-
-  errno = strtoul (s, NULL, 0);
-
-  s = strchr (s, ',') + 1;
-
-  *var = strtoul (s, NULL, 0);
-
-  if (errno)
-    return -1;
-
-  return 0;
-}
-
-/*
- * Do a command (no-argument) BDM ioctl
- */
-int
-bdmRemoteIoctlCommand (int fd, int code)
-{
-  char buf[BDM_REMOTE_BUF_SIZE];
-  int  buf_len;
-  char *s;
-  int  id;
-
-  /*
-   * Get a network id for the IO code.
-   */
-
-  id = bdmGenerateIOId (code);
-
-  if (id < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /*
-   * Pack the message and send.
-   */
-
-  buf_len = 1 + sprintf (buf, "IOCMD 0x%x", id);
-
-  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
-    return -1;
-
-  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
-    return -1;
-
-  /*
-   * Unpack the result.
-   */
-
-  s = strstr (buf, "IOCMD");
-
-  if (!s) {
-    /* FIXME: need error message */
-    return -1;
-  }
-
-  s += sizeof "IOCMD";
-
-  errno = strtoul (s, NULL, 0);
-
-  if (errno)
-    return -1;
-
-  return 0;
-}
-
-/*
- * Do a BDMioctl-argument BDM ioctl
- */
-int
-bdmRemoteIoctlIo (int fd, int code, struct BDMioctl *ioc)
-{
-  char buf[BDM_REMOTE_BUF_SIZE];
-  int  buf_len;
-  char *s;
-  int  id;
-
-  /*
-   * Get a network id for the IO code.
-   */
-
-  id = bdmGenerateIOId (code);
-
-  if (id < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-
-  /*
-   * Pack the message and send.
-   */
-
-  buf_len = 1 + sprintf (buf, "IOIO 0x%x,0x%x,0x%x",
-                         id, ioc->address, ioc->value);
-
-  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
-    return -1;
-
-  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
-    return -1;
-
-  /*
-   * Unpack the result.
-   */
-
-  s = strstr (buf, "IOIO");
-
-  if (!s) {
-    /* FIXME: need error message */
-    return -1;
-  }
-
-  s += sizeof "IOIO";
-
-  errno = strtoul (s, NULL, 0);
-
-  s = strchr (s, ',') + 1;
-
-  ioc->address = strtoul (s, NULL, 0);
-
-  s = strchr (s, ',') + 1;
-
-  ioc->value = strtoul (s, NULL, 0);
-
-  if (errno)
-    return -1;
-
-  return 0;
-}
-
-/*
- * Do a BDM read
- */
-int
-bdmRemoteRead (int fd, unsigned char *cbuf, unsigned long nbytes)
-{
-  char          buf[BDM_REMOTE_BUF_SIZE];
-  int           buf_index;
-  int           buf_len;
-  unsigned long remote_nbytes;
-  unsigned long bytes;
-  unsigned char octet;
-  char          *s;
-
-  /*
-   * Pack the message and send. For a read send the address and length.
-   * The server will return a protocol status code, the read protocol
-   * label, errno, the length then the data.
-   */
-
-  buf_len = 1 + sprintf (buf, "READ %ld", nbytes);
-
-  if (bdmSocketSend (fd, buf, buf_len) != buf_len)
-    return -1;
-
-  buf_len = bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE);
-
-  if (buf_len < 0)
-    return -1;
-
-  /*
-   * Unpack the result.
-   */
-
-  s = strstr (buf, "READ");
-
-  if (!s) {
-    /* FIXME: need error message */
-    return -1;
-  }
-
-  s += sizeof "READ";
-
-  errno = strtoul (s, NULL, 0);
-
-  s = strchr (s, ',') + 1;
-
-  remote_nbytes = strtoul (s, NULL, 0);
-
-  /*
-   * We could receive an odd number of characters in a buffer
-   * and we need an even number of characters to complete a
-   * byte. So if a single character is left move it to the
-   * start of the buffer and append the next buffer of data.
-   */
-
-  if (remote_nbytes) {
-    bytes     = 0;
-    buf_index = strchr (s, ',') - buf + 1;
-
-    while (bytes < nbytes) {
-      if (buf_len < 2) {
-        int new_read;
-        new_read = bdmRemoteWait (fd, buf + buf_len,
-                                  BDM_REMOTE_BUF_SIZE - buf_len);
-        if (new_read < 0)
-          return -1;
-        buf_len += new_read;
-      }
-
-      while ((bytes < nbytes) && ((buf_len - buf_index) > 1)) {
-        if (buf[buf_index] > '9') {
-          buf[buf_index] = tolower (buf[buf_index]);
-          octet = buf[buf_index] - 'a' + 10;
-        }
-        else
-          octet = buf[buf_index] - '0';
-
-        buf_index++;
-
-        octet <<= 4;
-
-        if (buf[buf_index] > '9') {
-          buf[buf_index] = tolower (buf[buf_index]);
-          octet |= buf[buf_index] - 'a' + 10;
-        }
-        else
-          octet |= buf[buf_index] - '0';
-
-        buf_index++;
-
-        *cbuf = octet;
-
-        cbuf++;
-        bytes++;
-      }
-
-      if (buf_index < buf_len) {
-        buf[0]  = buf[buf_index];
-        buf_len = 1;
-      }
-      else
-        buf_len = 0;
-
-      buf_index = 0;
-    }
-  }
-  return nbytes;
-}
-
-/*
- * Do a BDM write
- */
-int
-bdmRemoteWrite (int fd, unsigned char *cbuf, unsigned long nbytes)
-{
-  char          buf[BDM_REMOTE_BUF_SIZE];
-  int           buf_len;
-  unsigned long bytes;
-  char          *s;
-
-  /*
-   * Pack the message and send. A write is a matter of
-   * formatting buffers of BDM_REMOTE_BUF_SIZE and streaming them to the
-   * server. This server uses the number of bytes at the start
-   * of the message to detect the number of bytes being sent.
-   */
-
-  if (nbytes == 0)
-    return 0;
-
-  buf_len = sprintf (buf, "WRITE %ld,", nbytes);
-  bytes = 0;
-
-  while (bytes < nbytes) {
-    while ((bytes < nbytes) && ((BDM_REMOTE_BUF_SIZE - buf_len) > 2)) {
-      buf[buf_len] = hex[(*cbuf >> 4) & 0xf];
-      buf_len++;
-      buf[buf_len] = hex[*cbuf & 0xf];
-      buf_len++;
-      cbuf++;
-      bytes++;
-    }
-
-    buf[buf_len] = 0;
-    if (bdmSocketSend (fd, buf, buf_len) != buf_len)
-      return -1;
-
-    buf_len = 0;
-  }
-
-  if (bdmRemoteWait (fd, buf, BDM_REMOTE_BUF_SIZE) < 0)
-    return -1;
-
-  /*
-   * Unpack the result.
-   */
-
-  s = strstr (buf, "WRITE");
-
-  if (!s) {
-    /* FIXME: need error message */
-    return -1;
-  }
-
-  s += sizeof "WRITE";
-
-  errno = strtoul (s, NULL, 0);
-
-  s = strchr (s, ',') + 1;
-
-  nbytes = strtoul (s, NULL, 0);
-
-  return nbytes;
 }

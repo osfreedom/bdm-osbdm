@@ -131,47 +131,9 @@
 #define CF_PE_CR_NOT_PST2   0x02
 #define CF_PE_CR_NOT_PST3   0x04
 
-/*
- * Coldfire system register mapping. See bdm.h for the user values.
- *
- * For a RCREG 0x1 is invalid.
- */
-
-static int cf_sysreg_map[BDM_REG_DBMR + 1] =
-{ 0x80f,    /* BDM_REG_RPC      */
-  -1,       /* BDM_REG_PCC      */
-  0x80e,    /* BDM_REG_SR       */
-  -1,       /* BDM_REG_USP      */
-  -1,       /* BDM_REG_SSP, use A7    */
-  -1,       /* BDM_REG_SFC      */
-  -1,       /* BDM_REG_DFC      */
-  -1,       /* BDM_REG_ATEMP    */
-  -1,       /* BDM_REG_FAR      */
-  0x801,    /* BDM_REG_VBR      */
-  0x2,      /* BDM_REG_CACR     */
-  0x4,      /* BDM_REG_ACR0     */
-  0x5,      /* BDM_REG_ACR1     */
-  0xc04,    /* BDM_REG_RAMBAR   */
-  0xc0f,    /* BDM_REG_MBAR     */
-  0x0,      /* BDM_REG_CSR      */
-  0x6,      /* BDM_REG_AATR     */
-  0x7,      /* BDM_REG_TDR      */
-  0x8,      /* BDM_REG_PBR      */
-  0x9,      /* BDM_REG_PBMR     */
-  0xc,      /* BDM_REG_ABHR     */
-  0xd,      /* BDM_REG_ABLR     */
-  0xe,      /* BDM_REG_DBR      */
-  0xf       /* BDM_REG_DBMR     */
-};
-
 static int cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
 static int cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode);
 static int cf_pe_reset_chip (struct BDM *self);
-
-#define CF_REVISION_A (0)
-#define CF_REVISION_B (1)
-#define CF_REVISION_C (2)
-#define CF_REVISION_D (3)
 
 /*
  * Get direct target status, that is from the parallel port.
@@ -249,59 +211,6 @@ cf_pe_get_direct_status (struct BDM *self)
 }
 
 /*
- * Invalidate the cache.
- */
-
-static int
-cf_pe_invalidate_cache (struct BDM *self)
-{
-  struct BDMioctl cacr_ioc;
-
-  cacr_ioc.address = BDM_REG_CACR;
-
-  if (cf_pe_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  /*
-   * Set the invalidate bit.
-   */
-
-  if (cacr_ioc.value) {
-    /* CCJ: Add version C as I think the version D was wrong. */
-    if ((self->cf_debug_ver == CF_REVISION_C) ||
-        (self->cf_debug_ver == CF_REVISION_D))
-      cacr_ioc.value |= 0x01040100;
-    else
-      cacr_ioc.value |= 0x01000100;
-
-    if (self->debugFlag > 2)
-      PRINTF (" cf_pe_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
-  
-    if (cf_pe_write_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-  }
-  
-  return 0;
-}
-
-/*
- * PC read check. This is used to see if the processor has halted.
- */
-
-static int
-cf_pe_pc_read_check (struct BDM *self)
-{
-  struct BDMioctl pc_ioc;
-
-  pc_ioc.address = BDM_REG_RPC;
-
-  if (cf_pe_read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  return 0;
-}
-
-/*
  * Get target status
  */
 
@@ -342,7 +251,7 @@ cf_pe_get_status (struct BDM *self)
    * flush the cache.
    */
   if (cf_last_running && !self->cf_running)
-    cf_pe_invalidate_cache (self);
+    bdm_invalidate_cache (self);
   
   if (self->debugFlag > 2)
     PRINTF (" cf_pe_get_status -- Status:0x%x, csr:0x%08x, cf_csr:0x%08x\n",
@@ -626,8 +535,8 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
          * for providing access to Joe. Thanks. (CCJ 15-05-2000)
          */
 
-        if ((cf_pe_pc_read_check (self) == 0) &&
-            (cf_pe_pc_read_check (self) == 0)) {
+        if ((bdm_pc_read_check (self) == 0) &&
+            (bdm_pc_read_check (self) == 0)) {
           self->cf_csr     = ioc->value;
           self->cf_running = 0;
         
@@ -637,7 +546,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
            * if we are using PST,  I am not sure yet : davidm
            */
           
-          cf_pe_invalidate_cache (self);
+          bdm_invalidate_cache (self);
         }
         else {
           /*
@@ -870,7 +779,7 @@ cf_pe_run_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  cf_pe_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:4 or the SSM bit to off then issue a go.
@@ -950,7 +859,7 @@ cf_pe_step_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  cf_pe_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   /*
    * Change the CSR:4 or the SSM bit to on then issue a go.
    * Mask pending interrupt to stop stepping into an interrupt.
@@ -1052,8 +961,8 @@ cf_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
 /*
  * Initialise the BDM structure for a Coldfire in the P&E interface
  */
-static int
-cf_pe_init_self (struct BDM *self)
+int
+bdm_cf_pe_init_self (struct BDM *self)
 {
   int reg;
   

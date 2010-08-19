@@ -1,11 +1,6 @@
 /*
  * Motorola Background Debug Mode Remote Library
- * Copyright (C) 1998  Chris Johns
- *
- * Based on `ser-tcp.c' in the gdb sources.
- *
- * 31-11-1999 Chris Johns (ccj@acm.org)
- * Extended to support remote operation. See bdmRemote.c for details.
+ * Copyright (C) 1998-2010  Chris Johns
  *
  * Chris Johns <cjohns@users.sourceforge.net>
  *
@@ -24,8 +19,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ifndef _BDM_REMOTE_LIB_H_
-#define _BDM_REMOTE_LIB_H_
+#ifndef _BDM_IOPERM_H_
+#define _BDM_IOPERM_H_
 
 #if __cplusplus
 extern "C" 
@@ -35,12 +30,7 @@ extern "C"
 #include "bdm-iface.h"
 #include "BDMlib.h"
 
-/*
- * Internal to the BDM library.
- */
-
-int bdmRemoteName (const char *name);
-int bdmRemoteOpen (const char *name, bdm_iface** iface);
+int bdm_ioperm_open (const char *name, bdm_iface** iface);
 
 #if __cplusplus
 }

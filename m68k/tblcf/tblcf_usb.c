@@ -22,59 +22,65 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #include "log.h"
 #include "tblcf_usb.h"
 #include "tblcf_hwdesc.h"
-#include "usb.h"
+#include "libusb-1.0/libusb.h"
 
 /*
  * Manage the USB devices we have connected.
  */
 typedef struct tblcf_usb_dev_s {
-  struct usb_bus    *bus;
-  struct usb_device *device;
-  usb_dev_handle    *handle;
-  char *name;
+  libusb_device                   *device;
+  libusb_device_handle            *handle;
+  struct libusb_device_descriptor desc;
+  uint8_t                         bus_number;
+  uint8_t                         device_address;
+  char                            name[16]; /* 0000-0000 is 4 + 1 4 + 1 = 10 */
 } tblcf_usb_dev;
 
 /*
  * The lits of devices.
  */
 static tblcf_usb_dev *usb_devs;
-static int usb_dev_count;
+static int           usb_dev_count;
+static libusb_device **usb_libusb_devs;
 
 /* provides low level USB functions which talk to the hardware */
 
 /* initialisation */
 void tblcf_usb_init(void) {
-  usb_init();          /* init LIBUSB */
-  usb_set_debug(0);    /* set debug level to minimum */
+  libusb_init(NULL);         /* init LIBUSB */
+  libusb_set_debug(NULL, 0); /* set debug level to minimum */
 }
 
 /* find all TBLCF devices attached to the computer */
 void tblcf_usb_find_devices(unsigned short int product_id) {
-  struct usb_bus *libusb_bus;
-  struct usb_device *libusb_dev;
-
+  int i;
+  int count;
+  
   if (usb_devs) return;
   
-  usb_dev_count = 0;
-
-  usb_find_busses();     /* enumerate all busses */
-  usb_find_devices();    /* enumerate all devices */
+  count = libusb_get_device_list(NULL, &usb_libusb_devs);
+  if (count < 0)
+      return;
   
   /* scan through all busses then devices counting the number found */
-  for (libusb_bus = usb_get_busses(); libusb_bus; libusb_bus = libusb_bus->next) {
-    /* scan through all devices */
-    for (libusb_dev = libusb_bus->devices; libusb_dev; libusb_dev = libusb_dev->next) {
-      if ((libusb_dev->descriptor.idVendor==TBLCF_VID) &&
-          (libusb_dev->descriptor.idProduct==product_id)) {
-        /* found a device */
-        usb_dev_count++;
+  for (i = 0; i < count; i++) {
+      libusb_device *dev = usb_libusb_devs[i];
+      struct libusb_device_descriptor desc;
+      int r = libusb_get_device_descriptor(dev, &desc);
+      if (r < 0) {
+          fprintf(stderr, "warning: failed to get usb device descriptor");
+      } else {
+          if ((desc.idVendor == TBLCF_VID) && (desc.idProduct == product_id)) {
+              /* found a device */
+              usb_dev_count++;
+          }
       }
-    }
   }
 
   usb_devs = calloc (usb_dev_count, sizeof (tblcf_usb_dev));
@@ -83,26 +89,22 @@ void tblcf_usb_find_devices(unsigned short int product_id) {
   usb_dev_count = 0;
   
   /* scan through all busses and devices adding each one */
-  for (libusb_bus = usb_get_busses(); libusb_bus; libusb_bus = libusb_bus->next) {
-    /* scan through all devices */
-    for (libusb_dev = libusb_bus->devices; libusb_dev; libusb_dev = libusb_dev->next) {
-      if ((libusb_dev->descriptor.idVendor==TBLCF_VID) &&
-          (libusb_dev->descriptor.idProduct==product_id)) {
-        /* found a device */
-        usb_devs[usb_dev_count].bus = libusb_bus;
-        usb_devs[usb_dev_count].device = libusb_dev;
-        usb_devs[usb_dev_count].name = malloc (strlen (libusb_bus->dirname) +
-                                               strlen (libusb_dev->filename) + 2);
-        if (!usb_devs[usb_dev_count].name)
-          usb_devs[usb_dev_count].name = "no memory for name";
-        else {
-          strcpy (usb_devs[usb_dev_count].name, libusb_bus->dirname);
-          strcat (usb_devs[usb_dev_count].name, "-");
-          strcat (usb_devs[usb_dev_count].name, libusb_dev->filename);
-        }
-        usb_dev_count++;
+  for (i = 0; i < count; i++) {
+      libusb_device *dev = usb_libusb_devs[i];
+      struct libusb_device_descriptor desc;
+      tblcf_usb_dev *udev = &usb_devs[usb_dev_count];
+      int r = libusb_get_device_descriptor(dev, &desc);
+      if (r >= 0) {
+          if ((desc.idVendor == TBLCF_VID) && (desc.idProduct == product_id)) {
+              /* found a device */
+              udev->desc = desc;
+              udev->device = dev;
+              udev->bus_number = libusb_get_bus_number(dev);
+              udev->device_address = libusb_get_device_address(dev);
+              snprintf(udev->name, sizeof(udev->name), "%03d-%03d", udev->bus_number, udev->device_address);
+              usb_dev_count++;
+          }
       }
-    }
   }
 }
 
@@ -141,15 +143,14 @@ int tblcf_usb_open(const char *device) {
     tblcf_print("USB Device '%s' alread open\n", device);
     return -1;
   }
-  
-  usb_devs[dev].handle = usb_open(usb_devs[dev].device);
-  if (usb_devs[dev].handle==NULL) return -1;
+
+  if (libusb_open(usb_devs[dev].device, &usb_devs[dev].handle) != 0) return -1;
   tblcf_print("USB Device open\n");
   /* TBLCF has only one valid configuration */
-  if (usb_set_configuration(usb_devs[dev].handle,1)) return -1;
+  if (libusb_set_configuration(usb_devs[dev].handle,1)) return -1;
   tblcf_print("USB Configuration set\n");
   /* TBLCF has only 1 interface */
-  if (usb_claim_interface(usb_devs[dev].handle,0)) return -1;
+  if (libusb_claim_interface(usb_devs[dev].handle,0)) return -1;
   tblcf_print("USB Interface claimed\n");
   return dev;
 }
@@ -158,10 +159,10 @@ int tblcf_usb_open(const char *device) {
 void tblcf_usb_close(int dev) {
   if (tblcf_usb_dev_open(dev)) {
     /* release the interface */
-    usb_release_interface(usb_devs[dev].handle,0);
+    libusb_release_interface(usb_devs[dev].handle,0);
     tblcf_print("USB Interface released\n");
     /* close the device */
-    usb_close(usb_devs[dev].handle);
+    libusb_close(usb_devs[dev].handle);
     tblcf_print("USB Device closed\n");
     /* indicate that no device is open */
     usb_devs[dev].handle=NULL;
@@ -187,9 +188,9 @@ unsigned char tblcf_usb_send_ep0(int dev, unsigned char * data) {
   }
   tblcf_print("USB EP0 send:\n");
   tblcf_print_dump(data,(*count)+1);
-  i=usb_control_msg(usb_devs[dev].handle, 0x40, *(data+1), (*(data+2))+256*(*(data+3)),
-                    (*(data+4))+256*(*(data+5)), (char*) data+6,
-                    ((*count)>5)?((*count)-5):0, TIMEOUT);
+  i=libusb_control_transfer(usb_devs[dev].handle, 0x40, *(data+1), (*(data+2))+256*(*(data+3)),
+                            (*(data+4))+256*(*(data+5)), data+6,
+                            (uint16_t)(((*count)>5)?((*count)-5):0), TIMEOUT);
   if (i<0) return(1); else return(0);
 }
 
@@ -207,8 +208,8 @@ unsigned char tblcf_usb_recv_ep0(int dev, unsigned char * data) {
   }
   tblcf_print("USB EP0 receive request:\n");
   tblcf_print_dump(data,6);
-  i=usb_control_msg(usb_devs[dev].handle, 0xC0, *(data+1), (*(data+2))+256*(*(data+3)),
-                    (*(data+4))+256*(*(data+5)), (char*) data, count, TIMEOUT);
+  i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, *(data+1), (*(data+2))+256*(*(data+3)),
+                            (*(data+4))+256*(*(data+5)), data, count, TIMEOUT);
   tblcf_print("USB EP0 receive:\n");
   tblcf_print_dump(data,count);
   if (i<0) return(1); else return(0);
@@ -219,14 +220,16 @@ unsigned char tblcf_usb_recv_ep0(int dev, unsigned char * data) {
 /* data the device wants to return need to be read out in separate recv transaction */
 unsigned char tblcf_usb_send_ep2(int dev, unsigned char *data) {
   unsigned char * count = data;    /* data count is the first byte of the message */
-   int i;
+  int actual_length = 0;
+  int i;
   if (!tblcf_usb_dev_open(dev)) {
     tblcf_print("USB EP2 send: device not open\n");
     return(1);
   }
   tblcf_print("USB EP2 send:\n");
   tblcf_print_dump(data,(*count)+1);
-  i=usb_bulk_write(usb_devs[dev].handle, 0x02, (char*) data, (*count)+1, TIMEOUT);
+  i=libusb_bulk_transfer(usb_devs[dev].handle, LIBUSB_ENDPOINT_OUT | 2, data, (*count)+1,
+                         &actual_length, TIMEOUT);
   if (i<0) return(1); else return(0);
 }
 
@@ -235,14 +238,16 @@ unsigned char tblcf_usb_send_ep2(int dev, unsigned char *data) {
 /* data count in the message is number of bytes EXPECTED/REQUIRED from the device */
 unsigned char tblcf_usb_recv_ep2(int dev, unsigned char * data) {
   unsigned char count = *data;    /* data count is the first byte of the message */
-   int i;
+  int actual_length = 0;
+  int i;
   if (!tblcf_usb_dev_open(dev)) {
     tblcf_print("USB EP2 receive request: device not open\n");
     return(1);
   }
   tblcf_print("USB EP2 receive request:\n");
   tblcf_print_dump(data,6);
-  i=usb_bulk_read(usb_devs[dev].handle, 0x82, (char*) data, count, TIMEOUT);
+  i=libusb_bulk_transfer(usb_devs[dev].handle, LIBUSB_ENDPOINT_IN | 2, data, count,
+                         &actual_length, TIMEOUT);
   tblcf_print("USB EP2 receive (%d byte(s)):\n",i);
   tblcf_print_dump(data,count);
   if (i<0) return(1); else return(0);
@@ -262,16 +267,16 @@ char icp_program(int dev, unsigned char * data, unsigned int address, unsigned i
   while (count>ICP_MAX_PACKET_SIZE) {
     tblcf_print("ICP program %d byte from address 0x%04X:\n",ICP_MAX_PACKET_SIZE,address);
     tblcf_print_dump(data,ICP_MAX_PACKET_SIZE);
-    i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_PROGRAM, address,
-                      address+ICP_MAX_PACKET_SIZE-1, (char*) data, ICP_MAX_PACKET_SIZE, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_PROGRAM, address,
+                              address+ICP_MAX_PACKET_SIZE-1, data, ICP_MAX_PACKET_SIZE, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP program: request failed\n");
       return(-1);
     }
     usleep(10 * 1000 * 1000);  /* give the part plenty of time to do the programming */
     do {
-      i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                        0, 0, (char*) &result, 1, TIMEOUT);
+      i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                                0, 0, &result, 1, TIMEOUT);
       if (i<0) {
         tblcf_print("ICP program: get result request failed\n");
         return(-1);
@@ -288,16 +293,16 @@ char icp_program(int dev, unsigned char * data, unsigned int address, unsigned i
   if (count) {
     tblcf_print("ICP program %d byte(s) from address 0x%04X:\n",count,address);
     tblcf_print_dump(data,count);
-    i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_PROGRAM, address, address+count-1,
-                      (char*) data, count, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_PROGRAM, address, address+count-1,
+                              data, count, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP program: request failed\n");
       return(-1);
     }
     usleep(10 * 1000 * 1000);  /* give the part plenty of time to do the programming */
     do {
-      i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                        0, 0, (char*) &result, 1, TIMEOUT);
+      i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                                0, 0, &result, 1, TIMEOUT);
       if (i<0) {
         tblcf_print("ICP program: get result request failed\n");
         return(-1);
@@ -321,7 +326,7 @@ char icp_mass_erase(int dev) {
     return(-1);
   }
   tblcf_print("ICP mass erase\n");
-  i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_MASS_ERASE, 0, 0, NULL, 0, TIMEOUT);
+  i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_MASS_ERASE, 0, 0, NULL, 0, TIMEOUT);
   if (i<0) {
     tblcf_print("ICP mass erase request failed\n");
     return(-1);
@@ -330,8 +335,8 @@ char icp_mass_erase(int dev) {
    * is finished by the time new traffic apears on the USB bus */
   usleep(400 * 1000);
   do {
-    i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                      0, 0, (char*) &result, 1, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                              0, 0, &result, 1, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP mass erase: get result request failed\n");
       return(-1);
@@ -367,8 +372,8 @@ char icp_block_erase(int dev, unsigned int address) {
   if (i==0) return(0);  /* block is already erased */
   /* sector is not blank, must perform block erase */
   tblcf_print("ICP block erase: block not empty, erasing...\n");
-  i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_BLOCK_ERASE,
-                    address, address+ICP_FLASH_BLOCK_SIZE-1, NULL, 0, TIMEOUT);
+  i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_BLOCK_ERASE,
+                            address, address+ICP_FLASH_BLOCK_SIZE-1, NULL, 0, TIMEOUT);
   if (i<0) {
     tblcf_print("ICP block erase request failed\n");
     return(-1);
@@ -377,8 +382,8 @@ char icp_block_erase(int dev, unsigned int address) {
    * is finished by the time new traffic apears on the USB bus */
   usleep(30 * 1000);
   do {
-    i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                      0, 0, (char*) &result, 1, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                              0, 0, &result, 1, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP block erase: get result request failed\n");
       return(-1);
@@ -403,9 +408,9 @@ char icp_verify(int dev, unsigned char * data, unsigned int address, unsigned in
   while (count>ICP_MAX_PACKET_SIZE) {
     tblcf_print("ICP verify %d bytes from address 0x%04X:\n",ICP_MAX_PACKET_SIZE,address);
     tblcf_print_dump(data,ICP_MAX_PACKET_SIZE);
-    i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_VERIFY,
-                      address, address+ICP_MAX_PACKET_SIZE-1, (char*) data,
-                      ICP_MAX_PACKET_SIZE, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_VERIFY,
+                              address, address+ICP_MAX_PACKET_SIZE-1, data,
+                              ICP_MAX_PACKET_SIZE, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP verify request failed\n");
       return(-1);
@@ -414,8 +419,8 @@ char icp_verify(int dev, unsigned char * data, unsigned int address, unsigned in
      * apears on the USB bus */
     usleep(5 * 1000);
     do {
-      i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                        0, 0, (char*) &result, 1, TIMEOUT);
+      i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                                0, 0, &result, 1, TIMEOUT);
       if (i<0) {
         tblcf_print("ICP verify: get result request failed\n");
         return(-1);
@@ -432,8 +437,8 @@ char icp_verify(int dev, unsigned char * data, unsigned int address, unsigned in
   if (count) {
     tblcf_print("ICP verify %d byte(s) from address 0x%04X:\n",count,address);
     tblcf_print_dump(data,count);
-    i=usb_control_msg(usb_devs[dev].handle, 0x40, ICP_VERIFY,
-                      address, address+count-1, (char*) data, count, TIMEOUT);
+    i=libusb_control_transfer(usb_devs[dev].handle, 0x40, ICP_VERIFY,
+                              address, address+count-1, data, count, TIMEOUT);
     if (i<0) {
       tblcf_print("ICP verify request failed\n");
       return(-1);
@@ -442,8 +447,8 @@ char icp_verify(int dev, unsigned char * data, unsigned int address, unsigned in
      * apears on the USB bus */
     usleep(5 * 1000);
     do {
-      i=usb_control_msg(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
-                        0, 0, (char*) &result, 1, TIMEOUT);
+      i=libusb_control_transfer(usb_devs[dev].handle, 0xC0, ICP_GET_RESULT,
+                                0, 0, &result, 1, TIMEOUT);
       if (i<0) {
         tblcf_print("ICP verify: get result request failed\n");
         return(-1);

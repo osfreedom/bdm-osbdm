@@ -32,6 +32,7 @@
        fuer Prozessrechner, 1995.                                      */
 
 #include <ctype.h>
+#include <inttypes.h>
 #include <unistd.h>
 
 #include "server.h"
@@ -1539,7 +1540,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
       if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
         m68k_bdm_report_error ();
       m68k_bdm_cf_debug_ver = (csr >> 20) & 0x0f;
-      printf_filtered ("m68k-bdm: debug module version %d\n", m68k_bdm_cf_debug_ver);
+      printf_filtered ("m68k-bdm: debug module version %" PRIdMAX "\n", m68k_bdm_cf_debug_ver);
 
       /*
        * If the processor is a version 0 read the PC and VBR

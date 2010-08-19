@@ -25,6 +25,7 @@
 #include <config.h>
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,8 +37,9 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 
-#include "tblcf.h"
-#include "tblcf_usb.h"
+#include "bdm.h"
+#include "ioperm.h"
+#include "bdmRemote.h"
 
 #ifdef __FreeBSD__
 #include <machine/cpufunc.h>
@@ -53,173 +55,11 @@ static inline void fb_outb (u_int port, u_char data)
 #define outb(d, p) fb_outb(p, d)
 #endif
 
-#define BDM_DEFAULT_DEBUG 0
-
 static int debugLevel = BDM_DEFAULT_DEBUG;
 
 #ifndef HAVE_IOPERM
 static FILE* dev_io_handle;
 #endif
-
-/*
- ************************************************************************
- *     Override the C library function.                                 *
- ************************************************************************
- */
-
-int
-driver_close (int fd)
-{
-  return close (fd);
-}
-
-int
-driver_read (int fd, char *buf, size_t count)
-{
-  return read (fd, buf, count);
-}
-
-int
-driver_write (int fd, char *buf, size_t count)
-{
-  return write (fd, buf, count);
-}
-
-int
-driver_ioctl (int fd, unsigned long int request, ...)
-{
-  va_list args;
-  unsigned long *arg;
-
-  va_start (args, request);
-  arg = va_arg (args, unsigned long *);
-  return ioctl (fd, request, arg);
-}
-
-int
-driver_open (const char *pathname, int flags)
-{
-  return open (pathname, flags);
-}
-
-#define open  ioperm_bdm_open
-#define close ioperm_bdm_close
-#define ioctl ioperm_bdm_ioctl
-#define read  ioperm_bdm_read
-#define write ioperm_bdm_write
-
-/*
- ************************************************************************
- *     Add the missing the write/read define.                           *
- ************************************************************************
- */
-
-#define IOC_OUTIN   0x10000000      /* copy in parameters */
-
-//#define _IOWR(x,y,t) (IOC_OUTIN|(((long)sizeof(t)&IOCPARM_MASK)<<16)|(x<<8)|y)
-
-/*
- ************************************************************************
- *   Unix driver support routines                                       *
- ************************************************************************
- */
-
-#define udelay usleep
-
-/*
- * Delay for a while so target can keep up.
- */
-void
-bdm_delay (int counter)
-{
-  volatile unsigned long junk;
-  while (counter--) {
-    junk++;
-  }
-}
-
-#ifndef HZ
-#define HZ 1000
-#endif
-
-/*
- * Delay specified number of milliseconds
- */
-void
-bdm_sleep (unsigned long time)
-{
-  usleep (time * (100 * (1000 / HZ)));
-}
-
-/*
- ************************************************************************
- *     OS worker functions.                                             *
- ************************************************************************
- */
-
-int
-os_claim_io_ports (char *name, unsigned int base, unsigned int num)
-{
-  /*
-   * I am told ioperm handles this.
-   */
-  return 0;
-}
-
-int
-os_release_io_ports (unsigned int base, unsigned int num)
-{
-  return 0;
-}
-
-#define os_move_in os_copy_in
-
-int
-os_copy_in (void *dst, void *src, int size)
-{
-  /*
-   * We run in the application and talk directly to the hardware.
-   */
-  memcpy (dst, src, size);
-  return 0;
-}
-
-#define os_move_out os_copy_out
-
-int
-os_copy_out (void *dst, void *src, int size)
-{
-  memcpy (dst, src, size);
-  return 0;
-}
-
-void
-os_lock_module ()
-{
-}
-
-void
-os_unlock_module ()
-{
-}
-
-#ifdef interface
-#undef interface
-#endif
-
-/*
- ************************************************************************
- *       Include the driver code                                        *
- ************************************************************************
- */
-
-#include "bdm.c"
-
-/*
- ************************************************************************
- *       Good old-fashioned UNIX driver entry points                    *
- ************************************************************************
- */
 
 static int bdm_dev_registered = 0;
 static int bdm_driver_open = 0;
@@ -232,10 +72,9 @@ bdm_cleanup_module (int fd)
 {
   if (bdm_dev_registered)
   {
-    if ((fd >= 0) &&
-        (((unsigned) fd) < (sizeof (bdm_device_info) / sizeof (*bdm_device_info))))
+    if ((fd >= 0) && (fd) < bdm_get_device_info_count ())
     {
-      struct BDM *self = &bdm_device_info[fd];
+      struct BDM *self = bdm_get_device_info (fd);
 #ifdef HAVE_IOPERM
       ioperm (self->portBase, 3, 0);
 #else
@@ -259,15 +98,15 @@ bdm_cleanup_module (int fd)
  * Try and get access to the port via ioperm. If you fail flag this and let
  * the library try for a real driver.
  */
-int
-ioperm_bdm_init (int minor)
+static int
+bdm_ioperm_init (int minor)
 {
   unsigned short port;
   unsigned char  data;
   struct BDM     *self;
 
 #ifdef BDM_VER_MESSAGE
-  bdmInfo ("bdm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
+  bdmInfo ("bdm_ioperm_init %d.%d, " __DATE__ ", " __TIME__ "\n",
            BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff);
 #endif
 
@@ -291,7 +130,7 @@ ioperm_bdm_init (int minor)
    * Set up the port.
    */
 
-  self = &bdm_device_info[minor];
+  self = bdm_get_device_info (minor);
 
   /*
    * First set the default debug level.
@@ -334,7 +173,7 @@ ioperm_bdm_init (int minor)
   bdm_dev_registered = 1;
 
   outb (0x00, port);
-  udelay (50);
+  usleep (50);
   data = inb (port);
 
   if (data  != 0x00)
@@ -356,9 +195,9 @@ ioperm_bdm_init (int minor)
 
   switch (BDM_IFACE (minor))
   {
-    case BDM_CPU32_PD:    cpu32_pd_init_self (self); break;
-    case BDM_CPU32_ICD:   cpu32_icd_init_self (self); break;
-    case BDM_COLDFIRE_PE: cf_pe_init_self (self); break;
+    case BDM_CPU32_PD:    bdm_cpu32_pd_init_self (self); break;
+    case BDM_CPU32_ICD:   bdm_cpu32_icd_init_self (self); break;
+    case BDM_COLDFIRE_PE: bdm_cf_pe_init_self (self); break;
     default:
       bdmInfo ("BDM driver has no interface for minor number\n");
       bdm_cleanup_module (minor);
@@ -369,24 +208,131 @@ ioperm_bdm_init (int minor)
   return 0;
 }
 
+static int
+bdm_ioperm_close (int fd)
+{
+  if (bdm_driver_open)
+  {
+    bdm_driver_open = 0;
+    return driver_close (fd);
+  }
+  bdm_close (fd);
+  bdm_cleanup_module (fd);
+  return 0;
+}
+
+static int
+bdm_ioperm_read (int fd, unsigned char *buf, int count)
+{
+  if (bdm_driver_open)
+    return driver_read (fd, buf, count);
+  errno = bdm_read (fd, buf, count);
+  if (errno)
+    return -1;
+  return count;
+}
+
+static int
+bdm_ioperm_write (int fd, unsigned char *buf, int count)
+{
+  if (bdm_driver_open)
+    return driver_write (fd, buf, count);
+  errno = bdm_write (fd, buf, count);
+  if (errno)
+    return -1;
+  return count;
+}
+
+static int
+bdm_ioperm_ioctl (int fd, unsigned int cmd, ...)
+{
+  va_list       args;
+  unsigned long *arg;
+
+  int iarg;
+  int err = 0;
+
+  va_start (args, cmd);
+
+  arg = va_arg (args, unsigned long *);
+
+  if (bdm_driver_open)
+    return driver_ioctl (fd, cmd, arg);
+
+  /*
+   * Pick up the argument
+   */
+  if (!bdm_dev_registered) {
+
+    switch (cmd) {
+      case BDM_DEBUG:
+        err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
+        break;
+    }
+    if (err)
+      return err;
+
+    if (debugLevel > 3)
+      bdmInfo ("bdm_ioperm_ioctl cmd:0x%08x\n", cmd);
+
+    switch (cmd) {
+      case BDM_DEBUG:
+        debugLevel = iarg;
+        break;
+    }
+  }
+
+  errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
+  if (errno)
+    return -1;
+  return 0;
+}
+
+static int
+bdm_ioperm_ioctl_int (int fd, int code, int *var)
+{
+  return bdm_ioperm_ioctl (fd, code, var);
+}
+
+static int
+bdm_ioperm_ioctl_command (int fd, int code)
+{
+  return bdm_ioperm_ioctl (fd, code, NULL);
+}
+
+static int
+bdm_ioperm_ioctl_io (int fd, int code, struct BDMioctl *ioc)
+{
+  return bdm_ioperm_ioctl (fd, code, ioc);
+}
+
+static bdm_iface iopermIface = {
+  .open      = bdm_ioperm_open,
+  .close     = bdm_ioperm_close,
+  .read      = bdm_ioperm_read,
+  .write     = bdm_ioperm_write,
+  .ioctl_int = bdm_ioperm_ioctl_int,
+  .ioctl_io  = bdm_ioperm_ioctl_io,
+  .ioctl_cmd = bdm_ioperm_ioctl_command,
+  .error_str = NULL
+};
+
 /*
  * The device is a device name of the form /dev/bdmcpu320 or
  * /dev/bdmcf0 where the /dev/bdm must be present
  * the next field can be cpu32 or cf followed by
  * a number which is the port.
- *
- * It can also be a udev created symlink to the USB bus node.
  */
 
-static int remoteOpen (const char *name);
-
 int
-ioperm_bdm_open (const char *devname, int flags, ...)
+bdm_ioperm_open (const char *devname, bdm_iface** iface)
 {
   const char* device = devname;
   int         port = -1;
   int         result = 0;
 
+  *iface = NULL;
+  
   if (bdm_dev_registered)
   {
     bdmInfo ("BDM driver is already registered (Please report to BDM project).\n");
@@ -422,21 +368,12 @@ ioperm_bdm_open (const char *devname, int flags, ...)
     if (result == 0)
     {
       port += strtoul (device, 0, 0);
-      result = ioperm_bdm_init (port);
+      result = bdm_ioperm_init (port);
     }
   }
 
-  if ((result == 0) && (port == -1))
-  {
-    bdmInfo ("trying usb driver: %s\n", devname);
-    result = usb_bdm_init (device);
-    if (result < -1)
-      return -1;
-    port = 0;
-  }
-  
   /*
-   * See if the ioperm or usb call failed. Try to open the driver. If no
+   * See if the ioperm call failed. Try to open the driver. If no
    * driver is found, prepend localhost and try for a local server.
    * This make an /dev/bdmcf0 open automatically attempt to open a
    * bdmServer. This local server may be using ioperm or usb so no driver.
@@ -448,14 +385,14 @@ ioperm_bdm_open (const char *devname, int flags, ...)
     {
       int fd;
       bdmInfo ("trying kernel driver: %s\n", devname);
-      if ((fd = driver_open (devname, flags)) < 0) {
+      if ((fd = driver_open (devname, O_RDWR)) < 0) {
         if ((strlen (devname) + sizeof ("localhost")) < 128)
         {
           char lname[128];
           strcpy (lname, "localhost:");
           strcat (lname, devname);
           bdmInfo ("trying bdm server: %s\n", lname);
-          return remoteOpen (lname);
+          return bdmRemoteOpen (lname, iface);
         }
         return -1;
       }
@@ -471,85 +408,7 @@ ioperm_bdm_open (const char *devname, int flags, ...)
 
   bdm_dev_registered = 1;
 
+  *iface = &iopermIface;
+  
   return port;
-}
-
-int
-ioperm_bdm_close (int fd)
-{
-  if (bdm_driver_open)
-  {
-    bdm_driver_open = 0;
-    return driver_close (fd);
-  }
-  bdm_close (fd);
-  bdm_cleanup_module (fd);
-  return 0;
-}
-
-unsigned long
-ioperm_bdm_read (int fd, char *buf, unsigned long count)
-{
-  if (bdm_driver_open)
-    return driver_read (fd, buf, count);
-  errno = bdm_read (fd, buf, count);
-  if (errno)
-    return -1;
-  return count;
-}
-
-unsigned long
-ioperm_bdm_write (int fd, char *buf, unsigned long count)
-{
-  if (bdm_driver_open)
-    return driver_write (fd, buf, count);
-  errno = bdm_write (fd, buf, count);
-  if (errno)
-    return -1;
-  return count;
-}
-
-int
-ioperm_bdm_ioctl (int fd, unsigned int cmd, ...)
-{
-  va_list       args;
-  unsigned long *arg;
-
-  int iarg;
-  int err = 0;
-
-  va_start (args, cmd);
-
-  arg = va_arg (args, unsigned long *);
-
-  if (bdm_driver_open)
-    return driver_ioctl (fd, cmd, arg);
-
-  /*
-   * Pick up the argument
-   */
-  if (!bdm_dev_registered) {
-
-    switch (cmd) {
-      case BDM_DEBUG:
-        err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
-        break;
-    }
-    if (err)
-      return err;
-
-    if (debugLevel > 3)
-      bdmInfo ("ioperm_bdm_ioctl cmd:0x%08x\n", cmd);
-
-    switch (cmd) {
-      case BDM_DEBUG:
-        debugLevel = iarg;
-        break;
-    }
-  }
-
-  errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
-  if (errno)
-    return -1;
-  return 0;
 }

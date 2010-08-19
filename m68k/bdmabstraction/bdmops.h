@@ -227,20 +227,4 @@ int bdm_query_status(void);
 /* bdm wait for stopped target */
 int bdm_wait(void);
 
-#ifdef _COMPILING_
-# ifdef USERMODE
-int bdm_open(int minor, int flags);
-int bdm_ioctl(int minor, unsigned int request, unsigned long arg);
-int bdm_read(int minor, unsigned char *p, int count);
-int bdm_write(int minor, const unsigned char *p, int count);
-void bdm_close(int minor);
-# else
-#  define bdm_open  open
-#  define bdm_ioctl ioctl
-#  define bdm_read  read
-#  define bdm_write write
-#  define bdm_close close
-# endif
-#endif
-
 #endif

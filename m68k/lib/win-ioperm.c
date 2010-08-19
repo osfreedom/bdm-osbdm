@@ -1,6 +1,6 @@
 /*
  * Motorola Background Debug Mode Driver
- * Copyright (C) 1998-2007  Chris Johns
+ * Copyright (C) 1998-2010  Chris Johns
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,24 +57,6 @@ static int debugLevel = BDM_DEFAULT_DEBUG;
  */
 
 int
-win32_remote_close (int fd)
-{
-  return close (fd);
-}
-
-int
-win32_remote_read (int fd, char *buf, size_t count)
-{
-  return read (fd, buf, count);
-}
-
-int
-win32_remote_write (int fd, char *buf, size_t count)
-{
-  return write (fd, buf, count);
-}
-
-int
 stat (const char *file_name, struct stat *buf)
 {
   if (strncmp (file_name, "/dev/bdm", sizeof ("/dev/bdm") - 1) == 0 )
@@ -100,19 +82,11 @@ stat (const char *file_name, struct stat *buf)
   }
 }
 
-#define open  win_bdm_open
-#define close win_bdm_close
-#define ioctl win_bdm_ioctl
-#define read  win_bdm_read
-#define write win_bdm_write
-
 /*
  ************************************************************************
  *   Windows driver support routines                                    *
  ************************************************************************
  */
-
-#define udelay usleep
 
 #if !defined (__CYGWIN__)
 
@@ -177,100 +151,6 @@ usleep(int usecs)
 #endif
 
 /*
- * Delay for a while so target can keep up.
- */
-void
-bdm_delay (int counter)
-{
-  while (counter--) {
-
-#if defined (__GNUC__)
-    asm volatile ("nop");
-#else
-    __asm nop
-#endif
-
-  }
-}
-
-/*
- * Delay specified number of milliseconds
- */
-void
-bdm_sleep (unsigned long time)
-{
-  usleep (time * (1000 * (100 / HZ)));
-}
-
-/*
- ************************************************************************
- *     OS worker functions.                                             *
- ************************************************************************
- */
-
-int
-os_claim_io_ports (char *name, unsigned int base, unsigned int num)
-{
-  /*
-   * FIXME: Not sure what happens here. Dos Win9x how someelse has
-   * port through some sort of virtual device driver thingy ?
-   */
-  return 0;
-}
-
-int
-os_release_io_ports (unsigned int base, unsigned int num)
-{
-  /*
-   * FIXME: See comment above.
-   */
-  return 0;
-}
-
-#define os_move_in os_copy_in
-
-int
-os_copy_in (void *dst, void *src, int size)
-{
-  /*
-   * We run in the application and talk directly to the hardware.
-   */
-  memcpy (dst, src, size);
-  return 0;
-}
-
-#define os_move_out os_copy_out
-
-int
-os_copy_out (void *dst, void *src, int size)
-{
-  memcpy (dst, src, size);
-  return 0;
-}
-
-void
-os_lock_module ()
-{
-}
-
-void
-os_unlock_module ()
-{
-}
-
-#ifdef interface
-#undef interface
-#endif
-
-/*
- ************************************************************************
- *       Include the driver code                                        *
- ************************************************************************
- */
-
-#include "bdm.c"
-
-/*
  ************************************************************************
  *       Good old-fashioned UNIX driver entry points                    *
  ************************************************************************
@@ -292,8 +172,8 @@ static void bdm_cleanup_module (void)
 /*
  * Basically just detect the port.
  */
-int
-win_bdm_init ()
+static int
+bdm_ioperm_init ()
 {
   int           minor;
   HANDLE        h;
@@ -395,10 +275,9 @@ win_bdm_init ()
     self->delayTimer  = 0;
 
     switch (BDM_IFACE (minor)) {
-      case BDM_CPU32_PD:       cpu32_pd_init_self (self); break;
-      case BDM_CPU32_ICD:      cpu32_icd_init_self (self); break;
-      case BDM_COLDFIRE_PE:    cf_pe_init_self (self); break;
-      case BDM_COLDFIRE_TBLCF: break;
+      case BDM_CPU32_PD:       bdm_cpu32_pd_init_self (self); break;
+      case BDM_CPU32_ICD:      bdm_cpu32_icd_init_self (self); break;
+      case BDM_COLDFIRE_PE:    bdm_cf_pe_init_self (self); break;
       default:
         fprintf (stderr, "BDM driver has no interface for minor number\n");
         bdm_cleanup_module();
@@ -412,6 +291,102 @@ win_bdm_init ()
   return 0;
 }
 
+int
+bdm_ioperm_close (int fd)
+{
+  bdm_close (fd);
+  return 0;
+}
+
+unsigned long
+bdm_ioperm_read (int fd, char *buf, unsigned long count)
+{
+  errno = bdm_read (fd, buf, count);
+  if (errno)
+    return -1;
+  return count;
+}
+
+unsigned long
+bdm_ioperm_write (int fd, char *buf, unsigned long count)
+{
+  errno = bdm_write (fd, buf, count);
+  if (errno)
+    return -1;
+  return count;
+}
+
+int
+bdm_ioperm_ioctl (int fd, unsigned int cmd, ...)
+{
+  va_list       args;
+  unsigned long *arg;
+
+  int iarg;
+  int err = 0;
+
+  va_start (args, cmd);
+
+  arg = va_arg (args, unsigned long *);
+
+  /*
+   * Pick up the argument
+   */
+  if (!bdm_dev_registered) {
+
+    switch (cmd) {
+      case BDM_DEBUG:
+        err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
+        break;
+    }
+    if (err)
+      return err;
+
+    if (debugLevel > 3)
+      fprintf (stderr, "bdm_ioperm_ioctl cmd:0x%08x\n", cmd);
+
+    switch (cmd) {
+      case BDM_DEBUG:
+        debugLevel = iarg;
+        break;
+    }
+  }
+
+  errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
+  if (errno)
+    return -1;
+  return 0;
+}
+
+static int
+bdm_ioperm_ioctl_int (int fd, int code, int *var)
+{
+  return bdm_ioperm_ioctl (fd, code, var);
+}
+
+static int
+bdm_ioperm_ioctl_command (int fd, int code)
+{
+  return bdm_ioperm_ioctl (fd, code, NULL);
+}
+
+static int
+bdm_ioperm_ioctl_io (int fd, int code, struct BDMioctl *ioc)
+{
+  return bdm_ioperm_ioctl (fd, code, ioc);
+}
+
+static bdm_iface iopermIface = {
+  .open = bdm_ioperm_open,
+  .close = bdm_ioperm_close,
+  .read = bdm_ioperm_read,
+  .write = bdm_ioperm_write,
+  .ioctl_int = bdm_ioperm_ioctl_int,
+  .ioctl_io = bdm_ioperm_ioctl_io,
+  .ioctl_cmd = bdm_ioperm_ioctl_command,
+  .error_str = NULL
+};
+
 /*
  * The device is a device name of the form /dev/bdmcpu320 or
  * /dev/bdmcf0 where the /dev/bdm must be present
@@ -420,13 +395,15 @@ win_bdm_init ()
  */
 
 int
-win_bdm_open (const char *device, int flags, ...)
+bdm_ioperm_open (const char *device, bdm_iface** iface)
 {
   int port = 0;
 
+  *iface = NULL;
+  
   if (strncmp (device, "/dev/bdm", sizeof ("/dev/bdm") - 1) == 0)
   {
-    if (win_bdm_init () < 0)
+    if (bdm_ioperm_init () < 0)
       return -1;
 
     device += sizeof ("/dev/bdm") - 1;
@@ -465,71 +442,4 @@ win_bdm_open (const char *device, int flags, ...)
   if (errno)
     return -1;
   return port;
-}
-
-int
-win_bdm_close (int fd)
-{
-  bdm_close (fd);
-  return 0;
-}
-
-unsigned long
-win_bdm_read (int fd, char *buf, unsigned long count)
-{
-  errno = bdm_read (fd, buf, count);
-  if (errno)
-    return -1;
-  return count;
-}
-
-unsigned long
-win_bdm_write (int fd, char *buf, unsigned long count)
-{
-  errno = bdm_write (fd, buf, count);
-  if (errno)
-    return -1;
-  return count;
-}
-
-int
-win_bdm_ioctl (int fd, unsigned int cmd, ...)
-{
-  va_list       args;
-  unsigned long *arg;
-
-  int iarg;
-  int err = 0;
-
-  va_start (args, cmd);
-
-  arg = va_arg (args, unsigned long *);
-
-  /*
-   * Pick up the argument
-   */
-  if (!bdm_dev_registered) {
-
-    switch (cmd) {
-      case BDM_DEBUG:
-        err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
-        break;
-    }
-    if (err)
-      return err;
-
-    if (debugLevel > 3)
-      fprintf (stderr, "win_bdm_ioctl cmd:0x%08x\n", cmd);
-
-    switch (cmd) {
-      case BDM_DEBUG:
-        debugLevel = iarg;
-        break;
-    }
-  }
-
-  errno = bdm_ioctl (fd, cmd, (unsigned long) arg);
-  if (errno)
-    return -1;
-  return 0;
 }

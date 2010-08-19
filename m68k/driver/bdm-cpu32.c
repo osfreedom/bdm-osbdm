@@ -870,8 +870,8 @@ cpu32_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
 /*
  * Initialise the BDM structure for a CPU32
  */
-static int
-cpu32_pd_init_self (struct BDM *self)
+int
+bdm_cpu32_pd_init_self (struct BDM *self)
 {
   int reg;
   
@@ -902,8 +902,8 @@ cpu32_pd_init_self (struct BDM *self)
   return 0;
 }
   
-static int
-cpu32_icd_init_self (struct BDM *self)
+int
+bdm_cpu32_icd_init_self (struct BDM *self)
 {
   int reg;
   

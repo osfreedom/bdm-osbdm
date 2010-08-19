@@ -2,6 +2,7 @@
  * Check for the BDM driver. Tests parts of the driver.
  */
 
+#include <inttypes.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -217,7 +218,8 @@ void checkRegValues()
 		unsigned long value=0;
 		bdmReadRegister(expectedResults[i].reg,&value);
 		if ( expectedResults[i].value != value )
-			printf("Failed setting register %c%i: %x != %x\n", (i<7?'A':'D'), i%8, expectedResults[i].value, value);
+			printf("Failed setting register %c%i: %" PRIx32 " != %" PRIxMAX "\n", (i<7?'A':'D'),
+             i%8, expectedResults[i].value, value);
 	}
 }
 
@@ -413,7 +415,7 @@ coldfireSramVerify (int loops)
           if (stop_quite)
             printf ("R");
           else {
-            printf ("  addr=%08x,  write/read %08lx %08lx\n",
+            printf ("  addr=%08" PRIxMAX ",  write/read %08lx %08lx\n",
                     SRAMBAR + (i * sizeof(unsigned long)), test_pattern[test], buf[i]);
             showError ("Verifing SRAM");
           }

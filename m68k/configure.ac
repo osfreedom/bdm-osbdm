@@ -148,10 +148,6 @@ AC_ARG_ENABLE(driver,
    esac],
  [
    case "$target_os" in
-   darwin*)
-     AC_MSG_RESULT([no (autodetected)])
-     bdm_driver=false
-     ;;
    *)
      AC_MSG_RESULT([yes (autodetected)])
      bdm_driver=true
@@ -247,7 +243,7 @@ case ${host} in
 esac
 
 AC_ARG_WITH(libusb-dir,
- [  --with-libusb-dir=DIR  path for libusb package ($ac_libusb_include_dir_part/usb.h, $ac_libusb_lib_dir/libusb.a)],
+ [  --with-libusb-dir=DIR  path for libusb package ([usb.h/libusb.h], [libusb.a/libusb-1.0.a])],
  [ ac_libusb_include_dir=$withval/$ac_libusb_include_dir_part
    ac_libusb_lib_dir=$withval/$ac_libusb_lib_dir ],
  [ ac_libusb_include_dir=NONE
@@ -257,17 +253,25 @@ AC_ARG_WITH(libusb-dir,
 AS_IF([test x$bdm_tblcf = xtrue],
       [AS_IF([test "$ac_libusb_include_dir" != "NONE"],
              [ac_tmp_ldflags=${LDFLAGS}
-              LDFLAGS="$LDFLAGS -L $ac_libusb_lib_dir"])
-       AC_CHECK_LIB(usb, usb_init, ,
-                    [AC_MSG_ERROR([Could not find libusb. Try --with-libusb-dir.])])
+              LDFLAGS="$LDFLAGS -L$ac_libusb_lib_dir"])
+       AC_CHECK_LIB(usb-1.0, libusb_init,
+	            [ac_libusb_ver=LIBUSB_1_0
+                     ac_libusb_lib_name=usb-1.0],
+                    [AC_MSG_ERROR([Could not find libusb-1.0. Try --with-libusb-dir.])])
        AS_IF([test "$ac_libusb_include_dir" != "NONE"],
              [LDFLAGS=$ac_tmp_ldflags])])
 
+dnl Fix this when making USB generic.
+AM_CONDITIONAL(BDM_USB, test x$bdm_tblcf = xtrue)
 AM_CONDITIONAL(TBLCF_USB, test x$bdm_tblcf = xtrue)
 
 AM_CONDITIONAL(LIBUSB_PATH, test $ac_libusb_include_dir != NONE)
 AC_SUBST(LIBUSB_INCLUDE_DIR, "${ac_libusb_include_dir}")
 AC_SUBST(LIBUSB_LIB_DIR, "${ac_libusb_lib_dir}")
+
+AM_CONDITIONAL(LIBUSB_VER_0_0, test $ac_libusb_ver = LUBUSB_0_0)
+AC_SUBST(LIBUSB_LIB_VER, "${ac_libusb_lib_ver}")
+AC_SUBST(LIBUSB_LIB_NAME, "${ac_libusb_lib_name}")
 
 dnl
 dnl If on a Win32 target such as MinGW do not build
@@ -309,9 +313,9 @@ dnl Check if a m68k GCC compiler is present and can be used.
 dnl
 
 AC_PATH_PROGS([flash_plugin_cc],
-              [m68k-elf-gcc m68k-rtems4.9-gcc m68k-rtems4.8-gcc],
+              [m68k-elf-gcc m68k-rtems4.11-gcc m68k-rtems4.10-gcc m68k-rtems4.9-gcc],
               [none],
-              [/usr/local/bin:/opt/rtems-4.9/bin:/opt/rtems-4.8/bin])
+              [/usr/local/bin:/opt/rtems-4.11/bin:/opt/rtems-4.10/bin])
 AM_CONDITIONAL(BUILD_FLASH_PLUGINS, test x${flash_plugin_cc} != xnone)
 AC_SUBST(FLASH_PLUGIN_GCC, ${flash_plugin_cc})
 

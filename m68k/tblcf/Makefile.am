@@ -9,12 +9,20 @@
 ## GNU General Public License for more details.
 ##
 
-AM_CPPFLAGS = -I$(srcdir)/../driver -I$(srcdir)/../lib
-AM_CFLAGS = -Wall -g
+AM_CPPFLAGS = -DBDM_DEVICE_USB=1 -I$(srcdir)/../driver -I$(srcdir)/../lib
+AM_CFLAGS = -Wall
+AM_LDFLAGS = 
 
 if LIBUSB_PATH
 AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
-AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+AM_LDFLAGS += -L@LIBUSB_LIB_DIR@
+endif
+LIBS += -l usb-1.0
+
+if LIBUSB_VER_0_0
+AM_CPPFLAGS += -DLIBUSB_VER_0_0=1
+else
+AM_CPPFLAGS += -DLIBUSB_VER_1_0=1
 endif
 
 if WIN32
@@ -47,7 +55,8 @@ tblcf_unsec_SOURCES = \
 
 tblcf_unsec_LDADD =  \
 	$(top_builddir)/tblcf/libtblcf.a \
-	$(top_builddir)/lib/libBDM.a
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/tblcf/libtblcf.a
 
 lib_LIBRARIES = libtblcf.a
 
@@ -55,6 +64,7 @@ include_HEADERS = \
 	tblcf.h
 
 libtblcf_a_SOURCES = \
+	bdm-usb.c \
 	tblcf.c \
 	tblcf_usb.c \
 	log.c

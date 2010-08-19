@@ -1,3 +1,74 @@
+2010-08-13  Chris Johns <cjohns@users.sourceforge.net>
+
+	* tblcf/tblcf_usb.c: Fix memory problems in find.
+	
+2010-08-12  Chris Johns <cjohns@users.sourceforge.net>
+
+	* bdmabstraction/bdmops.h: Do not change the calls, just use the
+	actual names.
+	
+	* flashlib/flash29.c, flashlib/flash_filter.c,
+	flashlib/flashcfm.c, flashlib/flashintelc3.c, server/bdmServer.c,
+	test/chk.c, utils/bdmctrl.c, utils/bdmmon.l, gdbserver/m68k-bdm-low.c,
+	gdbserver/remote-utils.c, gdbserver/utils.c: Fix printf warnings.
+
+	* config/bootstrap: MacOS sed is broken. Work around it.
+	
+	* configure.ac: Updated for the latest libusb. Remove the darwin
+	failure. Update the paths to RTEMS tools.
+	
+	* driver/bdm-cf-pe.c, driver/bdm-cpu32.c, driver/bdm-tblcf.c:
+	Change the init self call names and make public. Move some common
+	pieces into a more public place. Move out the USB init code.
+	
+	* driver/bdm-user-land.c: Collect the various bdm.c bits and
+	pieces needed to make the driver build for user land.
+	
+	* driver/bdm.c: Move the 'struct BDM' to the header file. Add the
+	common Coldfire system registers. Conditional compile the various
+	interfaces depending on the support for the host. Add a macro to
+	control the static visibility of exported functions. Add functions
+	to return the device info struct.
+	
+	* driver/bdm.h: Add the 'struct BDM'. Add decls for the bdm driver
+	calls. Add decls for the interface open calls.
+	
+	* gdbserver/Makefile.am, server/Makefile.am, test/Makefile.am,
+	utils/Makefile.am: Add the usb library.
+	
+	* lib/BDMlib.h: Fix company name.
+	
+	* lib/Makefile.am: Rework to handle conditional builds for
+	different hosts. Add the new files.
+	
+	* lib/bdm-iface.h: New. Adds an interface layer to the generic
+	calls.
+	
+	* lib/bdmIO.c: Remove all explict call to the remote code. Now
+	calls are directed by a handlers interface provided when the
+	interface is opened. Add support to open various interfaces.
+	
+	* lib/bdmRemote.c, lib/bdmRemote.h: Changed to use the new iface
+	handlers.
+	
+	* driver/ioperm/ioperm.c -> lib/ioperm.c: Move to the library. It
+	is really a user land piece of code not a driver.
+	
+	* lib/ioperm.h: New. The open call for ioperm.
+	
+	* lib/localIface.c, lib/localIface.h: New. Local or driver
+	interface.
+	
+	* driver/win/win-io.h -> lib/win-io.h, driver/win/win-bdm.c ->
+	lib/win-ioperm.c: Moved to the library.
+
+	* tblcf/Makefile.am: New libusb-1.0 support.
+	
+	* tblcf/bdm-usb.c, tblcf/bdm-usb.h: New. Interface layer for the
+	USB devices.
+	
+	* tblcf/tblcf_usb.c: Updated for libusb-1.0.
+
 2010-06-30  Groleo Marius <groleo@gmail.com>
 
 	* m68k/test/chk.c: Fix struct name typo.

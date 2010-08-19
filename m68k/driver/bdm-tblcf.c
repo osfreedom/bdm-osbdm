@@ -31,60 +31,6 @@ static int tblcf_reset_chip (struct BDM *self);
 static int tblcf_stop_chip (struct BDM *self);
 
 /*
- * Invalidate the cache.
- */
-
-static int
-tblcf_invalidate_cache (struct BDM *self)
-{
-  struct BDMioctl cacr_ioc;
-
-  if (self->debugFlag > 1)
-    PRINTF (" tblcf_invalidate_cache\n");
-  
-  cacr_ioc.address = BDM_REG_CACR;
-
-  if (tblcf_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  /*
-   * Set the invalidate bit.
-   */
-
-  if (cacr_ioc.value) {
-    if (self->cf_debug_ver == CF_REVISION_D)
-      cacr_ioc.value |= 0x01040100;
-    else
-      cacr_ioc.value |= 0x01000100;
-
-    if (self->debugFlag > 2)
-      PRINTF (" tblcf_invalidate_cache -- cacr:0x%08x\n", (int) cacr_ioc.value);
-  
-    if (tblcf_write_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-  }
-  
-  return 0;
-}
-
-/*
- * PC read check. This is used to see if the processor has halted.
- */
-
-static int
-tblcf_pc_read_check (struct BDM *self)
-{
-  struct BDMioctl pc_ioc;
-
-  pc_ioc.address = BDM_REG_RPC;
-
-  if (tblcf_read_sysreg (self, &pc_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
-      return BDM_TARGETNC;
-
-  return 0;
-}
-
-/*
  * Get target status
  */
 
@@ -137,7 +83,7 @@ tblcf_get_status (struct BDM *self)
    * flush the cache.
    */
   if (cf_last_running && !self->cf_running)
-    tblcf_invalidate_cache (self);
+    bdm_invalidate_cache (self);
   
   if (self->debugFlag > 2)
     PRINTF (" tblcf_get_status -- Status:0x%x, csr:0x%08x, cf_csr:0x%08x\n",
@@ -307,8 +253,8 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
          * for providing access to Joe. Thanks. (CCJ 15-05-2000)
          */
 
-        if ((tblcf_pc_read_check (self) == 0) &&
-            (tblcf_pc_read_check (self) == 0)) {
+        if ((bdm_pc_read_check (self) == 0) &&
+            (bdm_pc_read_check (self) == 0)) {
           self->cf_csr     = ioc->value;
           self->cf_running = 0;
         
@@ -318,7 +264,7 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
            * if we are using PST,  I am not sure yet : davidm
            */
           
-          tblcf_invalidate_cache (self);
+          bdm_invalidate_cache (self);
         }
         else {
           /*
@@ -531,7 +477,7 @@ tblcf_run_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  tblcf_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:4 or the SSM bit to off then issue a go.
@@ -610,7 +556,7 @@ tblcf_step_chip (struct BDM *self)
    * Flush the cache to insure all changed data is read by the
    * processor.
    */
-  tblcf_invalidate_cache (self);
+  bdm_invalidate_cache (self);
   
   /*
    * Change the CSR:5 or the IPI bit to on. The SSM bit is handled
@@ -917,8 +863,8 @@ cf_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
 /*
  * Initialise the BDM structure for a Coldfire in the P&E interface
  */
-static int
-tblcf_init_self (struct BDM *self)
+int
+bdm_tblcf_init_self (struct BDM *self)
 {
   int reg;
   
@@ -962,139 +908,4 @@ tblcf_init_self (struct BDM *self)
   self->cf_sr_masked = 0;
   
   return 0;
-}
-
-/*
- * Initialise the USB interface to tghe pod.
- */
-int
-usb_bdm_init (const char *device)
-{
-#if BDM_TBLCF_USB
-  struct BDM *self;
-  int         devs;
-  int         dev;
-  char        usb_device[256];
-  ssize_t     dev_size;
-#if linux
-  char        udev_usb_device[256];
-#endif
-
-  /*
-   * Initialise the USB layers.
-   */
-  devs = tblcf_init ();
-
-#ifdef BDM_VER_MESSAGE
-  fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ " devices:%d\n",
-           BDM_DRV_VERSION >> 8, BDM_DRV_VERSION & 0xff, devs);
-#endif
-
-#if linux
-  {
-    struct stat sb;
-    int         result;
-    char        *p;
-
-    if (lstat (device, &sb) == 0)
-    {
-      if (S_ISLNK (sb.st_mode))
-      {
-        dev_size = readlink (device, udev_usb_device, sizeof (udev_usb_device));
-
-        if ((dev_size >= 0) || (dev_size < sizeof (udev_usb_device) - 1))
-        {
-          udev_usb_device[dev_size] = '\0';
-
-          /*
-           * On Linux this is bus/usb/....
-           */
-
-          if (strncmp (udev_usb_device, "bus/usb", sizeof ("bus/usb") - 1) == 0)
-          {
-            memmove (udev_usb_device, udev_usb_device + sizeof ("bus/usb"),
-                     sizeof (udev_usb_device) - sizeof ("bus/usb") - 1);
-
-            p = strchr (udev_usb_device, '/');
-
-            *p = '-';
-
-            device = udev_usb_device;
-          }
-        }
-      }
-    }
-  }
-#endif
-  
-  for (dev = 0; dev < devs; dev++)
-  {
-    char* name;
-    int   length;
-
-    tblcf_usb_dev_name (dev, usb_device, sizeof (usb_device));
-
-    name = usb_device;
-    length = strlen (usb_device);
-
-    while (name && length)
-    {
-      name = strchr (name, device[0]);
-
-      if (name)
-      {
-        length = strlen (name);
-
-        if (strlen (device) <= length)
-        {
-          if (strncmp (device, name, length) == 0)
-          {
-            /*
-             * Set up the self srructure. Only ever one with ioperm.
-             */
-
-            self = &bdm_device_info[0];
-
-            /*
-             * Open the USB device.
-             */
-            self->usbDev = tblcf_open (usb_device);
-
-            if (self->usbDev < 0)
-            {
-              errno = EIO;
-              return -1;
-            }
-
-            /*
-             * First set the default debug level.
-             */
-
-            self->debugFlag = BDM_DEFAULT_DEBUG;
-
-            /*
-             * Force the port to exist.
-             */
-            self->exists = 1;
-
-            self->delayTimer = 0;
-      
-            tblcf_init_self (self);
-
-            return 0;
-          }
-        }
-
-        name++;
-        length = strlen (name);
-      }
-    }
-  }
-
-  errno = ENOENT;
-  return -2;
-#else
-  errno = ENOENT;
-  return -1;
-#endif
 }
