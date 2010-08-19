@@ -32,7 +32,7 @@
 /// Product ID for Multilink 
 #define MLCFE_PID 0x0503
 /// Product ID for DEMOJM
-#define MLCFE_PID 0x0504
+#define DEMOJM_PID 0x0504
 
 
 /// How long to wait for response on USB Bus
