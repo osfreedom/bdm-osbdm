@@ -1,4 +1,7 @@
 /*
+    BDM USB common code 
+    Copyright (C) 2010 Rafael Campos Las Heras <rafael@freedom.ind.br>
+
     Turbo BDM Light ColdFire
     Copyright (C) 2006  Daniel Malik
 
@@ -25,14 +28,34 @@
 
 #define WRITE_BLOCK_CHECK /* Keep on. CCJ */
 
-typedef enum {	/* type of BDM target */
-	CF_BDM=0,
-	JTAG=1
+/** Type of BDM target */
+typedef enum {
+	T_HC12     = 0,     /** - HC12 or HCS12 target */
+	T_HCS08	   = 1,     /** - HCS08 target */
+	T_RS08	   = 2,     /** - RS08 target */
+	T_CFV1     = 3,     /** - Coldfire Version 1 target */
+	T_CFVx     = 4,     /** - Coldfire Version 2,3,4 target */
+	T_JTAG     = 5,     /** - JTAG target - TAP is set to \b RUN-TEST/IDLE */
+	T_EZFLASH  = 6,     /** - EzPort Flash interface (SPI?) */
+	T_OFF      = 0xFF,  /** - Turn off interface (no target) */
 } target_type_e;
 
-typedef enum {	/* type of reset action required */
-	BDM_MODE=0,
-	NORMAL_MODE=1
+
+/** Type of reset action required */
+typedef enum {
+	RESET_MODE_MASK   = (3<<0), /**  Mask for reset mode (SPECIAL/NORMAL) */
+	RESET_SPECIAL     = (0<<0), /**  - Special mode [BDM active, Target halted] */
+	RESET_NORMAL      = (1<<0), /**  - Normal mode [usual reset, Target executes] */
+
+	RESET_TYPE_MASK   = (3<<2), /**  Mask for reset type (Hardware/Software/Power) */
+	RESET_ALL         = (0<<2), /**  Use all reset stategies as appropriate */
+	RESET_HARDWARE    = (1<<2), /**  Use hardware RESET pin reset */
+	RESET_SOFTWARE    = (2<<2), /**  Use software (BDM commands) reset */
+	RESET_POWER       = (3<<2), /**  Cycle power */
+
+	// Legacy methods
+	SPECIAL_MODE = RESET_SPECIAL|RESET_ALL,  /**  - Special mode [BDM active, Target halted] */
+	NORMAL_MODE  = RESET_NORMAL|RESET_ALL,   /**  - Normal mode [usual reset, Target executes] */
 } target_mode_e;
 
 typedef enum {	/* target reset detection state */
