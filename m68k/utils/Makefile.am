@@ -24,8 +24,8 @@ LIBS += -l wsock32
 endif
 endif
 
-if TBLCF_USB
-TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+if LIB_BDMUSB
+BDMUSB_LIB = $(top_builddir)/libbdmusb/libbdmusb.a
 endif
 
 if BDM_USB
@@ -59,14 +59,14 @@ bdmctrl_CPPFLAGS = \
 bdmctrl_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
 	$(top_builddir)/flashlib/libbdmflash.a \
-	$(TBLCF_USB_LIB) \
+	$(BDMUSB_LIB) \
 	$(LIBELF)
 
 bdmreset_SOURCES = \
 	bdmreset.c
 bdmreset_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
-	$(TBLCF_USB_LIB)
+	$(BDMUSB_LIB)
 
 bdmflash_SOURCES = \
 	bdmflash.c
@@ -75,7 +75,7 @@ bdmflash_CPPFLAGS = \
 bdmflash_LDADD = \
 	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
 	$(top_builddir)/lib/libBDM.a \
-	$(TBLCF_USB_LIB)
+	$(BDMUSB_LIB)
 
 bdmmon_SOURCES = \
 	bdmmon.l
@@ -83,6 +83,6 @@ bdmmon_CFLAGS = @CFLAGS@ -I$(top_srcdir)/bdmabstraction
 bdmmon_LDADD = \
 	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
 	$(top_builddir)/lib/libBDM.a \
-	$(TBLCF_USB_LIB)
+	$(BDMUSB_LIB)
 
 EXTRA_DIST = README.bdmctrl m68332.test mcf52235.test mcf5235.test mcf5329.test

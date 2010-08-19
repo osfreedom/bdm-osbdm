@@ -21,8 +21,8 @@ LIBS += -l wsock32
 endif
 endif
 
-if TBLCF_USB
-TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+if LIB_BDMUSB
+BDMUSB_LIB = $(top_builddir)/libbdmusb/libbdmusb.a
 endif
 
 if BDM_USB
@@ -35,8 +35,8 @@ bin_PROGRAMS = bdm-chk bdm-cpu32-chk
 
 bdm_chk_SOURCES = \
 	chk.c
-bdm_chk_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)
+bdm_chk_LDADD = ../lib/libBDM.a $(BDMUSB_LIB)
 
 bdm_cpu32_chk_SOURCES = \
 	cpu32-check.c
-bdm_cpu32_chk_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)
+bdm_cpu32_chk_LDADD = ../lib/libBDM.a $(BDMUSB_LIB)

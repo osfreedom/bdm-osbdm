@@ -38,8 +38,8 @@ endif
 
 if BDM_USB
 # Fix when making USB generic
-AM_CFLAGS += -DBDM_DEVICE_USB=1 -DBDM_TBLCF_USB=1
-AM_CPPFLAGS += -I$(srcdir)/../tblcf
+AM_CFLAGS += -DBDM_DEVICE_USB=1 -DLIB_BDMUSB=1
+AM_CPPFLAGS += -I$(srcdir)/../libbdmusb -I$(srcdir)/../libbdmusb/tblcf
 endif
 
 lib_LIBRARIES = libBDM.a

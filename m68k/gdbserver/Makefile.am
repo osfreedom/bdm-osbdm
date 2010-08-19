@@ -44,8 +44,8 @@ LIBS += -l wsock32
 endif
 endif
 
-if TBLCF_USB
-TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+if LIB_BDMUSB
+BDMUSB_LIB = $(top_builddir)/libbdmusb/libbdmusb.a
 endif
 
 if BDM_USB
@@ -73,7 +73,7 @@ m68k_bdm_gdbserver_CPPFLAGS = \
 	@CFLAGS@ $(AM_CPPFLAGS)
 m68k_bdm_gdbserver_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
-	$(TBLCF_USB_LIB)
+	$(BDMUSB_LIB)
 
 version.c: Makefile $(srcdir)/version.in
 	rm -f version.c-tmp version.c

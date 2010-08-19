@@ -222,14 +222,14 @@ AC_ARG_ENABLE(gdbserver,
 
 AM_CONDITIONAL(GDBSERVER, test x$bdm_gdbserver = xtrue)
 
-AC_ARG_ENABLE(tblcf,
- [  --enable-tblcf Build the Turbo BDM Light Coldfire USB driver (enabled)],
+AC_ARG_ENABLE(bdmusb,
+ [  --enable-bdmusb Build the BDM USB driver support (Turbo BDM Light Coldfire USB driver, USBDM USB driver, OSBDM ...) (enabled)],
  [case "${enableval}" in
-    yes) bdm_tblcf=true ;;
-    no)  bdm_tblcf=false ;;
-    *) AC_MSG_ERROR(bad value ${enableval} for --enable-tblcf) ;;
+    yes) bdm_bdmusb=true ;;
+    no)  bdm_bdmusb=false ;;
+    *) AC_MSG_ERROR(bad value ${enableval} for --enable-bdmusb) ;;
    esac],
- [bdm_tblcf=true])
+ [bdm_bdmusb=true])
 
 case ${host} in
   *mingw*)
@@ -250,7 +250,7 @@ AC_ARG_WITH(libusb-dir,
    ac_libusb_lib_dir=NONE ]
 ) 
 
-AS_IF([test x$bdm_tblcf = xtrue],
+AS_IF([test x$bdm_bdmusb = xtrue],
       [AS_IF([test "$ac_libusb_include_dir" != "NONE"],
              [ac_tmp_ldflags=${LDFLAGS}
               LDFLAGS="$LDFLAGS -L$ac_libusb_lib_dir"])
@@ -262,8 +262,8 @@ AS_IF([test x$bdm_tblcf = xtrue],
              [LDFLAGS=$ac_tmp_ldflags])])
 
 dnl Fix this when making USB generic.
-AM_CONDITIONAL(BDM_USB, test x$bdm_tblcf = xtrue)
-AM_CONDITIONAL(TBLCF_USB, test x$bdm_tblcf = xtrue)
+AM_CONDITIONAL(BDM_USB, test x$bdm_bdmusb = xtrue)
+AM_CONDITIONAL(LIB_BDMUSB, test x$bdm_bdmusb = xtrue)
 
 AM_CONDITIONAL(LIBUSB_PATH, test $ac_libusb_include_dir != NONE)
 AC_SUBST(LIBUSB_INCLUDE_DIR, "${ac_libusb_include_dir}")
@@ -294,7 +294,7 @@ dnl
 dnl Collect list of subdirectories to build
 dnl
 bdm_subdirs="lib"
-AS_IF([test x$bdm_tblcf = xtrue], bdm_subdirs="${bdm_subdirs} tblcf")
+AS_IF([test x$bdm_bdmusb = xtrue], bdm_subdirs="${bdm_subdirs} libbdmusb")
 AS_IF([test x$bdm_server = xtrue],   bdm_subdirs="${bdm_subdirs} server")
 AS_IF([test x$bdm_flashlib = xtrue], bdm_subdirs="${bdm_subdirs} flashlib")
 AS_IF([test x$bdm_bdmflash = xtrue -o x$bdm_bdmmon = xtrue], 
@@ -312,10 +312,14 @@ dnl
 dnl Check if a m68k GCC compiler is present and can be used.
 dnl
 
+#AC_PATH_PROGS([flash_plugin_cc],
+#              [m68k-elf-gcc m68k-rtems4.11-gcc m68k-rtems4.10-gcc m68k-rtems4.9-gcc],
+#              [none],
+#              [/usr/local/bin:/opt/rtems-4.11/bin:/opt/rtems-4.10/bin])
 AC_PATH_PROGS([flash_plugin_cc],
               [m68k-elf-gcc m68k-rtems4.11-gcc m68k-rtems4.10-gcc m68k-rtems4.9-gcc],
               [none],
-              [/usr/local/bin:/opt/rtems-4.11/bin:/opt/rtems-4.10/bin])
+              [$PATH:/opt/rtems-4.11/bin:/opt/rtems-4.10/bin])
 AM_CONDITIONAL(BUILD_FLASH_PLUGINS, test x${flash_plugin_cc} != xnone)
 AC_SUBST(FLASH_PLUGIN_GCC, ${flash_plugin_cc})
 
@@ -326,7 +330,7 @@ dnl
 AC_CONFIG_FILES(Makefile \
                 flashlib/Makefile \
                 lib/Makefile \
-                tblcf/Makefile \
+                libbdmusb/Makefile \
                 server/Makefile \
                 gdbserver/Makefile \
                 test/Makefile \

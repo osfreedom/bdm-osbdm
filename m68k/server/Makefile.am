@@ -11,8 +11,8 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../lib -I$(srcdir)/../driver
 
-if TBLCF_USB
-TBLCF_USB_LIB = $(top_builddir)/tblcf/libtblcf.a
+if LIB_BDMUSB
+BDMUSB_LIB = $(top_builddir)/libbdmusb/libbdmusb.a
 endif
 
 if BDM_USB
@@ -26,4 +26,4 @@ sbin_PROGRAMS = bdmd
 bdmd_SOURCES = \
 	bdmServer.c \
 	xmalloc.c
-bdmd_LDADD = ../lib/libBDM.a $(TBLCF_USB_LIB)
+bdmd_LDADD = ../lib/libBDM.a $(BDMUSB_LIB)
