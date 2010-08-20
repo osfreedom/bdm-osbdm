@@ -29,11 +29,22 @@
 
 #include "libusb-1.0/libusb.h"
 
+/** Type of USB BDM pod */
+typedef enum {
+	P_NONE     = 0,     /** - No USB POD */
+	P_TBDML    = 1,     /** - TBDML */
+	P_TBLCF	   = 2,     /** - TBLCF */
+	P_OSBDM	   = 3,     /** - Original OSBDM */
+	P_USBDM	   = 4,     /** - USBDM */
+	P_USBDM_V2 = 5,     /** - USBDM v2 */
+} pod_type_e;
+
 /*
  * Manage the USB devices we have connected.
  */
 typedef struct bdmusb_dev_s {
   int                             dev_ref;
+  pod_type_e                      type;
   libusb_device                   *device;
   libusb_device_handle            *handle;
   struct libusb_device_descriptor desc;

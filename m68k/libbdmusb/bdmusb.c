@@ -77,31 +77,11 @@ void bdmusb_find_supported_devices(void) {
       if (r < 0) {
           fprintf(stderr, "warning: failed to get usb device descriptor");
       } else {
-          unsigned char device_found = 0;
-	  switch (desc.idVendor) {
-	      case TBLCF_VID:
-		  //if ( (desc.idProduct==TBLCF_PID) || 
-		  //  (desc.idProduct==TBDML_PID) ){
-		  if (desc.idProduct==TBLCF_PID) {
-		      /* found a device */
-		      tblcf_dev_count++;
-		      device_found = 1;
-		  }
-		  break;
-	      case PEMICRO_VID:
-		  //if ( (desc.idProduct==MLCFE_PID) || 
-		  //  (desc.idProduct==DEMOJM_PID) ){
-		  pe_dev_count++;
-		  device_found = 1;
-		  break;
-	      case OSBDM_VID:
-		  if (desc.idProduct==OSBDM_PID) { 
-		      osbdm_dev_count++;
-		  }
-		  device_found = 1;
-		  break;
-	  }
-	  if (device_found)
+          if ( ( (desc.idVendor == TBLCF_VID) && (desc.idProduct == TBLCF_PID) ) ||
+	    ( (desc.idVendor == TBLCF_VID) && (desc.idProduct == TBDML_PID) ) ||
+	    ( (desc.idVendor == PEMICRO_VID) && (desc.idProduct == MLCFE_PID) ) ||
+	    ( (desc.idVendor == PEMICRO_VID) && (desc.idProduct == DEMOJM_PID) ) ||
+	    ( (desc.idVendor == OSBDM_VID) && (desc.idProduct == OSBDM_PID) ) ) {
 	      usb_dev_count++;
       }
   }
@@ -116,11 +96,35 @@ void bdmusb_find_supported_devices(void) {
       bdmusb_dev *udev = &usb_devs[usb_dev_count];
       int r = libusb_get_device_descriptor(dev, &udev->desc);
       if (r >= 0) {
-	  if ( ( (udev->desc.idVendor == TBLCF_VID) && (udev->desc.idProduct == TBLCF_PID) ) ||
-	    ( (udev->desc.idVendor == TBLCF_VID) && (udev->desc.idProduct == TBDML_PID) ) ||
-	    ( (udev->desc.idVendor == PEMICRO_VID) && (udev->desc.idProduct == MLCFE_PID) ) ||
-	    ( (udev->desc.idVendor == PEMICRO_VID) && (udev->desc.idProduct == DEMOJM_PID) ) ||
-	    ( (udev->desc.idVendor == OSBDM_VID) && (udev->desc.idProduct == OSBDM_PID) ) ) {
+	  unsigned char device_found = 0;
+	  switch (desc.idVendor) {
+	      case TBLCF_VID:
+		  //if ( (desc.idProduct==TBLCF_PID) || 
+		  //  (desc.idProduct==TBDML_PID) ){
+		  if (desc.idProduct==TBLCF_PID) {
+		      udev->type = P_TBLCF;
+		      /* found a device */
+		      tblcf_dev_count++;
+		      device_found = 1;
+		  }
+		  break;
+	      case PEMICRO_VID:
+		  //if ( (desc.idProduct==MLCFE_PID) || 
+		  //  (desc.idProduct==DEMOJM_PID) ){
+		  udev->type = P_TBLCF;
+		  pe_dev_count++;
+		  device_found = 1;
+		  break;
+	      case OSBDM_VID:
+		  if (desc.idProduct==OSBDM_PID) {
+		      udev->type = P_OSBDM;
+		      
+		      osbdm_dev_count++;
+		  }
+		  device_found = 1;
+		  break;
+	  }
+	  if (device_found) {
               /* found a device */
 	      udev->dev_ref = usb_dev_count;
               udev->device = dev;
