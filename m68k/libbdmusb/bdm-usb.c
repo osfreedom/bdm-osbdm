@@ -26,8 +26,10 @@
 #include "bdm.h"
 #include "BDMlib.h"
 
-#include "tblcf.h"
-#include "tblcf_usb.h"
+#include "tblcf/tblcf.h"
+#include "tblcf/tblcf_usb.h"
+
+#include "bdmusb.h"
 
 #include "bdm-usb.h"
 
@@ -147,7 +149,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
   /*
    * Initialise the USB layers.
    */
-  devs = tblcf_init ();
+  devs = bdmusb_init ();
 
 #ifdef BDM_VER_MESSAGE
   fprintf (stderr, "usb-bdm-init %d.%d, " __DATE__ ", " __TIME__ " devices:%d\n",
@@ -195,7 +197,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
     char* name;
     int   length;
 
-    tblcf_usb_dev_name (dev, usb_device, sizeof (usb_device));
+    bdmusb_dev_name (dev, usb_device, sizeof (usb_device));
 
     name = usb_device;
     length = strlen (usb_device);

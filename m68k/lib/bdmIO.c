@@ -91,6 +91,7 @@
  */
 #if defined (BDM_DEVICE_USB)
 #include "bdm-usb.h"
+#include "bdmusb.h"
 #endif
 
 /*

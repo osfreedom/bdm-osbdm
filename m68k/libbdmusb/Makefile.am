@@ -14,7 +14,7 @@ AM_CFLAGS = -Wall
 AM_LDFLAGS = 
 
 if LIBUSB_PATH
-AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@ -I$(srcdir)/libbdmusb/tblcf
 AM_LDFLAGS += -L@LIBUSB_LIB_DIR@
 endif
 LIBS += -l usb-1.0
@@ -37,7 +37,7 @@ bdmusb_show_SOURCES = \
 
 bdmusb_show_LDADD =  \
 	$(top_builddir)/lib/libBDM.a \
-	$(top_builddir)/tblcf/libbdmusb.a
+	$(top_builddir)/libbdmusb/libbdmusb.a
 
 bdmusb_boot_SOURCES = \
 	bdmusb_bt.c \
@@ -45,27 +45,30 @@ bdmusb_boot_SOURCES = \
 	srec.c
 
 bdmusb_boot_LDADD =  \
-	$(top_builddir)/tblcf/libbdmusb.a \
+	$(top_builddir)/libbdmusb/libbdmusb.a \
 	$(top_builddir)/lib/libBDM.a \
-	$(top_builddir)/tblcf/libtblcf.a
+	$(top_builddir)/libbdmusb/libbdmusb.a 
 
 bdmusb_unsec_SOURCES = \
 	bdmusb_unsec.c \
 	log_cmdline.c
 
 bdmusb_unsec_LDADD =  \
-	$(top_builddir)/tblcf/libbdmusb.a \
-	$(top_builddir)/lib/libBDM.a 
+	$(top_builddir)/libbdmusb/libbdmusb.a \
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/libbdmusb/libbdmusb.a 
 
 lib_LIBRARIES = libbdmusb.a
 
 include_HEADERS = \
 	bdmusb.h \
-	tblcf.h
+	tblcf/tblcf.h \
+	tblcf/tblcf_usb.h
 
 libbdmusb_a_SOURCES = \
 	bdmusb.c \
 	bdm-usb.c \
+	bdmusb_low_level.c \
 	tblcf/tblcf.c \
 	tblcf/tblcf_usb.c \
 	log.c

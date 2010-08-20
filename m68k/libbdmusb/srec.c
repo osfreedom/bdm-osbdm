@@ -22,8 +22,9 @@
 
 #include "log_cmdline.h"
 #include "srec.h"
-#include "tblcf_hwdesc.h"
-#include "tblcf_bt.h"
+#include "tblcf/tblcf_hwdesc.h"
+#include "bdmusb-hwdesc.h"
+#include "bdmusb_bt.h"
 
 /* converts BCD number to unsigned integer value */
 unsigned int hex2dec(char *bcd) {

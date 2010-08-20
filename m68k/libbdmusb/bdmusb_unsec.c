@@ -21,9 +21,11 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "version.h"
+#include "tblcf/version.h"
 #include "log_cmdline.h"
-#include "tblcf.h"
+#include "tblcf/tblcf.h"
+
+#include "bdmusb.h"
 
 char device_name[128];
 int device_no=0;
@@ -104,13 +106,13 @@ int main(int argc, char *argv[]) {
 		usage();
 		return(1);
 	}
-	print_screen("found %d Turbo BDM Light ColdFire device(s)\n",i=tblcf_init());
+	print_screen("found %d Turbo BDM Light ColdFire device(s)\n",i=bdmusb_init());
 	if (device_no>=i) {
 		print_screen("Not enough devices connected to work with device #%d\n",device_no);
 		return(1);
 	}
 	device_no = tblcf_open(device_name);
-	tblcf_set_target_type(device_no, JTAG);	/* select JTAG target */
+	tblcf_set_target_type(device_no, T_JTAG);	/* select JTAG target */
 	tblcf_jtag_sel_shift(device_no, 1);		/* select instruction path */
 	tblcf_jtag_write(device_no,
                    unsec_instruction_len,1,idcode+4-((unsec_instruction_len-1)>>3));	/* shift the IDCODE instruction in */

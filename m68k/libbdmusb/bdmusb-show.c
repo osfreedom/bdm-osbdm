@@ -24,8 +24,9 @@
 
 #include "BDMlib.h"
 
-#include "tblcf.h"
-#include "tblcf_usb.h"
+#include "bdmusb.h"
+#include "tblcf/tblcf.h"
+#include "tblcf/tblcf_usb.h"
 
 int
 main (int argc, char *argv[])
@@ -57,12 +58,12 @@ main (int argc, char *argv[])
 
   bdmSetDebugFlag (debug);
   
-  devs = tblcf_init();
+  devs = bdmusb_init();
   printf ("Found %i device(s)\n", devs);
 
   for (i = 0; i < devs; i++)
   {
-    tblcf_usb_dev_name (i, name, sizeof (name));
+    bdmusb_dev_name (i, name, sizeof (name));
     printf (" %2d: %s\n", i + 1, name);
   }
   

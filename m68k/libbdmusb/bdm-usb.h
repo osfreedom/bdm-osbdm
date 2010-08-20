@@ -26,8 +26,8 @@ extern "C"
 
 #include "bdm-iface.h"
 
-#include "tblcf.h"
-#include "tblcf_usb.h"
+#include "tblcf/tblcf.h"
+#include "tblcf/tblcf_usb.h"
 
 int bdm_usb_open(const char* name, bdm_iface** iface);
 

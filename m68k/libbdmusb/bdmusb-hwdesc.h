@@ -15,17 +15,17 @@
 /// Product ID for TBDML
 #define TBDML_PID	(0x1000)
 
-/// Vendor ID for OSBDM
-#define OSBDM_VID	FREESCALE_VID
-/// Product ID for OSBDM
-#define OSBDM_PID	(0x0021)
-
 /// Vendor ID for TBLCF
 #define TBLCF_VID	MOTORLA_VID
 /// Product ID for TBLCF
 #define TBLCF_PID	(0x1001)
 /// The ICP (In Circuit Programmer) for JB16
 #define	JB16ICP_PID 	0xFF02
+
+/// Vendor ID for OSBDM
+#define OSBDM_VID	FREESCALE_VID
+/// Product ID for OSBDM
+#define OSBDM_PID	(0x0021)
 
 /// Vendor ID for PEmicro
 #define PEMICRO_VID 0x1357

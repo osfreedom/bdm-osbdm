@@ -20,10 +20,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "tblcf_hwdesc.h"
-#include "tblcf_usb.h"
-#include "version.h"
-#include "tblcf_bt.h"
+#include "tblcf/tblcf_hwdesc.h"
+#include "bdmusb-hwdesc.h"
+#include "bdmusb.h"
+#include "tblcf/tblcf_usb.h"
+#include "tblcf/version.h"
+#include "bdmusb_bt.h"
 #include "log_cmdline.h"
 #include "srec.h"
 #include "commands.h"
@@ -109,11 +111,11 @@ int main(int argc, char *argv[]) {
 		usage();
 		return(1);
 	}
-	tblcf_usb_init();
+	bdmusb_init();
 	/* request firmware upgrade on next power up (if required by the user) */
 	if (function_descriptor.request_upgrade) {
 		unsigned char data[6];
-		tblcf_usb_find_devices(TBLCF_PID);
+		bdmusb_find_supported_devices();
 		print_screen("found %d Turbo BDM Light ColdFire device(s)\n",i=tblcf_usb_cnt());
 		if (function_descriptor.device_no>=i) {
 			print_screen("Not enough devices connected to work with device #%d\n",
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (s_rec_process()) return(1);	/* process the S-record file, exit in case of error */
 	/* now open communication with the device */
-	tblcf_usb_find_devices(JB16ICP_PID);
+	//tblcf_usb_find_devices(JB16ICP_PID);
 	print_screen("found %d HC08JB16 ICP device(s)\n",i=tblcf_usb_cnt());
 	if (function_descriptor.device_no>=i) {
 		print_screen("Not enough devices connected to work with device #%d\n",

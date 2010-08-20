@@ -1,9 +1,3 @@
-/* this file specifies propierties according to which the hardware can be identified */
-#define	TBLCF_PID	0x1001
-#define	JB16ICP_PID	0xFF02
-#define TBLCF_VID	0x0425
-
-#define TIMEOUT 1000	/* ussual timeout for device operations */
 
 /* addresses of parts of flash for bootloader operation */
 

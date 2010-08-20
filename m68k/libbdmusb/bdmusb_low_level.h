@@ -1,9 +1,7 @@
 /*
-    Turbo BDM Light ColdFire
-    Copyright (C) 2006  Daniel Malik
-
-    Changed to support the BDM project.
-    Chris Johns (cjohns@user.sourgeforge.net)
+    BDM USB abstraction project
+    Copyright (C) 2010  Rafael Campos
+    Rafael Campos Las Heras (rafael@freedom.ind.br)
     
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -20,24 +18,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include <stdio.h>
-#include <string.h>
+#ifndef _BDMUSB_LOW_LEVEL_H_
+#define _BDMUSB_LOW_LEVEL_H_
 
-#include "log.h"
+unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data);
+unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data);
 
-void bdm_print_dump(unsigned char *data, unsigned int size) {
-  static char buf[256];
-  char *p = buf;
-  unsigned int i=0;
-  while(size--) {
-    p += sprintf(p,"%02X ",*(data++));
-    if (((++i)%32)==0) {
-      bdm_print("%s\n", buf);
-      p = buf;
-    }
-    else if (((i)%8)==0) {
-      p = strcat (p, " ");
-    }
-	}
-  if (((i)%32)!=0) bdm_print("%s\n", buf);
-}
+#endif /* _BDMUSB_LOW_LEVEL_H_ */

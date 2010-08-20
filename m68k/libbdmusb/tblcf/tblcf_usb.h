@@ -23,10 +23,7 @@
 #ifndef TBLCF_USB_H
 #define TBLCF_USB_H
 
-void tblcf_usb_init(void);
-void tblcf_usb_find_devices(unsigned short int product_id);
-unsigned int tblcf_usb_cnt(void);
-void tblcf_usb_dev_name(int dev, char *name, int namelen);
+//unsigned int tblcf_usb_cnt(void);
 int tblcf_usb_dev_open(int dev);
 int tblcf_usb_open(const char *device);
 void tblcf_usb_close(int dev);

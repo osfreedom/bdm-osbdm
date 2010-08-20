@@ -21,7 +21,8 @@
  * cjohns@users.sourceforge.net
  */
 
-#include <tblcf.h>
+#include <bdmusb.h>
+#include <tblcf/tblcf.h>
 
 static int tblcf_read_sysreg (struct BDM *self,
                               struct BDMioctl *ioc, int mode);
