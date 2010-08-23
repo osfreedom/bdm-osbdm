@@ -23,10 +23,13 @@
 #include <unistd.h>
 
 #include "BDMlib.h"
+#include "bdm-usb.h"
 
-#include "bdmusb.h"
-#include "tblcf/tblcf.h"
-#include "tblcf/tblcf_usb.h"
+#include "bdmusb-hwdesc.h"
+
+//#define TBLCF_PID 0x0503
+//#define TBLCF_VID 0x1357
+
 
 int
 main (int argc, char *argv[])
@@ -39,7 +42,7 @@ main (int argc, char *argv[])
   int debug = 0;
   char name[128];
 
-  printf ("TBLCF Turbo BDM Light ColdFire Show\n\n");
+  printf ("USB BDM ColdFire Show\n\n");
 
   while ((c = getopt(argc, argv, "d:")) != -1)
   {
@@ -57,15 +60,13 @@ main (int argc, char *argv[])
   }
 
   bdmSetDebugFlag (debug);
-  
-  devs = bdmusb_init();
-  printf ("Found %i device(s)\n", devs);
 
+  devs = cf_usb_pe_init();
+  printf ("Found %i device(s)\n", devs);
   for (i = 0; i < devs; i++)
   {
-    bdmusb_dev_name (i, name, sizeof (name));
+    bdm_usb_dev_name (i, name, sizeof (name));
     printf (" %2d: %s\n", i + 1, name);
   }
-  
   return 0;
 }

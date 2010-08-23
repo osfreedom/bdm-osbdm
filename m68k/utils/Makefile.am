@@ -36,7 +36,7 @@ endif
 
 LIBELF = $(top_builddir)/libelf/lib/libelf.a
 
-bin_PROGRAMS = bdmreset
+bin_PROGRAMS = bdmreset usb-show
 
 if BDMCTRL
 bin_PROGRAMS += bdmctrl
@@ -84,5 +84,12 @@ bdmmon_LDADD = \
 	$(top_builddir)/bdmabstraction/libbdmabstraction.a \
 	$(top_builddir)/lib/libBDM.a \
 	$(BDMUSB_LIB)
+
+usb_show_SOURCES = \
+	usb-show.c 
+
+usb_show_LDADD =  \
+	$(top_builddir)/lib/libBDM.a \
+	$(top_builddir)/tblcf/libbdmusb.a
 
 EXTRA_DIST = README.bdmctrl m68332.test mcf52235.test mcf5235.test mcf5329.test
