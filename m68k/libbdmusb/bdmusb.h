@@ -71,4 +71,8 @@ unsigned char bdmusb_get_last_sts_value(int dev);
 /* sets target MCU type; returns 0 on success and non-zero on failure */
 unsigned char bdmusb_set_target_type(int dev, target_type_e target_type);
 
+/* resets the target to normal or BDM mode; returns 0 on success and non-zero
+ * on failure */
+unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode);
+
 #endif /* _BDMUSB_H_ */

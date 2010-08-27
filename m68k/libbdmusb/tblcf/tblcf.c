@@ -47,17 +47,6 @@ unsigned char tblcf_get_last_sts(int dev) {
     return BDM_RC_OK;
 }
 
-/* resets the target to normal or BDM mode */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_target_reset(int dev, target_mode_e target_mode) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_RESET;
-	usb_data[2]=target_mode;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_TARGET_RESET: Target reset into mode 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
-	return(!(usb_data[0]==CMD_RESET));
-}
-
 /* fills user supplied structure with current state of the BDM communication channel */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_bdm_sts(int dev, bdmcf_status_t *bdmcf_status) {

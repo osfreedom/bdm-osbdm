@@ -241,7 +241,7 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
     usb_data[0]=1;	 /* get 1 byte */
     usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_SET_TARGET:CMD_USBDM_SET_TARGET;
     usb_data[2]=target_type;
-    ret_val = tblcf_usb_recv_ep0(dev, usb_data);
+    ret_val = tblcf_usb_recv_ep0(&usb_devs[dev], usb_data);
     if (ret_val == BDM_RC_OK) {
       bdm_print("BDMUSB_SET_TARGET_TYPE: Set target type 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
       if (usb_devs[dev].type==P_TBLCF) 
@@ -250,4 +250,22 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
       bdm_print("BDMUSB_SET_TARGET_TYPE - Error %d \r\n",ret_val);
     
     return(ret_val);
+}
+
+/* resets the target to normal or BDM mode */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
+    unsigned char ret_val;
+    usb_data[0]=1;	 /* get 1 byte */
+    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_TARGET_RESET:CMD_USBDM_TARGET_RESET;
+    usb_data[2]=target_mode;
+    ret_val = tblcf_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if (ret_val == BDM_RC_OK) {
+	bdm_print("BDMUSB_TARGET_RESET: Target reset into mode 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
+	if (usb_devs[dev].type==P_TBLCF) 
+	    ret_val = (!(usb_data[0]==CMD_TBLCF_TARGET_RESET));
+    } else 
+	bdm_print("BDMUSB_TARGET_RESET - Error %d \r\n",ret_val);
+    
+    return ret_val;
 }

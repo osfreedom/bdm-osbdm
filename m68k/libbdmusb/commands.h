@@ -121,7 +121,8 @@ typedef enum {
    CMD_TBLCF_GET_STACK_SIZE        = 13,  /**< parameters: none, returns 16-bit stack size required by the application (so far into the execution) */
    /** TurboBdmLightCF  BDM/debugging related commands */
    CMD_TBLCF_SET_TARGET            = 20,  /**< set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
-
+   CMD_TBLCF_TARGET_RESET          = 21,  /**< 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode  @param [2] \ref TargetMode_t */
+   
    /** Generic OSBDM */
    CMD_GET_LAST_STATUS             = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
 } bdm_commands_type_e;
@@ -209,12 +210,7 @@ typedef enum  {
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
-/* System related commands */
-//#define CMD_FAILED            1  /* command execution failed (incorrect parameters, target not responding, etc.) */
-//#define CMD_UNKNOWN           2  /* unknown command */
-
-/*  */
-#define CMD_RESET             21 /* 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode */
+/* */
 #define CMD_GET_STATUS        22 /* returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
 #define CMD_HALT              23 /* stop the CPU and bring it into BDM mode */
 #define CMD_GO                24 /* start code execution from current PC address */

@@ -421,7 +421,7 @@ tblcf_reset_chip (struct BDM *self)
 
   self->cf_running = 1;
   
-  if (tblcf_target_reset (self->usbDev, BDM_MODE)) {
+  if (bdmusb_target_reset (self->usbDev, BDM_MODE)) {
     if (self->debugFlag)
       PRINTF (" tblcf_reset_chip: error\n");
     return BDM_FAULT_RESPONSE;

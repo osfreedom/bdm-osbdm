@@ -42,10 +42,6 @@ unsigned char tblcf_get_last_sts(int dev);
  * non-zero on failure */
 unsigned char tblcf_request_boot(int dev);
 
-/* resets the target to normal or BDM mode; returns 0 on success and non-zero
- * on failure */
-unsigned char tblcf_target_reset(int dev, target_mode_e target_mode);
-
 /* fills user supplied structure with current state of the BDM communication
  * channel; returns 0 on success and non-zero on failure */
 unsigned char tblcf_bdm_sts(int dev, bdmcf_status_t *bdmcf_status);
