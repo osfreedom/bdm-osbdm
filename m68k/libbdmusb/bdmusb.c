@@ -66,11 +66,13 @@ unsigned char bdmusb_init(void) {
 }
 */
 /* closes currently open device */
-/*void bdmusb_close(int dev) {
-        bdm_print("TBLCF_CLOSE: Trying to close the device\r\n");
-        bdmusb_usb_close(dev);
+void bdmusb_close(int dev) {
+    bdm_print("BDMUSB_CLOSE: Trying to close the device\r\n");
+    if (usb_devs[dev].type == P_USBDM_V2)
+      bdmusb_set_target_type(dev, T_OFF);
+    bdmusb_usb_close(dev);
 }
-*/
+
 /* find all TBLCF devices attached to the computer */
 void bdmusb_find_supported_devices(void) {
   libusb_device *dev;
@@ -227,11 +229,26 @@ void bdmusb_dev_name(int dev, char *name, int namelen) {
 
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char bdmusb_get_last_sts_value(int dev) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_GET_LAST_STATUS:CMD_GET_LAST_STATUS;
-	bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
-	bdm_print("BDMUSB_GET_LAST_STATUS: Reported last command status 0x%02X\r\n",usb_data[0]);
-  return usb_data[0];
+    usb_data[0]=1;	 /* get 1 byte */
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_GET_LAST_STATUS;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	return BDM_RC_ILLEGAL_COMMAND;
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_TBLCF_GET_LAST_STATUS;
+	break;
+    };
+    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_GET_LAST_STATUS:CMD_OSBDM_GET_LAST_STATUS;
+    bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    bdm_print("BDMUSB_GET_LAST_STATUS: Reported last command status 0x%02X\r\n",usb_data[0]);
+    return usb_data[0];
 }
 
 /* sets target MCU type */
@@ -268,4 +285,107 @@ unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
 	bdm_print("BDMUSB_TARGET_RESET - Error %d \r\n",ret_val);
     
     return ret_val;
+}
+
+/* fills user supplied structure with current state of the BDM communication channel */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
+    unsigned char ret_val;
+    unsigned int temp_state;
+    usb_data[0]=3;	 /* get 3 bytes */
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	  usb_data[1]=CMD_OSBDM_GET_BDM_STATUS;
+	  break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	  usb_data[1]=CMD_USBDM_GET_BDM_STATUS;
+	  break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default:
+	  usb_data[1]=CMD_TBLCF_GET_BDM_STATUS;
+	  break;
+    }
+    ret_val = tblcf_usb_recv_ep0(dev, usb_data);
+    if (ret_val == BDM_RC_OK) {
+      temp_state = usb_data[1]*256+usb_data[2];
+      switch (usb_devs[dev].type) {
+	case P_OSBDM:
+	case P_USBDM:
+	case P_USBDM_V2:
+	  bdm_status->ackn_state   = (temp_state&USBDM_ACKN)?ACKN:WAIT;
+	  bdm_status->reset_state  = (temp_state&USBDM_RESET_STATE)?RSTO_INACTIVE:RSTO_ACTIVE; // Active LOW!
+	  bdm_status->reset_recent = (temp_state&USBDM_RESET_DETECT)?RESET_DETECTED:NO_RESET_ACTIVITY;
+	  bdm_status->halt_state   = (temp_state&USBDM_HALT)?TARGET_HALTED:TARGET_RUNNING;
+	  switch(temp_state&USBDM_POWER_MASK) {
+	    case USBDM_POWER_NONE:
+	      /* Target has no power */
+	      bdm_status->power_state = BDM_TARGET_VDD_NONE;
+	      break;
+	    case USBDM_POWER_EXT:
+	      /* Target has external power */
+	      bdm_status->power_state = BDM_TARGET_VDD_EXT;
+	      break;
+	    case USBDM_POWER_INT:
+	      /* Target has internal power */
+	      bdm_status->power_state = BDM_TARGET_VDD_INT;
+	      break;
+	    case USBDM_POWER_ERR:
+	      /* Target power error (internal but overload) */
+	      bdm_status->power_state = BDM_TARGET_VDD_ERR;
+	      break;
+	  };
+	  switch(temp_state&USBDM_COMM_MASK) {
+	    case USBDM_NOT_CONNECTED:
+	      /** No connection with target */
+	      bdm_status->connection_state = SPEED_NO_INFO;
+	      break;
+	    case USBDM_SYNC_DONE:
+	      /** Target communication speed determined by BDM SYNC */
+	      bdm_status->connection_state = SPEED_SYNC;
+	      break;
+	    case USBDM_GUESS_DONE:
+	      /** Target communication speed guessed */
+	      bdm_status->connection_state = SPEED_GUESSED;
+	      break;
+	    case USBDM_USER_DONE:
+	      /**< Target communication speed specified by user */
+	      bdm_status->connection_state = SPEED_USER_SUPPLIED;
+	      break;
+	  };
+	  switch(temp_state&USBDM_VPP_MASK) {
+	      case USBDM_VPP_OFF:
+		/* Programming Voltage off */
+		bdm_status->flash_state = BDM_TARGET_VPP_OFF;
+		break;
+	      case USBDM_VPP_ON:
+		/* Programming Voltage on */
+		bdm_status->flash_state = BDM_TARGET_VPP_ON;
+		break;
+	      case USBDM_VPP_STANDBY:
+		/* Programming Voltage standby */
+		bdm_status->flash_state = BDM_TARGET_VPP_STANDBY;
+		break;
+	      case USBDM_VPP_ERR:
+		/* Error */
+		bdm_status->flash_state = BDM_TARGET_VPP_ERROR;
+		break;
+	  };
+
+	  break;
+	case P_NONE:
+	case P_TBDML:
+	case P_TBLCF:
+	default:
+	  if (usb_data[0]!=CMD_TBLCF_GET_BDM_STATUS) return(BDM_RC_ILLEGAL_PARAMS);
+	  bdm_status->reset_state = (temp_state&TBLCF_RST0_STATE_MASK)?RSTO_INACTIVE:RSTO_ACTIVE;
+	  bdm_status->reset_recent = (temp_state&TBLCF_RESET_DETECTED_MASK)?RESET_DETECTED:RESET_NOT_DETECTED;
+      };
+      bdm_print("BDMUSB_BDM_STATUS: Reported communication status 0x%04X (0x%02X)\r\n",
+	  temp_state,usb_data[0]);
+    }
+    
+    return(ret_val);
 }

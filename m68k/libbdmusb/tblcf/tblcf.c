@@ -47,21 +47,6 @@ unsigned char tblcf_get_last_sts(int dev) {
     return BDM_RC_OK;
 }
 
-/* fills user supplied structure with current state of the BDM communication channel */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_bdm_sts(int dev, bdmcf_status_t *bdmcf_status) {
-	usb_data[0]=3;	 /* get 3 bytes */
-	usb_data[1]=CMD_GET_STATUS;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	if (usb_data[0]!=CMD_GET_STATUS) return(1);
-	bdmcf_status->reset_state = ((usb_data[1]*256+usb_data[2])&RSTO_STATE_MASK)?RSTO_INACTIVE:RSTO_ACTIVE;
-	bdmcf_status->reset_detection =
-    ((usb_data[1]*256+usb_data[2])&RESET_DETECTED_MASK)?RESET_DETECTED:RESET_NOT_DETECTED;
-	bdm_print("TBLCF_BDM_STATUS: Reported communication status 0x%04X (0x%02X)\r\n",
-              (usb_data[1]*256+usb_data[2]),usb_data[0]);
-	return(0);
-}
-
 /* brings the target into BDM mode */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_target_halt(int dev) {

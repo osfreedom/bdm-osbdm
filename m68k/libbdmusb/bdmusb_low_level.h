@@ -27,6 +27,10 @@ int bdmusb_usb_open(const char *device);
 
 void bdmusb_usb_close(int dev);
 
+/* requests bootloader execution on new power-up, returns 0 on success and
+ * non-zero on failure */
+unsigned char bdmusb_request_boot(int dev);
+
 
 unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data);
 unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data);

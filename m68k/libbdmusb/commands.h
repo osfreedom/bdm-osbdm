@@ -122,9 +122,21 @@ typedef enum {
    /** TurboBdmLightCF  BDM/debugging related commands */
    CMD_TBLCF_SET_TARGET            = 20,  /**< set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
    CMD_TBLCF_TARGET_RESET          = 21,  /**< 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode  @param [2] \ref TargetMode_t */
-   
+   CMD_TBLCF_TARGET_STEP           = 23,  /**< Perform single step */
+   CMD_TBLCF_TARGET_GO             = 24,  /**< Start code execution */
+   CMD_TBLCF_TARGET_HALT           = 25,  /**< Stop the CPU and bring it into background mode */  
+   CMD_TBLCF_GET_BDM_STATUS        = 22, /**< returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
+
    /** Generic OSBDM */
-   CMD_GET_LAST_STATUS             = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
+   CMD_OSBDM_GET_LAST_STATUS       = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
+   CMD_OSBDM_SET_TARGET            = 30,  /**< Set target,  @param [2] 8-bit target value @ref target_type_e */
+   CMD_OSBDM_GET_BDM_STATUS        = 34,  /**< Get BDM status */
+                              /** @return [1] 8-bit status byte made up as follows: \n */
+                              /**    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n */
+                              /**    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n */
+                              /**    - (CFVx only)         bit2   - current RSTO value \n */
+                              /**    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n */
+                              /**    - (All)               bit7   - target has power */
 } bdm_commands_type_e;
 
 /** Debugging sub commands (used with \ref CMD_USBDM_DEBUG )
@@ -202,16 +214,40 @@ typedef enum  {
   BDM_RC_RESET_TIMEOUT_RISE      = 33,    /**< - RESET signal failed to rise */
 } bdm_error_code_type_e;
 
-/* cable status bit fields */
-#define RESET_DETECTED_MASK   0x0001
-#define RSTO_STATE_MASK       0x0002
-
+/** Target Status bit masks for USBDM/OSBDM
+  *     9       8       7       6       5        4       3       2       1       0
+  * +-------+-------+-------+-------+--------+-------+-------+-------+-------+-------+
+  * |      VPP      |     Power     |  Halt  | Communication | Reset | ResDet| Ackn  |
+  * +-------+-------+-------+-------+--------+-------+-------+-------+-------+-------+
+  */
+typedef enum  {
+  TBLCF_RESET_DETECTED_MASK = (1<<0),  /**< - TBLCF Target Detected mask */
+  TBLCF_RST0_STATE_MASK     = (1<<1),  /**< - TBLCF Target RST0 State mask */
+  USBDM_ACKN                = (1<<0),  /**< - Target supports BDM ACK */
+  USBDM_RESET_DETECT        = (1<<1),  /**< - Target has been reset since status last polled */
+  USBDM_RESET_STATE         = (1<<2),  /**< - Current state of target reset pin (RESET or RSTO) (active low!) */
+  USBDM_NOT_CONNECTED       = (0<<3),  /**< - No connection with target */
+  USBDM_SYNC_DONE           = (1<<3),  /**< - Target communication speed determined by BDM SYNC */
+  USBDM_GUESS_DONE          = (2<<3),  /**< - Target communication speed guessed */
+  USBDM_USER_DONE           = (3<<3),  /**< - Target communication speed specified by user */
+  USBDM_COMM_MASK           = (3<<3),  /**< - Mask for communication state (S_NOT_CONNECTED, S_SYNC_DONE, S_GUESS_DONE or S_USER_DONE) */
+  USBDM_HALT                = (1<<5),  /**< - Indicates target is halted (CF V2, V3 & V4) - buggy? */
+  USBDM_POWER_NONE          = (0<<6),  /**< - Target power not present */
+  USBDM_POWER_EXT           = (1<<6),  /**< - External target power present */
+  USBDM_POWER_INT           = (2<<6),  /**< - Internal target power on */
+  USBDM_POWER_ERR           = (3<<6),  /**< - Internal target power error - overcurrent or similar */
+  USBDM_POWER_MASK          = (3<<6),  /**< - Mask for Power */
+  USBDM_VPP_OFF             = (0<<8),  /**< - Vpp Off */
+  USBDM_VPP_STANDBY         = (1<<8),  /**< - Vpp standby (Inverter on) */
+  USBDM_VPP_ON              = (2<<8),  /**< - Vpp On */
+  USBDM_VPP_ERR             = (3<<8),  /**< - Vpp Error - not used */
+  USBDM_VPP_MASK            = (3<<8),  /**< - Mask for Vpp */
+} status_bitmask_type_e;
 
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
 /* */
-#define CMD_GET_STATUS        22 /* returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
 #define CMD_HALT              23 /* stop the CPU and bring it into BDM mode */
 #define CMD_GO                24 /* start code execution from current PC address */
 #define CMD_STEP              25 /* perform single step */

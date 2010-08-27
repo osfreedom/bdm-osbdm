@@ -23,6 +23,7 @@
 #include "tblcf/tblcf_hwdesc.h"
 #include "bdmusb-hwdesc.h"
 #include "bdmusb.h"
+#include "bdmusb_low_level.h"
 #include "tblcf/tblcf_usb.h"
 #include "tblcf/version.h"
 #include "bdmusb_bt.h"
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]) {
 		}
 		function_descriptor.device_no = bdmusb_usb_open(function_descriptor.device_name);
 		/* request bootloader action op next power-up */
-		if ((i)||(bdmusb_request_boot())) {
+		if ((i)||(bdmusb_request_boot(function_descriptor.device_no))) {
 			print_screen("USB communication problem or CMD_SET_BOOT command failure\n");
 			return(1);
 		}

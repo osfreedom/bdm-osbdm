@@ -48,7 +48,7 @@ tblcf_get_status (struct BDM *self)
    * TBLCF does not report target power.
    */
 
-  if (tblcf_bdm_sts (self->usbDev, &bdmcf_status))
+  if (bdmusb_bdm_sts (self->usbDev, &bdmcf_status))
     status = BDM_TARGETNC;
   else {
     if (bdmcf_status.reset_detection == RESET_DETECTED)

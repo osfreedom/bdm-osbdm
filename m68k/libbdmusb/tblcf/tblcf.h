@@ -38,10 +38,6 @@ unsigned char tblcf_version(void);
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char tblcf_get_last_sts(int dev);
 
-/* requests bootloader execution on new power-up, returns 0 on success and
- * non-zero on failure */
-unsigned char tblcf_request_boot(int dev);
-
 /* fills user supplied structure with current state of the BDM communication
  * channel; returns 0 on success and non-zero on failure */
 unsigned char tblcf_bdm_sts(int dev, bdmcf_status_t *bdmcf_status);

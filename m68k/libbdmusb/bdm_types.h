@@ -87,9 +87,26 @@ typedef enum {
 	NORMAL_MODE  = RESET_NORMAL|RESET_ALL,   /**  - Normal mode [usual reset, Target executes] */
 } target_mode_e;
 
+/** Target supports ACKN or uses fixed delay {WAIT} instead
+  */
+typedef enum {
+  ACKN  = 1,   /**< - Target supports ACKN feature and it is enabled */
+  WAIT  = 0,   /**< - Use WAIT (delay) instead */
+} ack_mode_type_e;
+
+/** Target speed selection
+  */
+typedef enum {
+  SPEED_NO_INFO        = 0,   /**< - Not connected */
+  SPEED_SYNC           = 1,   /**< - Speed determined by SYNC */
+  SPEED_GUESSED        = 2,   /**< - Speed determined by trial & error */
+  SPEED_USER_SUPPLIED  = 3    /**< - User has specified the speed to use */
+} speed_mode_type_e;
+
 /** target reset detection state */
 typedef enum {	
 	RESET_NOT_DETECTED=0,
+	NO_RESET_ACTIVITY=RESET_NOT_DETECTED,
 	RESET_DETECTED=1
 } reset_detection_e;
 
@@ -99,10 +116,55 @@ typedef enum {
 	RSTO_INACTIVE=1
 } reset_state_e;
 
+/** Target Halt state
+  */
+typedef enum {
+   TARGET_RUNNING    = 0,   /**< - CFVx target running (ALLPST == 0) */
+   TARGET_HALTED     = 1    /**< - CFVx target halted (ALLPST == 1) */
+} target_run_state_type_e;
+
+/** Target Voltage supply state
+  */
+typedef enum  {
+   BDM_TARGET_VDD_NONE      = 0,   /**< - Target Vdd not detected */
+   BDM_TARGET_VDD_EXT       = 1,   /**< - Target Vdd external */
+   BDM_TARGET_VDD_INT       = 2,   /**< - Target Vdd internal */
+   BDM_TARGET_VDD_ERR       = 3,   /**< - Target Vdd error */
+} target_vdd_state_type_e;
+
+/** Internal Target Voltage supply selection
+  */
+typedef enum  {
+   BDM_TARGET_VDD_OFF       = 0,   /**< - Target Vdd Off */
+   BDM_TARGET_VDD_3V3       = 1,   /**< - Target Vdd internal 3.3V */
+   BDM_TARGET_VDD_5V        = 2,   /**< - Target Vdd internal 5.0V */
+} target_vdd_select_type_e;
+
+
+/** Internal Target Voltage supply selection
+  */
+typedef enum  {
+   BDM_TARGET_VPP_OFF       = 0,   /**< - Target Vpp Off */
+   BDM_TARGET_VPP_STANDBY   = 1,   /**< - Target Vpp Standby (Inverter on, Vpp off) */
+   BDM_TARGET_VPP_ON        = 2,   /**< - Target Vpp On */
+   BDM_TARGET_VPP_ERROR     = 3,   /**< - Target Vpp ?? */
+} target_vpp_select_type_e;
+
 /** state of BDM communication */
 typedef struct { 
-	reset_state_e reset_state;
+  	reset_state_e reset_state;
 	reset_detection_e reset_detection;
 } bdmcf_status_t;
+
+typedef struct { 
+  target_type_e             target_type;       /**< - Type of target (HCS12, HCS08 etc) */
+  ack_mode_type_e           ackn_state;        /**< - Supports ACKN ? */
+  speed_mode_type_e         connection_state;  /**< - Connection status & speed determination method */
+  reset_state_e             reset_state;       /**< - Current target RST0 state */
+  reset_detection_e         reset_recent;      /**< - Target reset recently? */
+  target_run_state_type_e   halt_state;        /**< - CFVx halted (from ALLPST)? */
+  target_vdd_state_type_e   power_state;       /**< - Target has power? */
+  target_vpp_select_type_e  flash_state;       /**< - State of Target Vpp */
+} bdm_status_t;
 
 #endif /* _BDM_TYPES_H_ */
