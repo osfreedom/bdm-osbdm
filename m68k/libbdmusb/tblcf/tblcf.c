@@ -33,62 +33,16 @@
 
 //static unsigned char usb_data[MAX_DATA_SIZE+2];
 static unsigned char usb_data[MAX_DATA_SIZE+2];
-extern unsigned char usb_data[MAX_DATA_SIZE+2];
 
 /* returns version of the DLL in BCD format */
 unsigned char tblcf_version(void) {
 	return(TBLCF_DLL_VERSION);
 }
 
-/* initialises USB and returns number of devices found */
-unsigned char tblcf_init(void) {
-	unsigned char i;
-	bdmusb_init();
-	//tblcf_usb_find_devices(TBLCF_PID);	/* look for devices on all USB busses */
-	i=tblcf_usb_cnt();
-	bdm_print("TBDML_INIT: Usb initialised, found %d device(s)\r\n",i);
-	return(i);							/* count the devices found and return the number */
-}
-
-/* opens a device with given number name */
-/* returns device number on success and -1 on error */
-int tblcf_open(const char *device) {
-	bdm_print("TBLCF_OPEN: Trying to open device %s\r\n", device);
-	return(tblcf_usb_open(device));
-}
-
-/* closes currently open device */
-void tblcf_close(int dev) {
-	bdm_print("TBLCF_CLOSE: Trying to close the device\r\n");
-	tblcf_usb_close(dev);
-}
-
-/* returns status of the last command: 0 on sucess and non-zero on failure */
-unsigned char tblcf_get_last_sts_value(int dev) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_GET_LAST_STATUS;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_GET_LAST_STATUS: Reported last command status 0x%02X\r\n",usb_data[0]);
-  return usb_data[0];
-}
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char tblcf_get_last_sts(int dev) {
-  unsigned char status = tblcf_get_last_sts_value(dev);
+  unsigned char status = bdmusb_get_last_sts_value(dev);
 	if ((status==CMD_FAILED)||(status==CMD_UNKNOWN)) return(1); else return(0);
-}
-
-/* requests bootloader execution on next power-up */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_request_boot(int dev) {
-	usb_data[0]=1;			  	/* return 1 byte */
-	usb_data[1]=CMD_SET_BOOT;
-	usb_data[2]='B';
-	usb_data[3]='O';
-	usb_data[4]='O';
-	usb_data[5]='T';
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_REQUEST_BOOT: Requested bootloader on next power-up (0x%02X)\r\n",usb_data[0]);
-	return(!(usb_data[0]==CMD_SET_BOOT));
 }
 
 /* sets target MCU type */

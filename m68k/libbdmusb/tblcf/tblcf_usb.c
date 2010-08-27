@@ -31,56 +31,11 @@
 #include "tblcf_hwdesc.h"
 #include "libusb-1.0/libusb.h"
 
+#include "commands.h"
+
 #include "bdmusb.h"
 #include "bdmusb-hwdesc.h"
 
-
-int tblcf_usb_dev_open(int dev) {
-  return (dev < tblcf_usb_cnt ()) && usb_devs[dev].handle;
-}
-  
-/* open connection to device enumerated by tblcf_usb_find_devices */
-/* returns the device number on success and -1 on error */
-int tblcf_usb_open(const char *device) {
-  int dev;
-  for (dev = 0; dev < usb_dev_count; dev++)
-    if (strcmp (device, usb_devs[dev].name) == 0)
-      break;
-  
-  if (dev == usb_dev_count) {
-    bdm_print("USB Device '%s' not found\n", device);
-    return -1;
-  }
-  
-  if (usb_devs[dev].handle) {
-    bdm_print("USB Device '%s' alread open\n", device);
-    return -1;
-  }
-
-  if (libusb_open(usb_devs[dev].device, &usb_devs[dev].handle) != 0) return -1;
-  bdm_print("USB Device open\n");
-  /* TBLCF has only one valid configuration */
-  if (libusb_set_configuration(usb_devs[dev].handle,1)) return -1;
-  bdm_print("USB Configuration set\n");
-  /* TBLCF has only 1 interface */
-  if (libusb_claim_interface(usb_devs[dev].handle,0)) return -1;
-  bdm_print("USB Interface claimed\n");
-  return dev;
-}
-
-/* closes connection to the currently open device */
-void tblcf_usb_close(int dev) {
-  if (tblcf_usb_dev_open(dev)) {
-    /* release the interface */
-    libusb_release_interface(usb_devs[dev].handle,0);
-    bdm_print("USB Interface released\n");
-    /* close the device */
-    libusb_close(usb_devs[dev].handle);
-    bdm_print("USB Device closed\n");
-    /* indicate that no device is open */
-    usb_devs[dev].handle=NULL;
-  }
-}
 
 /* Message data format:
         1 byte: size of cmd+data
@@ -95,7 +50,7 @@ void tblcf_usb_close(int dev) {
 unsigned char tblcf_usb_send_ep0(int dev, unsigned char * data) {
   unsigned char * count = data;    /* data count is the first byte of the message */
   int i;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("USB EP0 send: device not open\n");
     return(1);
   }
@@ -115,7 +70,7 @@ unsigned char tblcf_usb_send_ep0(int dev, unsigned char * data) {
 unsigned char tblcf_usb_recv_ep0(int dev, unsigned char * data) {
   unsigned char count = *data;    /* data count is the first byte of the message */
    int i;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("USB EP0 receive request: device not open\n");
     return(1);
   }
@@ -135,7 +90,7 @@ unsigned char tblcf_usb_send_ep2(int dev, unsigned char *data) {
   unsigned char * count = data;    /* data count is the first byte of the message */
   int actual_length = 0;
   int i;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("USB EP2 send: device not open\n");
     return(1);
   }
@@ -153,7 +108,7 @@ unsigned char tblcf_usb_recv_ep2(int dev, unsigned char * data) {
   unsigned char count = *data;    /* data count is the first byte of the message */
   int actual_length = 0;
   int i;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("USB EP2 receive request: device not open\n");
     return(1);
   }
@@ -173,7 +128,7 @@ unsigned char tblcf_usb_recv_ep2(int dev, unsigned char * data) {
 char icp_program(int dev, unsigned char * data, unsigned int address, unsigned int count) {
   int i;
   unsigned char result;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("ICP program: device not open\n");
     return(-1);
   }
@@ -234,7 +189,7 @@ char icp_program(int dev, unsigned char * data, unsigned int address, unsigned i
 char icp_mass_erase(int dev) {
   int i;
   unsigned char result;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("ICP mass erase: device not open\n");
     return(-1);
   }
@@ -268,7 +223,7 @@ char icp_block_erase(int dev, unsigned int address) {
   int i;
   unsigned char result;
   unsigned char blank_test_array[ICP_FLASH_BLOCK_SIZE];
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("ICP block erase: device not open\n");
     return(-1);
   }
@@ -314,7 +269,7 @@ char icp_block_erase(int dev, unsigned int address) {
 char icp_verify(int dev, unsigned char * data, unsigned int address, unsigned int count) {
   int i;
   unsigned char result;
-  if (!tblcf_usb_dev_open(dev)) {
+  if (!bdmusb_usb_dev_open(dev)) {
     bdm_print("ICP verify: device not open\n");
     return(-1);
   }

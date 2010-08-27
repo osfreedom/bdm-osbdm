@@ -29,14 +29,20 @@
 
 #include "libusb-1.0/libusb.h"
 #include "bdm_types.h"
+#include "tblcf/tblcf.h"
+#include "usbdm/usbdm.h"
 
-
-static unsigned int tblcf_dev_count;
+/*static unsigned int tblcf_dev_count;
 static unsigned int pe_dev_count;
 static unsigned int osbdm_dev_count;
 static unsigned int usb_dev_count;
 static bdmusb_dev    *usb_devs;
-
+*/
+extern unsigned int tblcf_dev_count;
+extern unsigned int pe_dev_count;
+extern unsigned int osbdm_dev_count;
+extern unsigned int usb_dev_count;
+extern bdmusb_dev    *usb_devs;
 /**
   * Macros to get the number of devices 
   */
@@ -54,5 +60,12 @@ unsigned char bdmusb_version(void);
 
 /* initialises USB and returns number of devices found */
 unsigned char bdmusb_init(void);
+
+/* returns hardware & software version of the cable in BCD format - SW version
+ * in lower byte and HW version in upper byte */
+unsigned char bdmusb_get_version(bdmusb_dev* dev, usbmd_version_t* version);
+
+/* returns status of the last command value */
+unsigned char bdmusb_get_last_sts_value(int dev);
 
 #endif /* _BDMUSB_H_ */

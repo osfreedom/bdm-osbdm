@@ -29,6 +29,8 @@
 #include "tblcf/tblcf.h"
 #include "tblcf/tblcf_usb.h"
 
+#include "bdmusb_low_level.h"
+
 #include "bdmusb.h"
 
 #include "bdm-usb.h"
@@ -42,7 +44,7 @@ static int
 bdm_usb_close (int fd)
 {
   bdm_close (fd);
-  tblcf_usb_close(fd);
+  bdmusb_usb_close(fd);
   return 0;
 }
 
@@ -222,7 +224,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
             /*
              * Open the USB device.
              */
-            self->usbDev = tblcf_open (usb_device);
+            self->usbDev = bdmusb_usb_open (usb_device);
 
             if (self->usbDev < 0)
             {

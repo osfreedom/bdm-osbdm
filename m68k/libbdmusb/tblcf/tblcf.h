@@ -29,30 +29,14 @@
 
 #include "bdm_types.h"
 
-/* opens a device with given number (0...), returns 0 on success and 1 on error */
-int tblcf_open(const char *device);
-
-/* closes currently open device */
-void tblcf_close(int dev);
-
 /* returns version of the DLL in BCD format */
 unsigned char tblcf_version(void);
 
-/* opens a device with given number (0...), returns 0 on success and 1 on error */
-int tblcf_usb_open(const char *device);
-
 /* closes currently open device */
-void tblcf_usb_close(int dev);
-
-/* returns hardware & software version of the cable in BCD format - SW version
- * in lower byte and HW version in upper byte */
-unsigned int bdmusb_get_version(int dev);
+//void tblcf_usb_close(int dev);
 
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char tblcf_get_last_sts(int dev);
-
-/* returns status of the last command value */
-unsigned char tblcf_get_last_sts_value(int dev);
 
 /* requests bootloader execution on new power-up, returns 0 on success and
  * non-zero on failure */

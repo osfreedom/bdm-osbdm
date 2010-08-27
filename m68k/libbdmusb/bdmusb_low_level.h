@@ -21,6 +21,13 @@
 #ifndef _BDMUSB_LOW_LEVEL_H_
 #define _BDMUSB_LOW_LEVEL_H_
 
+int bdmusb_usb_dev_open(int dev);
+/* opens a device with given number (0...), returns 0 on success and 1 on error */
+int bdmusb_usb_open(const char *device);
+
+void bdmusb_usb_close(int dev);
+
+
 unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data);
 unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data);
 

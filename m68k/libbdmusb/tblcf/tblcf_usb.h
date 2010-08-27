@@ -24,9 +24,6 @@
 #define TBLCF_USB_H
 
 //unsigned int tblcf_usb_cnt(void);
-int tblcf_usb_dev_open(int dev);
-int tblcf_usb_open(const char *device);
-void tblcf_usb_close(int dev);
 unsigned char tblcf_usb_send_ep0(int dev, unsigned char * data);
 unsigned char tblcf_usb_recv_ep0(int dev, unsigned char * data);
 unsigned char tblcf_usb_send_ep2(int dev, unsigned char * data);

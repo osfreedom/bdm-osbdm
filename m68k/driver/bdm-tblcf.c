@@ -403,7 +403,7 @@ tblcf_release_chip (struct BDM *self)
   self->cf_running = 1;
 
   tblcf_target_go (self->usbDev);
-  tblcf_close(self->usbDev);
+  bdmusb_usb_close(self->usbDev);
   
   return 0;
 }

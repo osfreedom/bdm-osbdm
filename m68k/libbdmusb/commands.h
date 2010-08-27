@@ -1,3 +1,23 @@
+/*
+ * BDM USB commands. (from commands.h and USBDM_API_Private.h)
+ * Copyright (C) 2010 Rafael Campos
+ * Rafael Campos Las Heras <rafael@freedom.ind.br>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
 /* command format:
 
 1   byte : command number (see below)
@@ -10,28 +30,156 @@ data must be converted properly on intel machines (PCs)
 
 */
 
+#ifndef _COMMANDS_H_
+#define _COMMANDS_H_
+
+/** \brief Maximum USB transfer size - entire transfer!
+ *
+ * Limited by BDM RAM
+ * Multiple of 64 is nice since transfers may be in 8/64-byte pieces.
+ */
+#define MAX_PACKET_SIZE       (2*64)
+#define MAX_RS08_FLASH_SIZE   (64)
+#define MAX_DATA_SIZE         (MAX_PACKET_SIZE-1)
+
+
+/** BDM command values
+ *
+ * The following values are the 1st byte in each command.  \n
+ * Other parameters are as shown below. \n
+ * Each command returns a status value (see \ref  USBDM_ErrorCode) as the first byte
+ * followed by any results as indicated below.
+ */
+typedef enum {
+   // Common to all targets
+   CMD_USBDM_GET_COMMAND_RESPONSE  = 0,   /**< Status of last/current command */
+   CMD_USBDM_SET_TARGET            = 1,   /**< Set target,  @param [2] 8-bit target value @ref TargetType_t */
+   // Reserved 2
+   CMD_USBDM_DEBUG                 = 3,   /**< Debugging commands (parameter determines actual command) @param [2]  Debug command see \ref DebugSubCommands */
+   CMD_USBDM_GET_BDM_STATUS        = 4,   /**< Get BDM status\n @return [1] 16-bit status value reflecting BDM status */
+   CMD_USBDM_GET_CAPABILITIES      = 5,   /**< Get capabilities of BDM, see \ref HardwareCapabilities_t */
+   CMD_USBDM_SET_OPTIONS           = 6,   /**< Set BDM options, see \ref BDM_Options_t */
+//   CMD_USBDM_GET_SETTINGS          = 7,   /**< Get BDM setting */
+   // For USBDM the values 7..11 are Reserved
+   CMD_USBDM_GET_VER               = 12,  /**< Sent to ep0 \n Get firmware version in BCD \n */
+                                          /**< @return [1] 8-bit HW (major+minor) revision \n [2] 8-bit SW (major+minor) version number */
+   // Reserved 13
+   CMD_USBDM_ICP_BOOT              = 14,  /**< Sent to ep0 \n */
+                                          /**< Requests reboot to ICP mode. @param [2..5] must be "BOOT" */
+   CMD_SET_BOOT                    = 14,  /**< Deprecated - Previous version */
+
+   // Target specific versions
+   CMD_USBDM_CONNECT               = 15,  /**< Try to connect to the target */
+   CMD_USBDM_SET_SPEED             = 16,  /**< Sets-up the BDM interface for a new bit rate & tries */
+                                          /**    to enable ackn feature, @param [2..3] 16-bit tick count */
+   CMD_USBDM_GET_SPEED             = 17,  /**< Read speed of the target: @return [1..2] 16-bit tick coun */
+
+   CMD_USBDM_CONTROL_INTERFACE     = 18,  /**< Directly control BDM interface levels */
+   // Reserved 19
+
+   CMD_USBDM_READ_STATUS_REG       = 20,  /**< Get BDM status */
+                                          /** @return [1] 8-bit status byte made up as follows: \n */
+                                          /**    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n */
+                                          /**    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n */
+                                          /**    - (CFVx only)         bit2   - current RSTO value \n */
+                                          /**    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n */
+                                          /**    - (All)               bit7   - target has power */
+
+   CMD_USBDM_WRITE_CONTROL_REG     = 21,  /**< Write to target Control register */
+
+   CMD_USBDM_TARGET_RESET          = 22,  /**< Reset target @param [2] \ref TargetMode_t */
+   CMD_USBDM_TARGET_STEP           = 23,  /**< Perform single step */
+   CMD_USBDM_TARGET_GO             = 24,  /**< Start code execution */
+   CMD_USBDM_TARGET_HALT           = 25,  /**< Stop the CPU and bring it into background mode */
+
+   CMD_USBDM_WRITE_REG             = 26,  /**< Write to target register */
+   CMD_USBDM_READ_REG              = 27,  /**< Read target register */
+
+   CMD_USBDM_WRITE_CREG            = 28,  /**< Write target Core register */
+   CMD_USBDM_READ_CREG             = 29,  /**< Read from target Core register */
+
+   CMD_USBDM_WRITE_DREG            = 30,  /**< Write target Debufg register */
+   CMD_USBDM_READ_DREG             = 31,  /**< Read from target Debug register */
+
+   CMD_USBDM_WRITE_MEM             = 32,  /**< Write to target memory */
+   CMD_USBDM_READ_MEM              = 33,  /**< Read from target memory */
+
+   //CMD_USBDM_TRIM_CLOCK            = 34,  /**< Trim target clock - deleted in V3.2 */
+   //CMD_USBDM_RS08_FLASH_ENABLE     = 35,  /**< Enable target flash programming (Vpp on) */
+   //CMD_USBDM_RS08_FLASH_STATUS     = 36,  /**< Status of target flash programming */
+   //CMD_USBDM_RS08_FLASH_DISABLE    = 37,  /**< Stop target flash programming (Vpp off) */
+
+   CMD_USBDM_JTAG_GOTORESET        = 38,  /**< Reset JTAG Tap controller */
+   CMD_USBDM_JTAG_GOTOSHIFT        = 39,  /**< Move JTAG TAP controller to SHIFT-IR/DR */
+   CMD_USBDM_JTAG_WRITE            = 40,  /**< Write to JTAG chain */
+   CMD_USBDM_JTAG_READ             = 41,  /**< Read from JTAG chain */
+   CMD_USBDM_SET_VPP               = 42,  /**< Set VPP level */
+   /** TurboBdmLightCF related commands */
+   CMD_TBLCF_GET_VER               = 10,  /**< TurboBdmLightCF Get version command */
+   CMD_TBLCF_GET_LAST_STATUS       = 11,  /**< TurboBdmLightCF returns status of the previous command */
+   CMD_TBLCF_SET_BOOT              = 12,  /**< request bootloader firmware upgrade on next power-up, parameters: 'B','O','O','T', returns: none */
+   CMD_TBLCF_GET_STACK_SIZE        = 13,  /**< parameters: none, returns 16-bit stack size required by the application (so far into the execution) */
+
+   /** Generic OSBDM */
+   CMD_GET_LAST_STATUS             = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
+} bdm_commands_type_e;
+
+/** Debugging sub commands (used with \ref CMD_USBDM_DEBUG )
+ * @note Not for general use! (Dangerous - don't try turning on VPP with the wrong chip!)
+ */
+typedef enum  {
+  BDM_DBG_ACKN             = 0,  /**< - Test ACKN */
+  BDM_DBG_SYNC             = 1,  /**< - Test SYNC */
+  BDM_DBG_TESTPORT         = 2,  /**< - Test BDM port timing */
+  BDM_DBG_USBDISCONNECT    = 3,  /**< - Test USB disconnect (don't use!) */
+  BDM_DBG_STACKSIZE        = 4,  /**< - Determine stack size */
+  BDM_DBG_VPP_OFF          = 5,  /**< - Remove Flash programming voltage from target */
+  BDM_DBG_VPP_ON           = 6,  /**< - Apply Flash programming voltage to target */
+  BDM_DBG_FLASH12V_OFF     = 7,  /**< - Turn 12V flash programming voltage source off */
+  BDM_DBG_FLASH12V_ON      = 8,  /**< - Turn 12V flash programming voltage source on */
+  BDM_DBG_VDD_OFF          = 9,  /**< - Turn Target Vdd supply off */
+  BDM_DBG_VDD3_ON          = 10, /**< - Set  Target Vdd supply to 3V3 */
+  BDM_DBG_VDD5_ON          = 11, /**< - Set Target Vdd supply to 5V */
+  BDM_DBG_CYCLE_POWER      = 12, /**< - Cycle Target Vdd supply off and on */
+  BDM_DBG_MEASURE_VDD      = 13, /**< - Measure Target Vdd supply */
+  BDM_DBG_RS08TRIM         = 14, /**< - Calculate RS08 clock trim value */
+  BDM_DBG_TESTWAITS        = 15, /**< - Tests the software counting delays used for BDM communication. (locks up BDM!) */
+  BDM_DBG_TESTALTSPEED     = 16, /**< - Test bdmHC12_alt_speed_detect() */
+} bdm_debug_commands_type_e;
+
+/** Commands for BDM when in ICP mode
+ */
+// typedef enum {
+//    ICP_GET_RESULT     =  1,            /**< Get result of last command */
+//                                       /**< @return [0] 8-bit Error code, see \ref  ICP_ErrorCode_t */
+//    ICP_ERASE_PAGE    =  2,            /**< Erase page (must be within a single Flash memory page) */
+//                                       /**<   @param 16-bit Address within Flash page to erase */
+//    ICP_PROGRAM_ROW   =  3,            /**< Program row (must be within a single Flash memory row) */
+//                                       /**<   @param [0..1] 16-bit Address within Flash page to program */
+//                                       /**<   @param [2..3] 16-bit Number of bytes to program */
+//                                       /**<   @param [4..N] data to program */
+//    ICP_VERIFY_ROW    =  4,            /**< Verify row */
+//                                       /**<   @param [0..1] 16-bit Address within Flash page to verify */
+//                                       /**<   @param [2..3] 16-bit Number of bytes to verify */
+//                                       /**<   @param [4..N] data to verify */
+//    ICP_REBOOT        =  5,            /**< Reboot device - device immediately reboots so contact is lost! */
+//    ICP_GET_VER       =  CMD_USBDM_GET_VER,  /**< Get version - must be common to both modes */
+//                                       /**< @return [0] 16-bit Version number major.minor */
+//                                       /**< @return Error code, see \ref  ICP_ErrorCode_t */
+// } bdm_icp_commands_codes_type_e;
+
+
 /* cable status bit fields */
 #define RESET_DETECTED_MASK   0x0001
 #define RSTO_STATE_MASK       0x0002
 
-/* target types */
-#define TARGET_TYPE_CF_BDM    0
-#define TARGET_TYPE_JTAG      1
 
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
-#define MAX_DATA_SIZE         127 /* maximum command parameter/result block size in bytes; this is to make sure that response of READ_BLOCK plus the command status fit into 16 frames exactly */
-
 /* System related commands */
 #define CMD_FAILED            1  /* command execution failed (incorrect parameters, target not responding, etc.) */
 #define CMD_UNKNOWN           2  /* unknown command */
-
-/* TurboBdmLightCF related commands */
-#define CMD_GET_VER           10 /* returns 16 bit HW/SW version number, (major & minor revision in BCD in each byte - HW in MSB, SW in LSB; intel endianism) */
-#define CMD_GET_LAST_STATUS   11 /* returns status of the previous command */
-#define CMD_SET_BOOT          12 /* request bootloader firmware upgrade on next power-up, parameters: 'B','O','O','T', returns: none */
-#define CMD_GET_STACK_SIZE    13 /* parameters: none, returns 16-bit stack size required by the application (so far into the execution) */
 
 /* BDM/debugging related commands */
 #define CMD_SET_TARGET        20 /* set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
@@ -79,3 +227,5 @@ data must be converted properly on intel machines (PCs)
 
 
 */
+
+#endif /* _COMMANDS_H_ */

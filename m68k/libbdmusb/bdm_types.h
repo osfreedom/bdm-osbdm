@@ -87,17 +87,20 @@ typedef enum {
 	NORMAL_MODE  = RESET_NORMAL|RESET_ALL,   /**  - Normal mode [usual reset, Target executes] */
 } target_mode_e;
 
-typedef enum {	/* target reset detection state */
+/** target reset detection state */
+typedef enum {	
 	RESET_NOT_DETECTED=0,
 	RESET_DETECTED=1
 } reset_detection_e;
 
-typedef enum {	/* target reset state */
+/** target reset state */
+typedef enum {	
 	RSTO_ACTIVE=0,
 	RSTO_INACTIVE=1
 } reset_state_e;
 
-typedef struct { /* state of BDM communication */
+/** state of BDM communication */
+typedef struct { 
 	reset_state_e reset_state;
 	reset_detection_e reset_detection;
 } bdmcf_status_t;
