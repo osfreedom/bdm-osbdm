@@ -14,7 +14,7 @@ AM_CFLAGS = -Wall
 AM_LDFLAGS = 
 
 if LIBUSB_PATH
-AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@ -I$(srcdir)/libbdmusb/tblcf
+AM_CPPFLAGS += -g -I@LIBUSB_INCLUDE_DIR@ -I$(srcdir)/libbdmusb/tblcf
 AM_LDFLAGS += -L@LIBUSB_LIB_DIR@
 endif
 LIBS += -l usb-1.0
@@ -29,15 +29,7 @@ if WIN32
 LIBS += -l wsock32
 endif
 
-bin_PROGRAMS = bdmusb-show bdmusb-boot bdmusb-unsec
-
-bdmusb_show_SOURCES = \
-	bdmusb-show.c \
-	log.c
-
-bdmusb_show_LDADD =  \
-	$(top_builddir)/lib/libBDM.a \
-	$(top_builddir)/libbdmusb/libbdmusb.a
+bin_PROGRAMS = bdmusb-boot bdmusb-unsec
 
 bdmusb_boot_SOURCES = \
 	bdmusb_bt.c \

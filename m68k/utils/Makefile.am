@@ -26,17 +26,20 @@ endif
 
 if LIB_BDMUSB
 BDMUSB_LIB = $(top_builddir)/libbdmusb/libbdmusb.a
+BDMUSB_LIB_DIR = $(top_builddir)/libbdmusb
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@ -I$(BDMUSB_LIB_DIR)
+AM_LDFLAGS = -L@LIBUSB_LIB_DIR@ -L$(BDMUSB_LIB_DIR)
 endif
 
 if BDM_USB
-AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@
-AM_LDFLAGS = -L@LIBUSB_LIB_DIR@
+AM_CPPFLAGS += -I@LIBUSB_INCLUDE_DIR@ 
+AM_LDFLAGS = -L@LIBUSB_LIB_DIR@ -L$(BDMUSB_LIB_DIR)
 LIBS += -l@LIBUSB_LIB_NAME@
 endif
 
 LIBELF = $(top_builddir)/libelf/lib/libelf.a
 
-bin_PROGRAMS = bdmreset usb-show
+bin_PROGRAMS = bdmreset bdmusb-show
 
 if BDMCTRL
 bin_PROGRAMS += bdmctrl
@@ -85,11 +88,11 @@ bdmmon_LDADD = \
 	$(top_builddir)/lib/libBDM.a \
 	$(BDMUSB_LIB)
 
-usb_show_SOURCES = \
-	usb-show.c 
-
-usb_show_LDADD =  \
+bdmusb_show_SOURCES = \
+	bdmusb-show.c 
+bdmusb_show_CFLAGS = @CFLAGS@ -I$(top_srcdir)/libbdmusb
+bdmusb_show_LDADD =  \
 	$(top_builddir)/lib/libBDM.a \
-	$(top_builddir)/tblcf/libbdmusb.a
+	$(top_builddir)/libbdmusb/libbdmusb.a
 
 EXTRA_DIST = README.bdmctrl m68332.test mcf52235.test mcf5235.test mcf5329.test
