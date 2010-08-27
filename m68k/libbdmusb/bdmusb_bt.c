@@ -122,21 +122,22 @@ int main(int argc, char *argv[]) {
                    function_descriptor.device_no);
 			return(1);
 		}
-		function_descriptor.device_no = tblcf_usb_open(function_descriptor.device_name);
+		function_descriptor.device_no = bdmusb_usb_open(function_descriptor.device_name);
 		/* request bootloader action op next power-up */
-		data[0]=1;			  	/* return 1 byte */
+		/*data[0]=1;			  	// return 1 byte 
 		data[1]=CMD_SET_BOOT;
 		data[2]='B';
 		data[3]='O';
 		data[4]='O';
 		data[5]='T';
 		i=tblcf_usb_recv_ep0(function_descriptor.device_no, data);
-		tblcf_usb_close(function_descriptor.device_no);
-		if ((i)||(data[0]!=CMD_SET_BOOT)) {
+		*/
+		if ((i)||(bdmusb_request_boot())) {
 			print_screen("USB communication problem or CMD_SET_BOOT command failure\n");
 			return(1);
 		}
 		print_screen("HC08JB16 ICP will execute on next power-up. Disconnect and reconnect the device.\n");
+		bdmusb_usb_close(function_descriptor.device_no);
 		return(0);
 	}
 	if (s_rec_process()) return(1);	/* process the S-record file, exit in case of error */
@@ -148,14 +149,14 @@ int main(int argc, char *argv[]) {
                  function_descriptor.device_no);
 		return(1);
 	}
-	function_descriptor.device_no = tblcf_usb_open(function_descriptor.device_name);
+	function_descriptor.device_no = bdmusb_usb_open(function_descriptor.device_name);
 	/* boot sector reprogramming (if requested by user) */
 	i=icp_verify(function_descriptor.device_no,
                function_descriptor.boot_sector_data,
                TBLCF_FLASH_BOOT_START, TBLCF_FLASH_BOOT_END-TBLCF_FLASH_BOOT_START+1);
 	if (i<0) {
 		print_screen("USB communication problem\n");
-		tblcf_usb_close(function_descriptor.device_no);
+		bdmusb_usb_close(function_descriptor.device_no);
 		return(1);
 	}
 	if (function_descriptor.replace_boot) {
@@ -166,7 +167,7 @@ int main(int argc, char *argv[]) {
 			i=icp_mass_erase(function_descriptor.device_no);
 			if (i) {
 				print_screen("USB communication problem or mass erase failure\n");
-				tblcf_usb_close(function_descriptor.device_no);
+				bdmusb_usb_close(function_descriptor.device_no);
 				return(1);
 			}
 			print_screen("Mass erase done, programming boot sector\n");
@@ -176,7 +177,7 @@ int main(int argc, char *argv[]) {
                     TBLCF_FLASH_BOOT_START, TBLCF_FLASH_BOOT_END-TBLCF_FLASH_BOOT_START+1);
 			if (i) {
 				print_screen("USB communication problem or programming failure\n");
-				tblcf_usb_close(function_descriptor.device_no);
+				bdmusb_usb_close(function_descriptor.device_no);
 				return(1);
 			}
 			print_screen("Programming done, verifying boot sector\n");
@@ -186,7 +187,7 @@ int main(int argc, char *argv[]) {
                    TBLCF_FLASH_BOOT_START, TBLCF_FLASH_BOOT_END-TBLCF_FLASH_BOOT_START+1);
 			if (i) {
 				print_screen("USB communication problem or verification failure\n");
-				tblcf_usb_close(function_descriptor.device_no);
+				bdmusb_usb_close(function_descriptor.device_no);
 				return(1);
 			}
 			print_screen("Verification done, boot sector OK. You can start breathing again.\n");
@@ -197,7 +198,7 @@ int main(int argc, char *argv[]) {
 		/* user does not want to reprogram the boot sector */
 		if (i) {
 			print_screen("Boot sector contents differs from S-record, update required\n");
-			tblcf_usb_close(function_descriptor.device_no);
+			bdmusb_usb_close(function_descriptor.device_no);
 			return(1);
 		}
 	}
@@ -207,7 +208,7 @@ int main(int argc, char *argv[]) {
 		print_screen("Erasing block at address: 0x%04X\r",i);
 		if (icp_block_erase(function_descriptor.device_no, i)) {
 			print_screen("\nUSB communication problem or block erase failure\n");
-			tblcf_usb_close(function_descriptor.device_no);
+			bdmusb_usb_close(function_descriptor.device_no);
 			return(1);
 		}
 	}
@@ -245,7 +246,7 @@ int main(int argc, char *argv[]) {
                   start, end-start+1);
 		if (i) {
 			print_screen("USB communication problem or programming failure\n");
-			tblcf_usb_close(function_descriptor.device_no);
+			bdmusb_usb_close(function_descriptor.device_no);
 			return(1);
 		}
 		/* verify the block */
@@ -255,7 +256,7 @@ int main(int argc, char *argv[]) {
                  start, end-start+1);
 		if (i) {
 			print_screen("\nUSB communication problem or verification failure\n");
-			tblcf_usb_close(function_descriptor.device_no);
+			bdmusb_usb_close(function_descriptor.device_no);
 			return(1);
 		}
 		print_screen("- OK\n",start,end);
@@ -270,7 +271,7 @@ int main(int argc, char *argv[]) {
                 TBLCF_BOOT_STATE, 2);	/* bootloader_state is 2 bytes long */
 	if (i) {
 		print_screen("USB communication problem or programming failure\n");
-		tblcf_usb_close(function_descriptor.device_no);
+		bdmusb_usb_close(function_descriptor.device_no);
 		return(1);
 	}
 	/* now verify that the bootloader state is programmed correctly */
@@ -279,11 +280,11 @@ int main(int argc, char *argv[]) {
                TBLCF_BOOT_STATE, 2);
 	if (i) {
 		print_screen("USB communication problem or bootloader state verification failure\n");
-		tblcf_usb_close(function_descriptor.device_no);
+		bdmusb_usb_close(function_descriptor.device_no);
 		return(1);
 	}
 	print_screen("Flash programming complete, disconnect & reconnect the device\n");
-	tblcf_usb_close(function_descriptor.device_no);
+	bdmusb_usb_close(function_descriptor.device_no);
 	return(0);
 }
 
