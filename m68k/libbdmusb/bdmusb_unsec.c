@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 		print_screen("Not enough devices connected to work with device #%d\n",device_no);
 		return(1);
 	}
-	device_no = tblcf_open(device_name);
+	device_no = bdmusb_usb_open(device_name);
 	tblcf_set_target_type(device_no, T_JTAG);	/* select JTAG target */
 	tblcf_jtag_sel_shift(device_no, 1);		/* select instruction path */
 	tblcf_jtag_write(device_no,
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
 	tblcf_jtag_write(device_no, 7,1,&flash_clock_divisor);				/* shift the flash clk div in */
 	tblcf_jtag_sel_reset(device_no);			/* go to TEST-LOGIC-RESET */
 	usleep(300 * 1000);		/* wait to make sure the flash is mass erased before exiting */
-	tblcf_close(device_no);
+	bdmusb_usb_close(device_no);
 	printf("Done.\n");
 	return(0);
 }
