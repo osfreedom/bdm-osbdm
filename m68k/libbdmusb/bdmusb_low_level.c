@@ -33,10 +33,9 @@
 #include "tblcf/tblcf.h"
 #include "tblcf/tblcf_usb.h"
 
-#define bdmusb_print(val) fprintf(stderr, val)
+#define bdmusb_print(val) bdm_print(val)
 
 static unsigned char usb_data[MAX_DATA_SIZE+2];
-//extern static unsigned char usb_data[MAX_DATA_SIZE+2];
 
 int bdmusb_usb_dev_open(int dev) {
   return (dev < bdmusb_usb_cnt ()) && usb_devs[dev].handle;

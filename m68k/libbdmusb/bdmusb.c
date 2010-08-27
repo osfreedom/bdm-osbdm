@@ -136,7 +136,7 @@ void bdmusb_find_supported_devices(void) {
 		  break;
 	      case OSBDM_VID:
 		  if (udev->desc.idProduct==OSBDM_PID) {
-		      
+		      udev->type = P_OSBDM;
 		      osbdm_dev_count++;
 		      device_found = 1;
 		  }
@@ -187,7 +187,7 @@ unsigned char bdmusb_get_version(bdmusb_dev* dev, usbmd_version_t* version) {
 	usb_data[4]=0;
     }
     return_value = bdm_usb_recv_ep0(dev, usb_data);
-    if (return_value)
+    if (return_value == 0)
       *version = *((usbmd_version_t *)(&usb_data[1]));
     else
       *version = defaultVersion;
