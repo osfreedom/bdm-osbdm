@@ -57,7 +57,7 @@ unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data) {
   i=libusb_control_transfer(usb_devs[dev->dev_ref].handle, 0x40, *(data+1), (*(data+2))+256*(*(data+3)),
                             (*(data+4))+256*(*(data+5)), data+6,
                             (uint16_t)(((*count)>5)?((*count)-5):0), TIMEOUT);
-  if (i<0) return(1); else return(0);
+  if (i<0) return(BDM_RC_USB_ERROR); else return(BDM_RC_OK);
 }
 
 /* sends a message to the TBDML device over EP0 which instruct the device to
@@ -70,7 +70,7 @@ unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data) {
   int i;
   if (!bdmusb_usb_dev_open(dev->dev_ref)) {
     bdmusb_print("USB EP0 receive request: device not open\n");
-    return(1);
+    return(BDM_RC_USB_ERROR);
   }
   bdmusb_print("USB EP0 receive request:\n");
   bdm_print_dump(data,6);
@@ -78,7 +78,7 @@ unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data) {
                             (*(data+4))+256*(*(data+5)), data, count, TIMEOUT);
   bdmusb_print("USB EP0 receive:\n");
   bdm_print_dump(data,count);
-  if (i<0) return(1); else return(0);
+  if (i<0) return(BDM_RC_USB_ERROR); else return(BDM_RC_OK);
 }
 
 /* open connection to device enumerated by tblcf_usb_find_devices */

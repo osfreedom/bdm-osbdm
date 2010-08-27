@@ -170,6 +170,37 @@ typedef enum  {
 //                                       /**< @return Error code, see \ref  ICP_ErrorCode_t */
 // } bdm_icp_commands_codes_type_e;
 
+typedef enum  {
+  BDM_RC_OK                      = 0,     /**< - No error */
+  BDM_RC_ILLEGAL_PARAMS          = 1,     /**< - Illegal parameters to command */
+  BDM_RC_FAIL                    = 2,     /**< - General Fail */
+  BDM_RC_BUSY                    = 3,     /**< - Busy with last command - try again - don't change */
+  BDM_RC_ILLEGAL_COMMAND         = 4,     /**< - Illegal (unknown) command (may be in wrong target mode) */
+  BDM_RC_NO_CONNECTION           = 5,     /**< - No connection to target */
+  BDM_RC_OVERRUN                 = 6,     /**< - New command before previous command completed */
+  BDM_RC_CF_ILLEGAL_COMMAND      = 7,     /**< - BDM Interface did not recognize the command */
+  //
+  BDM_RC_UNKNOWN_TARGET          = 15,    /**< - Target not supported */
+  BDM_RC_NO_TX_ROUTINE           = 16,    /**< - No Tx routine available at measured BDM communication speed */
+  BDM_RC_NO_RX_ROUTINE           = 17,    /**< - No Rx routine available at measured BDM communication speed */
+  BDM_RC_BDM_EN_FAILED           = 18,    /**< - Failed to enable BDM mode in target */
+  BDM_RC_RESET_TIMEOUT_FALL      = 19,    /**< - RESET signal failed to fall */
+  BDM_RC_BKGD_TIMEOUT            = 20,    /**< - BKGD signal failed to rise/fall */
+  BDM_RC_SYNC_TIMEOUT            = 21,    /**< - No response to SYNC sequence */
+  BDM_RC_UNKNOWN_SPEED           = 22,    /**< - Communication speed is not known or cannot be determined */
+  BDM_RC_WRONG_PROGRAMMING_MODE  = 23,    /**< - Attempted Flash programming when in wrong mode (e.g. Vpp off) */
+  BDM_RC_FLASH_PROGRAMING_BUSY   = 24,    /**< - Busy with last Flash programming command */
+  BDM_RC_VDD_NOT_REMOVED         = 25,    /**< - Target Vdd failed to fall */
+  BDM_RC_VDD_NOT_PRESENT         = 26,    /**< - Target Vdd not present/failed to rise */
+  BDM_RC_VDD_WRONG_MODE          = 27,    /**< - Attempt to cycle target Vdd when not controlled by BDM interface */
+  BDM_RC_CF_BUS_ERROR            = 28,    /**< - Illegal bus cycle on target (Coldfire) */
+  BDM_RC_USB_ERROR               = 29,    /**< - Indicates USB transfer failed (returned by driver not BDM) */
+  BDM_RC_ACK_TIMEOUT             = 30,    /**< - Indicates an expected ACK was missing */
+  BDM_RC_FAILED_TRIM             = 31,    /**< - Trimming of target clock failed (out of clock range?). */
+  BDM_RC_FEATURE_NOT_SUPPORTED   = 32,    /**< - Feature not supported by this version of hardware/firmware */
+  BDM_RC_RESET_TIMEOUT_RISE      = 33,    /**< - RESET signal failed to rise */
+} bdm_error_code_type_e;
+
 /* cable status bit fields */
 #define RESET_DETECTED_MASK   0x0001
 #define RSTO_STATE_MASK       0x0002
@@ -179,8 +210,8 @@ typedef enum  {
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
 /* System related commands */
-#define CMD_FAILED            1  /* command execution failed (incorrect parameters, target not responding, etc.) */
-#define CMD_UNKNOWN           2  /* unknown command */
+//#define CMD_FAILED            1  /* command execution failed (incorrect parameters, target not responding, etc.) */
+//#define CMD_UNKNOWN           2  /* unknown command */
 
 /*  */
 #define CMD_RESET             21 /* 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode */

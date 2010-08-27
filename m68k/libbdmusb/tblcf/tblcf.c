@@ -41,8 +41,10 @@ unsigned char tblcf_version(void) {
 
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char tblcf_get_last_sts(int dev) {
-  unsigned char status = bdmusb_get_last_sts_value(dev);
-	if ((status==CMD_FAILED)||(status==CMD_UNKNOWN)) return(1); else return(0);
+    unsigned char status = bdmusb_get_last_sts_value(dev);
+    if (status != BDM_RC_OK)
+	return 1;
+    return BDM_RC_OK;
 }
 
 /* resets the target to normal or BDM mode */

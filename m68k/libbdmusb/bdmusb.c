@@ -187,7 +187,7 @@ unsigned char bdmusb_get_version(bdmusb_dev* dev, usbmd_version_t* version) {
 	usb_data[4]=0;
     }
     return_value = bdm_usb_recv_ep0(dev, usb_data);
-    if (return_value == 0)
+    if (return_value == BDM_RC_OK)
       *version = *((usbmd_version_t *)(&usb_data[1]));
     else
       *version = defaultVersion;
@@ -242,7 +242,7 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
     usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_SET_TARGET:CMD_USBDM_SET_TARGET;
     usb_data[2]=target_type;
     ret_val = tblcf_usb_recv_ep0(dev, usb_data);
-    if (ret_val == 0) {
+    if (ret_val == BDM_RC_OK) {
       bdm_print("BDMUSB_SET_TARGET_TYPE: Set target type 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
       if (usb_devs[dev].type==P_TBLCF) 
 	ret_val = !(usb_data[0]==CMD_TBLCF_SET_TARGET);
