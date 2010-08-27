@@ -67,7 +67,7 @@ unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data) {
 /* the device will get the cmd number and 4 following data bytes */
 unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data) {
   unsigned char count = *data;    /* data count is the first byte of the message */
-   int i;
+  int i;
   if (!bdmusb_usb_dev_open(dev->dev_ref)) {
     bdmusb_print("USB EP0 receive request: device not open\n");
     return(1);

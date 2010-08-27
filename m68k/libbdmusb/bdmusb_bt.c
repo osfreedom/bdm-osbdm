@@ -124,14 +124,6 @@ int main(int argc, char *argv[]) {
 		}
 		function_descriptor.device_no = bdmusb_usb_open(function_descriptor.device_name);
 		/* request bootloader action op next power-up */
-		/*data[0]=1;			  	// return 1 byte 
-		data[1]=CMD_SET_BOOT;
-		data[2]='B';
-		data[3]='O';
-		data[4]='O';
-		data[5]='T';
-		i=tblcf_usb_recv_ep0(function_descriptor.device_no, data);
-		*/
 		if ((i)||(bdmusb_request_boot())) {
 			print_screen("USB communication problem or CMD_SET_BOOT command failure\n");
 			return(1);

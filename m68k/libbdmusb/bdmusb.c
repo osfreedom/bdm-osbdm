@@ -226,12 +226,28 @@ void bdmusb_dev_name(int dev, char *name, int namelen) {
 }
 
 /* returns status of the last command: 0 on sucess and non-zero on failure */
-//bdmusb_get_last_sts_value
-
 unsigned char bdmusb_get_last_sts_value(int dev) {
 	usb_data[0]=1;	 /* get 1 byte */
 	usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_GET_LAST_STATUS:CMD_GET_LAST_STATUS;
 	bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 	bdm_print("BDMUSB_GET_LAST_STATUS: Reported last command status 0x%02X\r\n",usb_data[0]);
   return usb_data[0];
+}
+
+/* sets target MCU type */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
+    unsigned char ret_val;
+    usb_data[0]=1;	 /* get 1 byte */
+    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_SET_TARGET:CMD_USBDM_SET_TARGET;
+    usb_data[2]=target_type;
+    ret_val = tblcf_usb_recv_ep0(dev, usb_data);
+    if (ret_val == 0) {
+      bdm_print("BDMUSB_SET_TARGET_TYPE: Set target type 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
+      if (usb_devs[dev].type==P_TBLCF) 
+	ret_val = !(usb_data[0]==CMD_TBLCF_SET_TARGET);
+    } else 
+      bdm_print("BDMUSB_SET_TARGET_TYPE - Error %d \r\n",ret_val);
+    
+    return(ret_val);
 }

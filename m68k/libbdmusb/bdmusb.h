@@ -68,4 +68,7 @@ unsigned char bdmusb_get_version(bdmusb_dev* dev, usbmd_version_t* version);
 /* returns status of the last command value */
 unsigned char bdmusb_get_last_sts_value(int dev);
 
+/* sets target MCU type; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_set_target_type(int dev, target_type_e target_type);
+
 #endif /* _BDMUSB_H_ */

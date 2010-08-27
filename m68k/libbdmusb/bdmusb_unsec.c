@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
 		return(1);
 	}
 	device_no = bdmusb_usb_open(device_name);
-	tblcf_set_target_type(device_no, T_JTAG);	/* select JTAG target */
+	bdmusb_set_target_type(device_no, T_JTAG);	/* select JTAG target */
 	tblcf_jtag_sel_shift(device_no, 1);		/* select instruction path */
 	tblcf_jtag_write(device_no,
                    unsec_instruction_len,1,idcode+4-((unsec_instruction_len-1)>>3));	/* shift the IDCODE instruction in */

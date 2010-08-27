@@ -119,6 +119,8 @@ typedef enum {
    CMD_TBLCF_GET_LAST_STATUS       = 11,  /**< TurboBdmLightCF returns status of the previous command */
    CMD_TBLCF_SET_BOOT              = 12,  /**< request bootloader firmware upgrade on next power-up, parameters: 'B','O','O','T', returns: none */
    CMD_TBLCF_GET_STACK_SIZE        = 13,  /**< parameters: none, returns 16-bit stack size required by the application (so far into the execution) */
+   /** TurboBdmLightCF  BDM/debugging related commands */
+   CMD_TBLCF_SET_TARGET            = 20,  /**< set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
 
    /** Generic OSBDM */
    CMD_GET_LAST_STATUS             = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
@@ -168,7 +170,6 @@ typedef enum  {
 //                                       /**< @return Error code, see \ref  ICP_ErrorCode_t */
 // } bdm_icp_commands_codes_type_e;
 
-
 /* cable status bit fields */
 #define RESET_DETECTED_MASK   0x0001
 #define RSTO_STATE_MASK       0x0002
@@ -181,8 +182,7 @@ typedef enum  {
 #define CMD_FAILED            1  /* command execution failed (incorrect parameters, target not responding, etc.) */
 #define CMD_UNKNOWN           2  /* unknown command */
 
-/* BDM/debugging related commands */
-#define CMD_SET_TARGET        20 /* set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
+/*  */
 #define CMD_RESET             21 /* 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode */
 #define CMD_GET_STATUS        22 /* returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
 #define CMD_HALT              23 /* stop the CPU and bring it into BDM mode */
