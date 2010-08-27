@@ -138,8 +138,8 @@ void bdmusb_find_supported_devices(void) {
 		  if (udev->desc.idProduct==OSBDM_PID) {
 		      
 		      osbdm_dev_count++;
+		      device_found = 1;
 		  }
-		  device_found = 1;
 		  break;
 	  }
 	  if (device_found) {
@@ -151,6 +151,21 @@ void bdmusb_find_supported_devices(void) {
               snprintf(udev->name, sizeof(udev->name), "%03d-%03d", udev->bus_number, udev->device_address);
               usb_dev_count++;
 	      
+	      /* Check the USBDM/OSBDM version */
+	      if ( (udev->desc.idVendor == OSBDM_VID) && (udev->desc.idProduct==OSBDM_PID) ) {
+		  usbmd_version_t usbdm_version;
+		  bdmusb_usb_open(udev->name);
+		  bdmusb_get_version(udev, &usbdm_version);
+		  
+		  /* Know what version we have*/
+		  if (usbdm_version.bdm_soft_ver <= 0x10)
+		      udev->type = P_OSBDM;
+		  else if (usbdm_version.bdm_soft_ver <= 0x15)
+		      udev->type = P_USBDM;
+		  else
+		      udev->type = P_USBDM_V2;
+		  
+	      }
           }
       }
   }
