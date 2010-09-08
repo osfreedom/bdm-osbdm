@@ -132,9 +132,9 @@ void bdmusb_find_supported_devices(void) {
 	      case PEMICRO_VID:
 		  //if ( (desc.idProduct==MLCFE_PID) || 
 		  //  (desc.idProduct==DEMOJM_PID) ){
-		  udev->type = P_TBLCF;
-		  pe_dev_count++;
-		  device_found = 1;
+		  //udev->type = P_TBLCF;
+		  //pe_dev_count++;
+		  //device_found = 1;
 		  break;
 	      case OSBDM_VID:
 		  if (udev->desc.idProduct==OSBDM_PID) {
