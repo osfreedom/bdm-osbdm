@@ -177,17 +177,31 @@ void bdmusb_find_supported_devices(void) {
 unsigned char bdmusb_get_version(bdmusb_dev* dev, usbmd_version_t* version) {
     static const usbmd_version_t defaultVersion = {0,0,0,0};
     unsigned char return_value;
-    if (dev->type==P_TBLCF) {
+    
+    switch (dev->type) {
+      case P_OSBDM:
 	usb_data[0]=3;	/* get 3 bytes */
-	usb_data[1]=CMD_TBLCF_GET_VER;
+	usb_data[1]=CMD_OSBDM_GET_VER;
 	usb_data[2]=0;
-    } else {
-	usb_data[0]=5;	/* get 3 bytes */
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	usb_data[0]=5;	/* get 5 bytes */
 	usb_data[1]=CMD_USBDM_GET_VER;
 	usb_data[2]=0;
 	usb_data[3]=0;
 	usb_data[4]=0;
-    }
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[0]=3;	/* get 3 bytes */
+	usb_data[1]=CMD_TBLCF_GET_VER;
+	usb_data[2]=0;
+	break;
+    };
+    
     return_value = bdm_usb_recv_ep0(dev, usb_data);
     if (return_value == BDM_RC_OK)
       *version = *((usbmd_version_t *)(&usb_data[1]));
@@ -256,9 +270,23 @@ unsigned char bdmusb_get_last_sts_value(int dev) {
 unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
     unsigned char ret_val;
     usb_data[0]=1;	 /* get 1 byte */
-    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_SET_TARGET:CMD_USBDM_SET_TARGET;
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_SET_TARGET;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	usb_data[1]= CMD_USBDM_SET_TARGET;
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_TBLCF_SET_TARGET;
+	break;
+    };
     usb_data[2]=target_type;
-    ret_val = tblcf_usb_recv_ep0(&usb_devs[dev], usb_data);
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     if (ret_val == BDM_RC_OK) {
       bdm_print("BDMUSB_SET_TARGET_TYPE: Set target type 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
       if (usb_devs[dev].type==P_TBLCF) 
@@ -274,9 +302,23 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
 unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
     unsigned char ret_val;
     usb_data[0]=1;	 /* get 1 byte */
-    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_TARGET_RESET:CMD_USBDM_TARGET_RESET;
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_TARGET_RESET;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	usb_data[1]= CMD_USBDM_TARGET_RESET;
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_TBLCF_TARGET_RESET;
+	break;
+    };
     usb_data[2]=target_mode;
-    ret_val = tblcf_usb_recv_ep0(&usb_devs[dev], usb_data);
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     if (ret_val == BDM_RC_OK) {
 	bdm_print("BDMUSB_TARGET_RESET: Target reset into mode 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
 	if (usb_devs[dev].type==P_TBLCF) 
@@ -308,7 +350,9 @@ unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
 	  usb_data[1]=CMD_TBLCF_GET_BDM_STATUS;
 	  break;
     }
-    ret_val = tblcf_usb_recv_ep0(dev, usb_data);
+    
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    /* Analyze the response */
     if (ret_val == BDM_RC_OK) {
       temp_state = usb_data[1]*256+usb_data[2];
       switch (usb_devs[dev].type) {
@@ -388,4 +432,81 @@ unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
     }
     
     return(ret_val);
+}
+
+/* brings the target into BDM mode */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_target_halt(int dev) {
+    unsigned char ret_val;
+    usb_data[0]=1;	 /* get 1 byte */
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_HALT;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	usb_data[1]= CMD_USBDM_TARGET_HALT;
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_TBLCF_TARGET_HALT;
+	break;
+    };
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    bdm_print("BDMUSB_TARGET_HALT: (0x%02X)\r\n",usb_data[0]);
+    //return(!(usb_data[0]==CMD_HALT));
+    return ret_val;
+}
+
+/* starts target execution from current PC address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_target_go(int dev) {
+    unsigned char ret_val;
+    usb_data[0]=1;	 /* get 1 byte */
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_GO;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_USBDM_TARGET_GO;
+	break;
+    };
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    bdm_print("BDMUSB_TARGET_GO: (0x%02X)\r\n",usb_data[0]);
+    //return(!(usb_data[0]==CMD_GO));
+    return ret_val;
+}
+
+/* steps over a single target instruction */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_target_step(int dev) {
+    unsigned char ret_val;
+    usb_data[0]=1;	 /* get 1 byte */
+    switch (usb_devs[dev].type) {
+      case P_OSBDM:
+	usb_data[1]=CMD_OSBDM_STEP;
+	break;
+      case P_USBDM:
+      case P_USBDM_V2:
+	usb_data[1]=CMD_USBDM_TARGET_STEP;
+	break;
+      case P_NONE:
+      case P_TBDML:
+      case P_TBLCF:
+      default: 
+	usb_data[1]=CMD_TBLCF_TARGET_STEP;
+	break;
+    };
+    
+    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    bdm_print("BDMUSB_TARGET_STEP: (0x%02X)\r\n",usb_data[0]);
+    //return(!(usb_data[0]==CMD_STEP));
+    return ret_val;
 }

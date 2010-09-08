@@ -75,4 +75,17 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type);
  * on failure */
 unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode);
 
+/* brings the target into BDM mode; returns 0 on success and non-zero on
+ * failure */
+unsigned char bdmusb_target_halt(int dev);
+
+/* starts target execution from current PC address; returns 0 on success and
+ * non-zero on failure */
+unsigned char bdmusb_target_go(int dev);
+
+/* steps over a single target instruction; returns 0 on success and non-zero on
+ * failure */
+unsigned char bdmusb_target_step(int dev);
+
+
 #endif /* _BDMUSB_H_ */

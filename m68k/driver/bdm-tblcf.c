@@ -402,7 +402,7 @@ tblcf_release_chip (struct BDM *self)
   
   self->cf_running = 1;
 
-  tblcf_target_go (self->usbDev);
+  bdmusb_target_go (self->usbDev);
   bdmusb_usb_close(self->usbDev);
   
   return 0;
@@ -445,7 +445,7 @@ tblcf_stop_chip (struct BDM *self)
     PRINTF (" tblcf_stop_chip\n");
 
   while (retries--) {
-    if (tblcf_target_halt (self->usbDev)) {
+    if (bdmusb_target_halt (self->usbDev)) {
       if (self->debugFlag)
         PRINTF (" tblcf_stop_chip: usb error\n");
     }
@@ -528,7 +528,7 @@ tblcf_run_chip (struct BDM *self)
   /*
    * Now issue a GO command.
    */
-  if (tblcf_target_go (self->usbDev)) {
+  if (bdmusb_target_go (self->usbDev)) {
     PRINTF (" tblcf_run_chip - GO cmd failed, err = %d\n", err);
     return BDM_FAULT_RESPONSE;
   }
@@ -607,7 +607,7 @@ tblcf_step_chip (struct BDM *self)
   /*
    * Now issue a GO command.
    */
-  if (tblcf_target_step (self->usbDev)) {
+  if (bdmusb_target_step (self->usbDev)) {
     PRINTF (" tblcf_step_chip - GO cmd failed\n");
     return BDM_FAULT_RESPONSE;
   }

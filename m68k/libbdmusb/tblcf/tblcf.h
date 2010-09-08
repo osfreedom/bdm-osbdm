@@ -42,18 +42,6 @@ unsigned char tblcf_get_last_sts(int dev);
  * channel; returns 0 on success and non-zero on failure */
 unsigned char tblcf_bdm_sts(int dev, bdmcf_status_t *bdmcf_status);
 
-/* brings the target into BDM mode; returns 0 on success and non-zero on
- * failure */
-unsigned char tblcf_target_halt(int dev);
-
-/* starts target execution from current PC address; returns 0 on success and
- * non-zero on failure */
-unsigned char tblcf_target_go(int dev);
-
-/* steps over a single target instruction; returns 0 on success and non-zero on
- * failure */
-unsigned char tblcf_target_step(int dev);
-
 /* resynchronizes communication with the target (in case of noise, etc.);
  * returns 0 on success and non-zero on failure */
 unsigned char tblcf_resynchronize(int dev);

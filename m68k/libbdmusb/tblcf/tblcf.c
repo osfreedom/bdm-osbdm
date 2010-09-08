@@ -47,55 +47,25 @@ unsigned char tblcf_get_last_sts(int dev) {
     return BDM_RC_OK;
 }
 
-/* brings the target into BDM mode */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_target_halt(int dev) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_HALT;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_TARGET_HALT: (0x%02X)\r\n",usb_data[0]);
-	return(!(usb_data[0]==CMD_HALT));
-}
-
-/* starts target execution from current PC address */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_target_go(int dev) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_GO;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_TARGET_GO: (0x%02X)\r\n",usb_data[0]);
-	return(!(usb_data[0]==CMD_GO));
-}
-
-/* steps over a single target instruction */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_target_step(int dev) {
-	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_STEP;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	bdm_print("TBLCF_TARGET_STEP: (0x%02X)\r\n",usb_data[0]);
-	return(!(usb_data[0]==CMD_STEP));
-}
-
 /* resynchronizes communication with the target (in case of noise, etc.) */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_resynchronize(int dev) {
 	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_RESYNCHRONIZE;
+	usb_data[1]=CMD_TBLCF_TARGET_RESYNCHRONIZE;
 	tblcf_usb_recv_ep0(dev, usb_data);
 	bdm_print("TBLCF_RESYNCHRONIZE: (0x%02X)\r\n",usb_data[0]);
-	return(!(usb_data[0]==CMD_RESYNCHRONIZE));
+	return(!(usb_data[0]==CMD_TBLCF_TARGET_RESYNCHRONIZE));
 }
 
 /* asserts the TA signal for the specified time (in 10us ticks) */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us) {
 	usb_data[0]=1;	 /* get 1 byte */
-	usb_data[1]=CMD_ASSERT_TA;
+	usb_data[1]=CMD_TBLCF_TARGET_ASSERT_TA;
 	usb_data[2]=duration_10us;
 	tblcf_usb_recv_ep0(dev, usb_data);
 	bdm_print("TBLCF_ASSERT_TA: duration %d us (0x%02X)\r\n",(int)10*usb_data[2],usb_data[0]);
-	return(!(usb_data[0]==CMD_ASSERT_TA));
+	return(!(usb_data[0]==CMD_TBLCF_TARGET_ASSERT_TA));
 }
 
 /* reads control register at the specified address and writes its contents into the supplied buffer */

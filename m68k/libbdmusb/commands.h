@@ -77,13 +77,14 @@ typedef enum {
    CMD_USBDM_CONTROL_INTERFACE     = 18,  /**< Directly control BDM interface levels */
    // Reserved 19
 
-   CMD_USBDM_READ_STATUS_REG       = 20,  /**< Get BDM status */
-                                          /** @return [1] 8-bit status byte made up as follows: \n */
-                                          /**    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n */
-                                          /**    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n */
-                                          /**    - (CFVx only)         bit2   - current RSTO value \n */
-                                          /**    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n */
-                                          /**    - (All)               bit7   - target has power */
+   CMD_USBDM_READ_STATUS_REG       = 20,  /**< Get BDM status 
+                                            * @return [1] 8-bit status byte made up as follows: \n 
+                                            *    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n 
+                                            *    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n 
+                                            *    - (CFVx only)         bit2   - current RSTO value \n 
+                                            *    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n
+                                            *    - (All)               bit7   - target has power 
+					    */
 
    CMD_USBDM_WRITE_CONTROL_REG     = 21,  /**< Write to target Control register */
 
@@ -114,7 +115,8 @@ typedef enum {
    CMD_USBDM_JTAG_WRITE            = 40,  /**< Write to JTAG chain */
    CMD_USBDM_JTAG_READ             = 41,  /**< Read from JTAG chain */
    CMD_USBDM_SET_VPP               = 42,  /**< Set VPP level */
-   /** TurboBdmLightCF related commands */
+   
+/** TurboBdmLightCF related commands */
    CMD_TBLCF_GET_VER               = 10,  /**< TurboBdmLightCF Get version command */
    CMD_TBLCF_GET_LAST_STATUS       = 11,  /**< TurboBdmLightCF returns status of the previous command */
    CMD_TBLCF_SET_BOOT              = 12,  /**< request bootloader firmware upgrade on next power-up, parameters: 'B','O','O','T', returns: none */
@@ -122,21 +124,72 @@ typedef enum {
    /** TurboBdmLightCF  BDM/debugging related commands */
    CMD_TBLCF_SET_TARGET            = 20,  /**< set target, 8bit parameter: 00=ColdFire(default), 01=JTAG */
    CMD_TBLCF_TARGET_RESET          = 21,  /**< 8bit parameter: 0=reset to BDM Mode, 1=reset to Normal mode  @param [2] \ref TargetMode_t */
-   CMD_TBLCF_TARGET_STEP           = 23,  /**< Perform single step */
-   CMD_TBLCF_TARGET_GO             = 24,  /**< Start code execution */
-   CMD_TBLCF_TARGET_HALT           = 25,  /**< Stop the CPU and bring it into background mode */  
-   CMD_TBLCF_GET_BDM_STATUS        = 22, /**< returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
+   CMD_TBLCF_GET_BDM_STATUS        = 22,  /**< returns 16bit status word: bit0 - target was reset since last execution of this command (this bit is cleared after reading), bit1 - current state of the RSTO pin, big endian! */
+   CMD_TBLCF_TARGET_HALT           = 23,  /**< Stop the CPU and bring it into BDM mode */
+   CMD_TBLCF_TARGET_GO             = CMD_USBDM_TARGET_GO,  /**< Start code execution from current PC address */
+   CMD_TBLCF_TARGET_STEP           = 25,  /**< Perform single step */
+   CMD_TBLCF_TARGET_RESYNCHRONIZE  = 26,  /**< resynchronize communication with the target (in case of noise, etc.) */
+   CMD_TBLCF_TARGET_ASSERT_TA      = 27,  /**< parameter: 8-bit number of 10us ticks - duration of the TA assertion */
 
-   /** Generic OSBDM */
+/** Generic OSBDM (Compatibility mode) */
+   CMD_OSBDM_DEBUG                 =  8,  /**< Debugging commands (parameter determines actual command) @param [2]  Debug command see \ref DebugSubCommands */
+   CMD_OSBDM_OPTION                = 10,  /**< Set/clear various options (only has affect after next \ref CMD_SET_TARGET) \n */
+					  /**    @param [2]  Option command see \ref OptionCommands */
+   CMD_OSBDM_GET_VER               = 12,  /**< Get firmware version in BCD @return [1] 8-bit HW (major+minor) revision \n [2] 8-bit SW (major+minor) version number */
    CMD_OSBDM_GET_LAST_STATUS       = 13,  /**< Get status from last command @return [0] 8-bit Error code see \ref  ErrorCodes */
+   CMD_OSBDM_SET_BOOT              = 14,  /**< Requests reboot to ICP mode. @param [2..5] must be "BOOT" */
+                              //   15 .. 29 Reserved for error codes
    CMD_OSBDM_SET_TARGET            = 30,  /**< Set target,  @param [2] 8-bit target value @ref target_type_e */
-   CMD_OSBDM_GET_BDM_STATUS        = 34,  /**< Get BDM status */
-                              /** @return [1] 8-bit status byte made up as follows: \n */
-                              /**    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n */
-                              /**    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n */
-                              /**    - (CFVx only)         bit2   - current RSTO value \n */
-                              /**    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n */
-                              /**    - (All)               bit7   - target has power */
+   /* OSBDM (Compatibility) BDM/debugging related commands */
+   CMD_OSBDM_CONNECT               = 31,  /**< Try to connect to the target */
+//   CMD_OSBDM_READ_SPEED            = 32,  /**< deprecated, speed has higher resolution now */
+   CMD_OSBDM_TARGET_RESET          = 33,  /**< Reset target @param [2] 0=>reset to Special Mode, 1=>reset to Normal mode */
+
+   CMD_OSBDM_GET_BDM_STATUS        = 34,  /**< Get BDM status 
+                                            * @return [1] 8-bit status byte made up as follows: \n 
+                                            *    - (HC08/12/RS08/CFV1) bit0   - ACKN, \n 
+                                            *    - (All)               bit1   - target was reset (this bit is cleared after reading),  \n 
+                                            *    - (CFVx only)         bit2   - current RSTO value \n 
+                                            *    - (HC08/12/RS08/CFV1) bit4-3 - comm status: 00=NOT CONNECTED, 01=SYNC, 10=GUESS,  11=USER SUPPLIED \n 
+                                            *    - (All)               bit7   - target has power 
+			                    */
+   CMD_OSBDM_READ_BD               = 35,  /**< Read from BDM address space @param [2..3] 16-bit address, @return [3] 8-bit value read from address; */
+   CMD_OSBDM_WRITE_BD              = 36,  /**< Write to BDM address space @param [2..3] 16-bit address, @param [4] 8-bit value to write; */
+   //CMD_OSBDM_GO                    = 37,  /**<  deprecated */
+   //CMD_OSBDM_STEP                  = 38,  /**<  deprecated */
+   CMD_OSBDM_HALT                  = 39,  /**< Stop the CPU and bring it into background mode */
+   //CMD_OSBDM_SET_SPEED             = 40,  /**< deprecated */
+   CMD_OSBDM_READ_SPEED            = 41,  /**< Read speed of the target: @return [1..2] 16-bit tick count see \ref SYNC_MULTIPLE */
+   CMD_OSBDM_GO                    = 42,  /**< Start code execution */
+   CMD_OSBDM_STEP                  = 44,  /**< Perform single step */
+   CMD_OSBDM_SET_SPEED1            = 46,  /**< Sets-up the BDM interface for a new bit rate & tries 
+                                            *  to enable ackn feature, @param [2..3] 16-bit tick count see \ref SYNC_MULTIPLE 
+			                    */
+   CMD_OSBDM_SET_DERIVATIVE        = 47,  /**< Set RS08 derivative @param [2] 8-bit derivative see \ref rs08_derivative_type_e */
+
+   /* CPU related commands */
+   CMD_OSBDM_READ_8                = 50,  /**< Read byte from memory @param [2..3] 16-bit address @return [1] 8-bit value read from address */
+   CMD_OSBDM_READ_16               = 51,  /**< (HC12 only) Read word from memory @param [2..3] 16-bit address @return [1..2] 16-bit value read from address */
+   //CMD_OSBDM_READ_BLOCK           /**< 52 deprecated */
+   CMD_OSBDM_READ_REGS             = 53,  /**< Reads all target registers, @return [1..N] multiple 16-bit values: upper bytes are 0 when not used \n
+                                            *    HC/S12(X): PC, SP, IX, IY, D(B:A), CCR;  \n
+				            *    HCS08: PC, SP, H:X, A, CCR;  \n
+				            *    RS08: CCR+PC, SPC, 0, A ; 
+				            */
+   //CMD_OSBDM_READ_BLOCK_FAST      /**< 54 deprecated */
+   CMD_OSBDM_READ_BLOCK1           = 55,  /**< Read a block of memory @param [2..3] 16-bit address, @param [4] 8-bit count of bytes to read, 
+                                           * @return [1..N] block of bytes from given address, 
+                                           *    count MUST be <= \ref MAX_PACKET_SIZE-1 
+                                           */
+   CMD_OSBDM_WRITE_8               = 60,  /**< Write 8-bit value to memory @param [2..3] 16-bit address @param [4] 8-bit value to write */
+   CMD_OSBDM_WRITE_16              = 61,  /**< Write 16-bit value to memory @param [2..3] 16-bit address @param [4..5] 16-bit value to write */
+   //CMD_OSBDM_WRITE_BLOCK          /**< 62 deprecated */
+   //CMD_OSBDM_WRITE_REGS           /**< 63 deprecated */
+   //CMD_OSBDM_WRITE_BLOCK_FAST     /**< 64 deprecated */
+   CMD_OSBDM_WRITE_BLOCK1          = 65,  /**< Write a block to memory @param [2..3] 16-bit address @param [4] 8-bit count of bytes, 
+                                           *   @param [5..N+4] block of bytes to write, \n 
+                                           *    count MUST be <= \ref MAX_PACKET_SIZE-5 
+					   */
 } bdm_commands_type_e;
 
 /** Debugging sub commands (used with \ref CMD_USBDM_DEBUG )
@@ -247,12 +300,6 @@ typedef enum  {
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
-/* */
-#define CMD_HALT              23 /* stop the CPU and bring it into BDM mode */
-#define CMD_GO                24 /* start code execution from current PC address */
-#define CMD_STEP              25 /* perform single step */
-#define CMD_RESYNCHRONIZE     26 /* resynchronize communication with the target (in case of noise, etc.) */
-#define CMD_ASSERT_TA         27 /* parameter: 8-bit number of 10us ticks - duration of the TA assertion */
 
 /* CPU related commands */
 #define CMD_READ_MEM8         30 /* parameter 32bit address, returns 8bit value read from address */
