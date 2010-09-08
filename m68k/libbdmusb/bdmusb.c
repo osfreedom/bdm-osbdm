@@ -156,7 +156,11 @@ void bdmusb_find_supported_devices(void) {
 	      /* Check the USBDM/OSBDM version */
 	      if ( (udev->desc.idVendor == OSBDM_VID) && (udev->desc.idProduct==OSBDM_PID) ) {
 		  usbmd_version_t usbdm_version;
+		  pod_type_e old_type;
 		  bdmusb_usb_open(udev->name);
+		  /* Try first with the USBDM. */
+		  old_type = udev->type;
+		  udev->type = P_USBDM;
 		  bdmusb_get_version(udev, &usbdm_version);
 		  
 		  /* Know what version we have*/
