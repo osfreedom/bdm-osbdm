@@ -180,7 +180,7 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
       return 0;
     }
 
-    if (tblcf_read_creg (self->usbDev, cmd, &ioc->value)) {
+    if (bdmusb_read_creg (self->usbDev, cmd, &ioc->value)) {
       PRINTF (" tblcf_read_sysreg - Reg:0x%x failed with cmd 0x%02x\n",
               ioc->address, cmd);
       return BDM_FAULT_RESPONSE;
@@ -225,7 +225,7 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
       return 0;
     }
 
-    if (tblcf_read_dreg (self->usbDev, cmd, &ioc->value)) {
+    if (bdmusb_read_dreg (self->usbDev, cmd, &ioc->value)) {
       PRINTF (" tblcf_read_sysreg - Reg:0x%x failed with cmd 0x%02x\n",
               ioc->address, cmd);
       return BDM_FAULT_RESPONSE;
@@ -322,7 +322,7 @@ tblcf_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
       return 0;
     }
 
-    tblcf_write_creg (self->usbDev, cmd, ioc->value);
+    bdmusb_write_creg (self->usbDev, cmd, ioc->value);
   }
   else {
     if (mode == BDM_SYS_REG_MODE_DEBUG)
@@ -340,7 +340,7 @@ tblcf_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if (mode == BDM_SYS_REG_MODE_MAPPED)
       self->shadow_sysreg[ioc->address] = ioc->value;
 
-    tblcf_write_dreg (self->usbDev, cmd, ioc->value);
+    bdmusb_write_dreg (self->usbDev, cmd, ioc->value);
   }
 
   if (tblcf_get_last_sts (self->usbDev)) {
@@ -676,7 +676,7 @@ tblcf_send_buf (struct BDM *self, int count)
 static int
 tblcf_read_preg (struct BDM *self, struct BDMioctl *ioc)
 {
-  if (tblcf_read_reg (self->usbDev, ioc->address & 0xF, &ioc->value)) {
+  if (bdmusb_read_reg (self->usbDev, ioc->address & 0xF, &ioc->value)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_preg - reg:0x%02x, failed\n", ioc->address & 0xF);
@@ -773,7 +773,7 @@ tblcf_write_preg (struct BDM *self, struct BDMioctl *ioc)
     PRINTF ("tblcf_write_preg - reg:%d, val:0x%08x\n",
             ioc->address & 0xF, ioc->value);
 
-  tblcf_write_reg (self->usbDev, ioc->address & 0xF, ioc->value);
+  bdmusb_write_reg (self->usbDev, ioc->address & 0xF, ioc->value);
 
   return 0;
 }

@@ -50,28 +50,6 @@ unsigned char tblcf_resynchronize(int dev);
  * success and non-zero on failure */
 unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us);
 
-/* reads control register at the specified address and writes its contents into
- * the supplied buffer; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_creg(int dev, unsigned int address, unsigned long int * result);
-
-/* writes control register at the specified address; returns 0 on success and
- * non-zero on failure */
-void tblcf_write_creg(int dev, unsigned int address, unsigned long int value);
-
-/* reads the specified debug register and writes its contents into the
- * supplied buffer; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_dreg(int dev, unsigned char dreg_index, unsigned long int * result);
-
-/* writes specified debug register */
-void tblcf_write_dreg(int dev, unsigned char dreg_index, unsigned long int value);
-
-/* reads the specified register and writes its contents into the supplied
- * buffer; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_reg(int dev, unsigned char reg_index, unsigned long int * result);
-
-/* writes specified register */
-void tblcf_write_reg(int dev, unsigned char reg_index, unsigned long int value);
-
 /* reads byte from the specified address; returns 0 on success and non-zero on
  * failure */
 unsigned char tblcf_read_mem8(int dev, unsigned long int address, unsigned char * result);

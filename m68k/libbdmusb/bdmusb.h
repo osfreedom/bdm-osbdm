@@ -87,5 +87,27 @@ unsigned char bdmusb_target_go(int dev);
  * failure */
 unsigned char bdmusb_target_step(int dev);
 
+/* reads control register at the specified address and writes its contents into
+ * the supplied buffer; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_creg(int dev, unsigned int address, unsigned long int * result);
+
+/* writes control register at the specified address; returns 0 on success and
+ * non-zero on failure */
+void bdmusb_write_creg(int dev, unsigned int address, unsigned long int value);
+
+/* reads the specified debug register and writes its contents into the
+ * supplied buffer; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_dreg(int dev, unsigned int dreg_index, unsigned long int * result);
+
+/* writes specified debug register */
+void bdmusb_write_dreg(int dev, unsigned int dreg_index, unsigned long int value);
+
+/* reads the specified register and writes its contents into the supplied
+ * buffer; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_reg(int dev, unsigned int reg_index, unsigned long int * result);
+
+/* writes specified register */
+void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value);
+
 
 #endif /* _BDMUSB_H_ */

@@ -130,6 +130,15 @@ typedef enum {
    CMD_TBLCF_TARGET_STEP           = 25,  /**< Perform single step */
    CMD_TBLCF_TARGET_RESYNCHRONIZE  = 26,  /**< resynchronize communication with the target (in case of noise, etc.) */
    CMD_TBLCF_TARGET_ASSERT_TA      = 27,  /**< parameter: 8-bit number of 10us ticks - duration of the TA assertion */
+   /* CPU related commands */
+   CMD_TBLCF_READ_REG              = 42,  /**< parameter 8-bit register number to read, returns 32-bit register contents */
+   CMD_TBLCF_WRITE_REG             = 43,  /**< parameter 8-bit register number to write & the 32-bit register contents to be written */
+
+   CMD_TBLCF_READ_CREG             = 44,  /**< parameter 16-bit register address, returns 32-bit control register contents */
+   CMD_TBLCF_WRITE_CREG            = 45,  /**< parameter 16-bit register address & the 32-bit control register contents to be written */
+   
+   CMD_TBLCF_READ_DREG             = 46 ,  /**< parameter 8-bit register number to read, returns 32-bit debug module register contents */
+   CMD_TBLCF_WRITE_DREG            = 47,   /**< parameter 8-bit register number to write & the 32-bit debug module register contents to be written */
 
 /** Generic OSBDM (Compatibility mode) */
    CMD_OSBDM_DEBUG                 =  8,  /**< Debugging commands (parameter determines actual command) @param [2]  Debug command see \ref DebugSubCommands */
@@ -190,6 +199,25 @@ typedef enum {
                                            *   @param [5..N+4] block of bytes to write, \n 
                                            *    count MUST be <= \ref MAX_PACKET_SIZE-5 
 					   */
+   // Coldfire V1
+   CMD_CF_READ_CSR2     = 86, //!< Read CFv1 CSR2 @return [1] 8-bit value
+   CMD_CF_READ_CSR3     = 87, //!< Read CFv1 CSR3 @return [1] 8-bit value
+   CMD_CF_WRITE_CSR2    = 88, //!< Write CFv1 CSR2 @param [2] value
+   CMD_CF_WRITE_CSR3    = 89, //!< Write CFv1 CSR3 @param [2] value
+   CMD_CF_READ_REG      = 90, //!< Read CFv1 Register @param [2] 8-bit register # @return [1..4] 32-bit value
+   CMD_CF_READ_CREG     = 91, //!< Read CFv1 Control register @param [2] 8-bit register # @return [1..4] 32-bit value
+   CMD_CF_READ_DREG     = 92, //!< Read CFv1 Debug register @param [2] 8-bit reg # @return [1..4] 32-bit value
+   CMD_CF_READ_XCSR     = 93, //!< Read CFv1 Extended status register @return [1] 8-bit value
+   CMD_CF_WRITE_REG     = 94, //!< Write CFv1 Register @param [2] 8-bit reg # @param [3..6] 32-bit value
+   CMD_CF_WRITE_CREG    = 95, //!< Write CFv1 Control register @param [2] 8-bit reg # @param [3..6] 32-bit value
+   CMD_CF_WRITE_DREG    = 96, //!< Write CFv1 Debug register @param [2] 8-bit reg # @param [3..6] 32-bit value
+   CMD_CF_READ_MEM      = 97, //!< Read CFv1 Memory @param [2..4] 24-bit address @param [5] 8-bit data unit size @param block size is implied by USB transfer size
+                              //!< @return [1..N] block of bytes from given address,
+                              //!<    block size MUST be <= \ref MAX_PACKET_SIZE-1
+   CMD_CF_WRITE_MEM     = 98, //!< Write CFv1 Memory @param [2..4] 24-bit address @param [5] 8-bit data unit size (1,2,4) @param [6] 8-bit block size @param [7..N+6] block of data,
+                              //!<    block size MUST be <= \ref MAX_PACKET_SIZE-7
+   CMD_CF_WRITE_XCSR    = 99, //!< Write CFv1 Extended Control register @param [2] 8-bit value
+
 } bdm_commands_type_e;
 
 /** Debugging sub commands (used with \ref CMD_USBDM_DEBUG )
@@ -300,7 +328,6 @@ typedef enum  {
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
 
-
 /* CPU related commands */
 #define CMD_READ_MEM8         30 /* parameter 32bit address, returns 8bit value read from address */
 #define CMD_READ_MEM16        31 /* parameter 32bit address, returns 16bit value read from address */
@@ -317,15 +344,6 @@ typedef enum  {
 #define CMD_WRITE_MEMBLOCK8   39 /* parameter 32bit address & a block of 8-bit values to be written from the address */
 #define CMD_WRITE_MEMBLOCK16  40 /* parameter 32bit address & a block of 16-bit values to be written from the address */
 #define CMD_WRITE_MEMBLOCK32  41 /* parameter 32bit address & a block of 32-bit values to be written from the address */
-
-#define CMD_READ_REG          42 /* parameter 8-bit register number to read, returns 32-bit register contents */
-#define CMD_WRITE_REG         43 /* parameter 8-bit register number to write & the 32-bit register contents to be written */
-
-#define CMD_READ_CREG         44 /* parameter 16-bit register address, returns 32-bit control register contents */
-#define CMD_WRITE_CREG        45 /* parameter 16-bit register address & the 32-bit control register contents to be written */
-
-#define CMD_READ_DREG         46 /* parameter 8-bit register number to read, returns 32-bit debug module register contents */
-#define CMD_WRITE_DREG        47 /* parameter 8-bit register number to write & the 32-bit debug module register contents to be written */
 
 /* JTAG commands */
 #define CMD_JTAG_GOTORESET    80 /* no parameters, takes the TAP to TEST-LOGIC-RESET state, re-select the JTAG target to take TAP back to RUN-TEST/IDLE */
