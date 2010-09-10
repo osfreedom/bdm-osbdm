@@ -936,7 +936,7 @@ bdm_invalidate_cache (struct BDM *self)
 
   cacr_ioc.address = BDM_REG_CACR;
 
-  if (tblcf_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
+  if (self->read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
       return BDM_TARGETNC;
 
   /*
