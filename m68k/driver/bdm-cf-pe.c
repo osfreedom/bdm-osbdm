@@ -430,7 +430,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
   int            cmd;
 
   if (self->debugFlag > 2)
-    PRINTF (" cf_pe_read_sysreg + Reg(%d):0x%x\n", mode, ioc->address);
+    PRINTF (" cf_pe_read_sysreg + Reg(%d):0x%lx\n", mode, ioc->address);
   
   if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address >= BDM_MAX_SYSREG))
     return BDM_FAULT_NVC;
@@ -449,7 +449,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if (cmd == -1) {
       ioc->value = 0;
       if (self->debugFlag)
-        PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%x is not mapped; ignored\n",
+        PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%lx is not mapped; ignored\n",
                 mode, ioc->address);
       return 0;
     }
@@ -473,7 +473,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
           mode = BDM_SYS_REG_MODE_MAPPED;
           ioc->address = r;
           if (self->debugFlag > 2)
-            PRINTF (" cf_pe_read_sysreg - remapped to Reg:0x%x\n", ioc->address);
+            PRINTF (" cf_pe_read_sysreg - remapped to Reg:0x%lx\n", ioc->address);
           break;
         }
       }
@@ -484,7 +484,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if (cmd == -1) {
       ioc->value = 0;
       if (self->debugFlag)
-        PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%x is not mapped; ignored\n",
+        PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%lx is not mapped; ignored\n",
                 mode, ioc->address);
       return 0;
     }
@@ -497,7 +497,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address != BDM_REG_CSR)) {
       ioc->value = self->shadow_sysreg[ioc->address];
       if (self->debugFlag > 1)
-        PRINTF (" cf_pe_read_sysreg - Reg:0x%x is write only, 0x%08x\n",
+        PRINTF (" cf_pe_read_sysreg - Reg:0x%lx is write only, 0x%08lx\n",
                 ioc->address, ioc->value);
       return 0;
     }
@@ -505,7 +505,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if (((err = cf_pe_serial_clock (self, cmd, 0)) != 0) ||
         ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
         ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
-      PRINTF (" cf_pe_read_sysreg - Reg:0x%x failed with cmd 0x%02x, err = %d\n",
+      PRINTF (" cf_pe_read_sysreg - Reg:0x%lx failed with cmd 0x%02x, err = %d\n",
               ioc->address, cmd, err);
       return err;
     }
@@ -564,7 +564,7 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     ioc->value &= 0xffff;
   
   if (self->debugFlag > 1)
-    PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%x is 0x%08x\n",
+    PRINTF (" cf_pe_read_sysreg - Reg(%d):0x%lx is 0x%08lx\n",
             mode, ioc->address, ioc->value);
   
   return 0;
@@ -583,7 +583,7 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     return BDM_FAULT_NVC;
   
   if (self->debugFlag)
-    PRINTF (" cf_pe_write_sysreg - Reg(%d):0x%x is 0x%x\n",
+    PRINTF (" cf_pe_write_sysreg - Reg(%d):0x%lx is 0x%lx\n",
             mode, ioc->address, ioc->value);
   
   /*
@@ -600,7 +600,7 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     if (cmd == -1) {
       ioc->value = 0;
       if (self->debugFlag)
-        PRINTF (" cf_pe_write_sysreg - Reg(%d):0x%x is not mapped; ignored\n",
+        PRINTF (" cf_pe_write_sysreg - Reg(%d):0x%lx is not mapped; ignored\n",
                 mode, ioc->address);
       return 0;
     }
@@ -620,7 +620,7 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     
     if (cmd == -1) {
       if (self->debugFlag)
-        PRINTF (" tblcf_write_sysreg - Reg(%d):0x%x is not mapped; ignored\n",
+        PRINTF (" tblcf_write_sysreg - Reg(%d):0x%lx is not mapped; ignored\n",
                 mode, ioc->address);
       return 0;
     }
