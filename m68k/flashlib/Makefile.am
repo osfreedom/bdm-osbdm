@@ -11,7 +11,7 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../libelf/lib -I../libelf/lib \
               -I$(srcdir)/../driver -I$(srcdir)/../lib \
-	      -DPREFIX="$(prefix)"
+	      -DPREFIX='"$(prefix)"'
 
 lib_LIBRARIES = libbdmflash.a
 

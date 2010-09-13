@@ -48,8 +48,6 @@
 # include <BDMlib.h>
 #endif
 
-#define mkstring(_s) #_s
-
 /* Interface to flash modules.
  */
 typedef struct
@@ -194,7 +192,8 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
   struct stat sb;
   elf_handle handle;
   const char *dmagic;
-  const char* prefix = mkstring (PREFIX);
+  const char* prefix = PREFIX;
+  static const char suffix[] = "share/m68k-bdm/plugins/";
   char* name = (char*) fname;
   int i;
 
@@ -214,7 +213,7 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
         else
           name = strdup (prefix);
       
-        name = strcat (name, "share/m68k-bdm/plugins/");
+        name = strcat (name, suffix);
         name = strcat (name, fname);
 
         if (stat (name, &sb) < 0)
@@ -222,7 +221,7 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
           if (errno == ENOENT)
           {
             prfunc ("cannot find plugin: %s\n", fname);
-            prfunc ("searched:\n  .\n  %s: ", mkstring (PREFIX));
+            prfunc ("searched:\n  .\n  %s/%s\n", PREFIX, suffix);
             return 0;
           }
         }
