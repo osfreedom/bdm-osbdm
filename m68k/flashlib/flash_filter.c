@@ -205,16 +205,12 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
     {
       if (errno == ENOENT)
       {
-        if (prefix[strlen (prefix) - 1] != '/')
-        {
-          name = strdup (prefix);
-          name = strcat (name, "/");
-        }
-        else
-          name = strdup (prefix);
-      
-        name = strcat (name, suffix);
-        name = strcat (name, fname);
+	int prefixlen = strlen(prefix);
+	int needsep = prefix[prefixlen - 1] != '/';
+	int pathlen = prefixlen + needsep + sizeof suffix + strlen(fname);
+
+	name = malloc(pathlen);
+	sprintf(name, "%s%s%s%s", prefix, needsep ? "/" : "", suffix, fname);
 
         if (stat (name, &sb) < 0)
         {
