@@ -490,7 +490,7 @@ bdmBitBashReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x, failed err=%d\n",
+      PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02lx, failed err=%d\n",
               ioc->address & 0xF, err);
     return err;
   }
@@ -498,7 +498,7 @@ bdmBitBashReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
   ioc->value = (msw << 16) | lsw;
   
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x = 0x%08x\n",
+    PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02lx = 0x%08lx\n",
             ioc->address & 0xF, ioc->value);
   return 0;
 }
@@ -518,14 +518,14 @@ bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadLongWord : *0x%08x failed, err=%d\n", ioc->address, err);
+      PRINTF ("bdmBitBashReadLongWord : *0x%08lx failed, err=%d\n", ioc->address, err);
     return err;
   }
   
   ioc->value = (msw << 16) | lsw;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadLongWord : *0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("bdmBitBashReadLongWord : *0x%08lx = 0x%08lx\n", ioc->address, ioc->value);
 
   return 0;
 }
@@ -544,14 +544,14 @@ bdmBitBashReadWord (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &w)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadWord : *0x%08x failed, err=%d\n", ioc->address, err);
+      PRINTF ("bdmBitBashReadWord : *0x%08lx failed, err=%d\n", ioc->address, err);
     return err;
   }
   
   ioc->value = w;
   
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadWord : *0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
+    PRINTF ("bdmBitBashReadWord : *0x%08lx = 0x%04lx\n", ioc->address, (ioc->value & 0xffff));
 
   return 0;
 }
@@ -570,7 +570,7 @@ bdmBitBashReadByte (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &w)) != 0)){
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadByte : *0x%08x failed, err=%d\n", ioc->address, err);
+    PRINTF ("bdmBitBashReadByte : *0x%08lx failed, err=%d\n", ioc->address, err);
     
   return err;
   }
@@ -578,7 +578,7 @@ bdmBitBashReadByte (struct BDM *self, struct BDMioctl *ioc)
   ioc->value = w;
   
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadByte : *0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+    PRINTF ("bdmBitBashReadByte : *0x%08lx = 0x%02lx\n", ioc->address, (ioc->value & 0xff));
   return 0;
 }
 
@@ -591,7 +591,7 @@ bdmBitBashWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
   int err;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteProcessorRegister - reg:%d, val:0x%08x\n",
+    PRINTF ("bdmBitBashWriteProcessorRegister - reg:%ld, val:0x%08lx\n",
             ioc->address & 0xF, ioc->value);
 
   if (((err = bdmDrvSerialClock (self, BDM_WREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
@@ -611,7 +611,7 @@ bdmBitBashWriteLongWord (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteLongWord : 0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("bdmBitBashWriteLongWord : 0x%08lx = 0x%08lx\n", ioc->address, ioc->value);
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_LONG, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
@@ -633,7 +633,7 @@ bdmBitBashWriteWord (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteWord : 0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
+    PRINTF ("bdmBitBashWriteWord : 0x%08lx = 0x%04lx\n", ioc->address, (ioc->value & 0xffff));
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_WORD, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
@@ -654,7 +654,7 @@ bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteByte : 0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+    PRINTF ("bdmBitBashWriteByte : 0x%08lx = 0x%02lx\n", ioc->address, (ioc->value & 0xff));
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
