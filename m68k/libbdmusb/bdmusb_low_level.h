@@ -35,4 +35,5 @@ unsigned char bdmusb_request_boot(int dev);
 unsigned char bdm_usb_recv_ep0(bdmusb_dev *dev, unsigned char * data);
 unsigned char bdm_usb_send_ep0(bdmusb_dev *dev, unsigned char * data);
 
+int bdm_usb_transaction(int dev, unsigned int txSize, unsigned int rxSize, unsigned char *data);
 #endif /* _BDMUSB_LOW_LEVEL_H_ */
