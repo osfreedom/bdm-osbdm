@@ -39,7 +39,7 @@ static int
 tblcf_get_status (struct BDM *self)
 {
   int            cf_last_running = self->cf_running;
-  bdmcf_status_t bdmcf_status;
+  bdm_status_t   bdm_status;
   int            status = 0;
   unsigned long  csr;
   int            ret;
@@ -48,10 +48,10 @@ tblcf_get_status (struct BDM *self)
    * TBLCF does not report target power.
    */
 
-  if (bdmusb_bdm_sts (self->usbDev, &bdmcf_status))
+  if (bdmusb_bdm_sts (self->usbDev, &bdm_status))
     status = BDM_TARGETNC;
   else {
-    if (bdmcf_status.reset_detection == RESET_DETECTED)
+    if (bdm_status.reset_recent == RESET_DETECTED)
       status |= BDM_TARGETRESET;
   }
   

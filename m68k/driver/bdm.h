@@ -268,10 +268,15 @@ struct BDMioctl {
 /*
  * Coldfire revisions of BDM hardware.
  */
-#define CF_REVISION_A (0)
-#define CF_REVISION_B (1)
-#define CF_REVISION_C (2)
-#define CF_REVISION_D (3)
+#define CF_REVISION_A                (0)
+#define CF_REVISION_B                (1)
+#define CF_REVISION_C                (2)
+#define CF_REVISION_D                (3)
+#define CF_REVISION_E                (4)
+#define CF_REVISION_B_PLUS           (3)
+#define CF_REVISION_D_PLUS           (3)
+#define CF_REVISION_D_PLUS_PST_BUFF  (3)
+
 
 /*
  * Default debug level.
