@@ -35,7 +35,7 @@ unsigned int osbdm_dev_count;
 unsigned int usb_dev_count;
 bdmusb_dev    *usb_devs;
 
-static unsigned char usb_data[MAX_DATA_SIZE+2];
+unsigned char usb_data[MAX_DATA_SIZE+2];
 
 /*
  * The lits of devices.
@@ -71,6 +71,7 @@ void bdmusb_close(int dev) {
     if (usb_devs[dev].type == P_USBDM_V2)
       bdmusb_set_target_type(dev, T_OFF);
     bdmusb_usb_close(dev);
+    libusb_exit(NULL);
 }
 
 /* find all TBLCF devices attached to the computer */
@@ -158,12 +159,12 @@ void bdmusb_find_supported_devices(void) {
 		  usbmd_version_t usbdm_version;
 		  pod_type_e old_type;
 		  udev->dev_ref = bdmusb_usb_open(udev->name);
-		  /* Try first with the USBDM. */
+		  // Try first with the USBDM. 
 		  old_type = udev->type;
 		  udev->type = P_USBDM;
 		  bdmusb_get_version(udev, &usbdm_version);
 		  
-		  /* Know what version we have*/
+		  // Know what version we have
 		  if (usbdm_version.bdm_soft_ver <= 0x10)
 		      udev->type = P_OSBDM;
 		  else if (usbdm_version.bdm_soft_ver <= 0x15)
@@ -248,6 +249,8 @@ void bdmusb_dev_name(int dev, char *name, int namelen) {
 
 /* returns status of the last command: 0 on sucess and non-zero on failure */
 unsigned char bdmusb_get_last_sts_value(int dev) {
+    int ret_val;
+    
     usb_data[0]=1;	 /* get 1 byte */
     switch (usb_devs[dev].type) {
       case P_OSBDM:
@@ -255,7 +258,8 @@ unsigned char bdmusb_get_last_sts_value(int dev) {
 	break;
       case P_USBDM:
       case P_USBDM_V2:
-	return BDM_RC_ILLEGAL_COMMAND;
+	usb_data[0]=0;
+	usb_data[1]=CMD_USBDM_GET_COMMAND_RESPONSE;
 	break;
       case P_NONE:
       case P_TBDML:
@@ -264,8 +268,11 @@ unsigned char bdmusb_get_last_sts_value(int dev) {
 	usb_data[1]=CMD_TBLCF_GET_LAST_STATUS;
 	break;
     };
-    usb_data[1]=(usb_devs[dev].type==P_TBLCF)?CMD_TBLCF_GET_LAST_STATUS:CMD_OSBDM_GET_LAST_STATUS;
-    bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 2, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     bdm_print("BDMUSB_GET_LAST_STATUS: Reported last command status 0x%02X\r\n",usb_data[0]);
     return usb_data[0];
 }
@@ -273,7 +280,8 @@ unsigned char bdmusb_get_last_sts_value(int dev) {
 /* sets target MCU type */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
-    unsigned char ret_val;
+    int ret_val;
+
     usb_data[0]=1;	 /* get 1 byte */
     switch (usb_devs[dev].type) {
       case P_OSBDM:
@@ -281,6 +289,7 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
 	break;
       case P_USBDM:
       case P_USBDM_V2:
+	usb_data[0]=0;
 	usb_data[1]= CMD_USBDM_SET_TARGET;
 	break;
       case P_NONE:
@@ -291,13 +300,22 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
 	break;
     };
     usb_data[2]=target_type;
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 3, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     if (ret_val == BDM_RC_OK) {
       bdm_print("BDMUSB_SET_TARGET_TYPE: Set target type 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
       if (usb_devs[dev].type==P_TBLCF) 
 	ret_val = !(usb_data[0]==CMD_TBLCF_SET_TARGET);
-    } else 
+    } else {
       bdm_print("BDMUSB_SET_TARGET_TYPE - Error %d \r\n",ret_val);
+      if (ret_val == BDM_RC_VDD_NOT_PRESENT) {
+	  bdm_print("USBDM_SetTargetTypeWithRetry(): The target appears to have no power.\n");
+	    //break;
+      }
+    }
     
     return(ret_val);
 }
@@ -305,7 +323,7 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type) {
 /* resets the target to normal or BDM mode */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
-    unsigned char ret_val;
+    int ret_val;
     usb_data[0]=1;	 /* get 1 byte */
     switch (usb_devs[dev].type) {
       case P_OSBDM:
@@ -313,6 +331,7 @@ unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
 	break;
       case P_USBDM:
       case P_USBDM_V2:
+	usb_data[0]=0;
 	usb_data[1]= CMD_USBDM_TARGET_RESET;
 	break;
       case P_NONE:
@@ -323,7 +342,12 @@ unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
 	break;
     };
     usb_data[2]=target_mode;
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 3, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
     if (ret_val == BDM_RC_OK) {
 	bdm_print("BDMUSB_TARGET_RESET: Target reset into mode 0x%02X (0x%02X)\r\n",usb_data[2],usb_data[0]);
 	if (usb_devs[dev].type==P_TBLCF) 
@@ -337,7 +361,7 @@ unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode) {
 /* fills user supplied structure with current state of the BDM communication channel */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
-    unsigned char ret_val;
+    int ret_val;
     unsigned int temp_state;
     usb_data[0]=3;	 /* get 3 bytes */
     switch (usb_devs[dev].type) {
@@ -346,6 +370,7 @@ unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
 	  break;
       case P_USBDM:
       case P_USBDM_V2:
+	  usb_data[0]=0;
 	  usb_data[1]=CMD_USBDM_GET_BDM_STATUS;
 	  break;
       case P_NONE:
@@ -356,7 +381,12 @@ unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
 	  break;
     }
     
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 2, 3, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
     /* Analyze the response */
     if (ret_val == BDM_RC_OK) {
       temp_state = usb_data[1]*256+usb_data[2];
@@ -442,7 +472,7 @@ unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status) {
 /* brings the target into BDM mode */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_target_halt(int dev) {
-    unsigned char ret_val;
+    int ret_val;
     usb_data[0]=1;	 /* get 1 byte */
     switch (usb_devs[dev].type) {
       case P_OSBDM:
@@ -450,6 +480,7 @@ unsigned char bdmusb_target_halt(int dev) {
 	break;
       case P_USBDM:
       case P_USBDM_V2:
+	usb_data[0]=0;
 	usb_data[1]= CMD_USBDM_TARGET_HALT;
 	break;
       case P_NONE:
@@ -459,7 +490,11 @@ unsigned char bdmusb_target_halt(int dev) {
 	usb_data[1]=CMD_TBLCF_TARGET_HALT;
 	break;
     };
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 2, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     bdm_print("BDMUSB_TARGET_HALT: (0x%02X)\r\n",usb_data[0]);
     //return(!(usb_data[0]==CMD_HALT));
     return ret_val;
@@ -468,22 +503,28 @@ unsigned char bdmusb_target_halt(int dev) {
 /* starts target execution from current PC address */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_target_go(int dev) {
-    unsigned char ret_val;
+    int ret_val;
     usb_data[0]=1;	 /* get 1 byte */
+    usb_data[1]=CMD_USBDM_TARGET_GO;
     switch (usb_devs[dev].type) {
       case P_OSBDM:
 	usb_data[1]=CMD_OSBDM_GO;
 	break;
       case P_USBDM:
       case P_USBDM_V2:
+	usb_data[0]=0;
+	break;
       case P_NONE:
       case P_TBDML:
       case P_TBLCF:
       default: 
-	usb_data[1]=CMD_USBDM_TARGET_GO;
 	break;
     };
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 2, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     bdm_print("BDMUSB_TARGET_GO: (0x%02X)\r\n",usb_data[0]);
     //return(!(usb_data[0]==CMD_GO));
     return ret_val;
@@ -492,7 +533,7 @@ unsigned char bdmusb_target_go(int dev) {
 /* steps over a single target instruction */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_target_step(int dev) {
-    unsigned char ret_val;
+    int ret_val;
     usb_data[0]=1;	 /* get 1 byte */
     switch (usb_devs[dev].type) {
       case P_OSBDM:
@@ -500,6 +541,7 @@ unsigned char bdmusb_target_step(int dev) {
 	break;
       case P_USBDM:
       case P_USBDM_V2:
+	usb_data[0]=0;
 	usb_data[1]=CMD_USBDM_TARGET_STEP;
 	break;
       case P_NONE:
@@ -510,7 +552,11 @@ unsigned char bdmusb_target_step(int dev) {
 	break;
     };
     
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 2, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
     bdm_print("BDMUSB_TARGET_STEP: (0x%02X)\r\n",usb_data[0]);
     //return(!(usb_data[0]==CMD_STEP));
     return ret_val;
@@ -519,7 +565,7 @@ unsigned char bdmusb_target_step(int dev) {
 /* reads control register at the specified address and writes its contents into the supplied buffer */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_read_creg(int dev, unsigned int address, unsigned long int* result) {
-    unsigned char ret_val;
+    int ret_val;
     
     usb_data[0]=5;	 /* get 5 bytes */
     usb_data[2]=(address>>8)&0xff;	/* address in big endian */
@@ -527,14 +573,17 @@ unsigned char bdmusb_read_creg(int dev, unsigned int address, unsigned long int*
     
     switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
+	    usb_data[0]=0; 
 	    usb_data[1]=CMD_USBDM_READ_CREG;
+	    // Initialize the return value
+	    //*result = 0xAAAA;
 	    break;
 	case P_TBLCF:
 	    usb_data[1]=CMD_TBLCF_READ_CREG;
 	    break;
-	case P_OSBDM:
 	case P_USBDM:
-	    usb_data[0]=5;	 /* get 5 bytes */
+	    usb_data[0]=0;
+	case P_OSBDM:
 	    usb_data[1]=CMD_CF_READ_CREG;
 	    usb_data[2]=address;
 	    break;
@@ -543,13 +592,31 @@ unsigned char bdmusb_read_creg(int dev, unsigned int address, unsigned long int*
 	default:
 	    break;
     };
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
-    *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];	/* result is in big endian */
-    if ( (usb_devs[dev].type == P_OSBDM) || (usb_devs[dev].type == P_USBDM) ) {
-      *result = *((uint32_t *)(usb_data+1)); // Coldfire register
+    
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 4, 5, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
+    if (ret_val == BDM_RC_OK) {
+      *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];	/* result is in big endian */
+      switch (usb_devs[dev].type) {
+	  case P_USBDM_V2:
+	      break;
+	  case P_TBLCF:
+	      *result = (unsigned long int)(*result);
+	      break;
+	  case P_USBDM:
+	  case P_OSBDM:
+	      *result = *((uint32_t *)(usb_data+1)); // Coldfire register
+	      break;
+	  case P_NONE:
+	  case P_TBDML:
+	  default:
+	      break;
+      };
     }
-    if (usb_devs[dev].type == P_TBLCF)
-      *result = (unsigned long int)(*result); 
     bdm_print("BDMUSB_READ_CREG: Read control register from address 0x%04X, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
     //return(!(usb_data[0]==CMD_READ_CREG));
     return ret_val;
@@ -557,6 +624,8 @@ unsigned char bdmusb_read_creg(int dev, unsigned int address, unsigned long int*
 
 /* writes control register at the specified address */
 void bdmusb_write_creg(int dev, unsigned int address, unsigned long int value) {
+    int ret_val;
+    
     usb_data[0]=6;	 /* send 6 bytes */
     usb_data[2]=(uint8_t)address&0xff;
     usb_data[3]=(uint8_t)(value>>24)&0xff;
@@ -566,7 +635,7 @@ void bdmusb_write_creg(int dev, unsigned int address, unsigned long int value) {
     
     switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
-	    usb_data[0]=8;	 /* send 8 bytes */
+	    usb_data[0]=0;
 	    usb_data[1]=CMD_USBDM_WRITE_CREG;
 	    usb_data[2]=(uint8_t)(address>>8)&0xff;	/* address in big endian */
 	    usb_data[3]=(uint8_t)address&0xff;
@@ -591,7 +660,12 @@ void bdmusb_write_creg(int dev, unsigned int address, unsigned long int value) {
     };
     
     bdm_print("BDMUSB_WRITE_CREG: Write control register at address 0x%04X with 0x%08lX\r\n",address,value);
-    bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    //bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
     // Do handshake?
     //tt[0] = 1;  /* receive 1 byte */
     //tt[1] = CMD_GET_LAST_STATUS;
@@ -602,14 +676,15 @@ void bdmusb_write_creg(int dev, unsigned int address, unsigned long int value) {
 /* reads the specified debug register and writes its contents into the supplied buffer */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_read_dreg(int dev, unsigned int dreg_index, unsigned long int * result) {
-    unsigned char ret_val;
+    int ret_val;
     
     usb_data[0]=5;	 /* get 5 bytes */
     usb_data[2]=(unsigned char)dreg_index;
     
     switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
-	    usb_data[1]=CMD_TBLCF_READ_DREG;
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_READ_DREG;
 	    usb_data[2]=(dreg_index>>8)&0xff;
 	    usb_data[3]=dreg_index&0xff;
 	    break;
@@ -626,8 +701,14 @@ unsigned char bdmusb_read_dreg(int dev, unsigned int dreg_index, unsigned long i
 	default:
 	    break;
     };
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
-    *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];	/* result is in big endian */
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 4, 5, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
+    if (ret_val == BDM_RC_OK)
+      *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];	/* result is in big endian */
     bdm_print("BDMUSB_READ_DREG: Read debug register #0x%02X, result: 0x%08lX (0x%02X)\r\n",
 	dreg_index,*result,usb_data[0]);
     return ret_val;
@@ -635,6 +716,7 @@ unsigned char bdmusb_read_dreg(int dev, unsigned int dreg_index, unsigned long i
 
 /* writes specified debug register */
 void bdmusb_write_dreg(int dev, unsigned int dreg_index, unsigned long int value) {
+    int ret_val;
     
     usb_data[0]=6;	 /* send 6 bytes */
     usb_data[2]=dreg_index&0xff;
@@ -645,7 +727,7 @@ void bdmusb_write_dreg(int dev, unsigned int dreg_index, unsigned long int value
     
     switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
-	    usb_data[0]=8;	 /* send 8 bytes */
+	    usb_data[0]=0;
 	    usb_data[1]=CMD_USBDM_WRITE_DREG;
 	    usb_data[2]=(dreg_index>>8)&0xff;
 	    usb_data[3]=dreg_index&0xff;
@@ -668,19 +750,24 @@ void bdmusb_write_dreg(int dev, unsigned int dreg_index, unsigned long int value
     };
 	
     bdm_print("BDMUSB_WRITE_DREG: Write debug register #0x%02X with 0x%08lX\r\n",dreg_index,value);
-    bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    //bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
 
 /* reads the specified register and writes its contents into the supplied buffer */
 /* returns 0 on success and non-zero on failure */
 unsigned char bdmusb_read_reg(int dev, unsigned int reg_index, unsigned long int * result) {
-    unsigned char ret_val;
+    int ret_val;
   
       usb_data[0]=5;	 /* get 5 bytes */
       usb_data[2]=reg_index;
       
       switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
+	    usb_data[0]=0;
 	    usb_data[1]=CMD_USBDM_READ_REG;
 	    usb_data[2]=(reg_index>>8)&0xff;
 	    usb_data[3]=reg_index&0xff;
@@ -697,7 +784,13 @@ unsigned char bdmusb_read_reg(int dev, unsigned int reg_index, unsigned long int
 	default:
 	    break;
     };
-    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
+    //ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 4, 5, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
     *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];	/* result is in big endian */
     bdm_print("BDMUSB_READ_REG: Read register #0x%02X, result: 0x%08lX (0x%02X)\r\n",
 	  reg_index,*result,usb_data[0]);
@@ -707,6 +800,8 @@ unsigned char bdmusb_read_reg(int dev, unsigned int reg_index, unsigned long int
 
 /* writes specified register */
 void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value) {
+    int ret_val;
+    
     usb_data[0]=6;	 /* send 6 bytes */
     usb_data[2]=reg_index&0xff;
     usb_data[3]=(value>>24)&0xff;
@@ -716,7 +811,7 @@ void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value) 
     
     switch (usb_devs[dev].type) {
 	case P_USBDM_V2:
-	    usb_data[0]=8;	 /* send 8 bytes */
+	    usb_data[0]=0;
 	    usb_data[1]=CMD_USBDM_WRITE_REG;
 	    usb_data[2]=(reg_index>>8)&0xff;
 	    usb_data[3]=reg_index&0xff;
@@ -738,5 +833,9 @@ void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value) 
 	    break;
     };
     bdm_print("BDMUSB_WRITE_REG: Write register #0x%02X with 0x%08lX\r\n",reg_index,value);
-    bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    //bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }

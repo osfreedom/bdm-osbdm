@@ -75,6 +75,10 @@ unsigned char bdmusb_set_target_type(int dev, target_type_e target_type);
  * on failure */
 unsigned char bdmusb_target_reset(int dev, target_mode_e target_mode);
 
+/* fills user supplied structure with current state of the BDM communication
+ * channel; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_bdm_sts(int dev, bdm_status_t *bdm_status);
+
 /* brings the target into BDM mode; returns 0 on success and non-zero on
  * failure */
 unsigned char bdmusb_target_halt(int dev);
