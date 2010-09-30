@@ -39,7 +39,7 @@ main (int argc, char *argv[])
   int debug = 0;
   char name[128];
 
-  printf ("TBLCF Turbo BDM Light ColdFire Show\n\n");
+  printf ("BDMUSB Show\n\n");
 
   while ((c = getopt(argc, argv, "d:")) != -1)
   {
