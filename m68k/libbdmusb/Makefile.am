@@ -63,4 +63,5 @@ libbdmusb_a_SOURCES = \
 	bdmusb_low_level.c \
 	tblcf/tblcf.c \
 	tblcf/tblcf_usb.c \
+	usbdm/usbdm.c \
 	log.c
