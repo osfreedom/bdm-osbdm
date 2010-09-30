@@ -154,26 +154,8 @@ void bdmusb_find_supported_devices(void) {
               snprintf(udev->name, sizeof(udev->name), "%03d-%03d", udev->bus_number, udev->device_address);
               usb_dev_count++;
 	      
-	      /* Check the USBDM/OSBDM version */
-	      if ( (udev->desc.idVendor == OSBDM_VID) && (udev->desc.idProduct==OSBDM_PID) ) {
-		  usbmd_version_t usbdm_version;
-		  pod_type_e old_type;
-		  udev->dev_ref = bdmusb_usb_open(udev->name);
-		  // Try first with the USBDM. 
-		  old_type = udev->type;
-		  udev->type = P_USBDM;
-		  bdmusb_get_version(udev, &usbdm_version);
-		  
-		  // Know what version we have
-		  if (usbdm_version.bdm_soft_ver <= 0x10)
-		      udev->type = P_OSBDM;
-		  else if (usbdm_version.bdm_soft_ver <= 0x15)
-		      udev->type = P_USBDM;
-		  else
-		      udev->type = P_USBDM_V2;
-		  
-		  bdmusb_usb_close(udev->dev_ref);
-	      }
+	      /* Force USBDM device */
+	      udev->type = P_USBDM;
           }
       }
   }

@@ -246,8 +246,51 @@ bdm_usb_open (const char *device, bdm_iface** iface)
             self->delayTimer = 0;
       
             bdm_tblcf_init_self (self);
-
-            *iface = &usbIface;
+	    
+	    *iface = &usbIface;
+	    
+	    /* Check the USBDM/OSBDM version */
+	    bdmusb_dev *udev = &usb_devs[self->usbDev];
+	    //if ( (udev->desc.idVendor == OSBDM_VID) && (udev->desc.idProduct==OSBDM_PID) ) {
+	    if (udev->type == P_USBDM) {
+		usbmd_version_t usbdm_version;
+		
+		pod_type_e old_type;
+		//udev->dev_ref = bdmusb_usb_open(udev->name);
+		// Try first with the USBDM. 
+		old_type = udev->type;
+		udev->type = P_USBDM_V2;
+		bdmusb_get_version(udev, &usbdm_version);
+		
+		// Know what version we have
+		if (usbdm_version.bdm_soft_ver <= 0x10)
+		    udev->type = P_OSBDM;
+		else if (usbdm_version.bdm_soft_ver <= 0x15)
+		    udev->type = P_USBDM;
+		else
+		    udev->type = P_USBDM_V2;
+		
+		udev->use_only_ep0 = (usbdm_version.icp_hw_ver & 0xC0) == 0;
+		//bdmusb_usb_close(udev->dev_ref);
+		
+		udev->target = targetType;
+		
+		/* Get the hw capabilities */
+		usbdm_get_capabilities(udev);
+		
+		if (bdmusb_set_target_type(udev->dev_ref, targetType) == 0)
+		    self->cf_running = 1;
+		else {
+		    //bdm_usb_close(udev->dev_ref);
+		    return -1;
+		}
+		
+		// Try to connect
+		usbdm_connect(udev->dev_ref);
+	    }
+	    
+	    // Now init the HW
+	    self->init_hardware(self);
             
             return 0;
           }
