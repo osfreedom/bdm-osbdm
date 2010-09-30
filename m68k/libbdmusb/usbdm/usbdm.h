@@ -17,13 +17,13 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+#ifndef USBDM_H
+#define USBDM_H
 
-/** Structure to hold version information for BDM
-  * @note bdmHardwareVersion should always equal icpHardwareVersion
-  */
-typedef struct {
-   unsigned char bdm_soft_ver; /**< Version of USBDM Firmware */
-   unsigned char bdm_hw_ver; /**< Version of USBDM Hardware */
-   unsigned char icp_soft_ver; /**< Version of ICP bootloader Firmware */
-   unsigned char icp_hw_ver; /**< Version of Hardware (reported by ICP code) */
-} usbmd_version_t;
+#include "../bdmusb.h"
+
+unsigned char usbdm_get_capabilities(bdmusb_dev* dev);
+unsigned char usbdm_set_options(bdmusb_dev* dev);
+//unsigned char usbdm_set_speed( bdmusb_dev* dev);
+unsigned char usbdm_connect(int dev);
+#endif /* USBDM_H */
