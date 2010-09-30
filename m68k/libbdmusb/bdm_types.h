@@ -39,22 +39,16 @@ typedef enum {
 	P_USBDM_V2 = 5,     /** - USBDM v2 */
 } pod_type_e;
 
-/*
- * Manage the USB devices we have connected.
- */
-typedef struct bdmusb_dev_s {
-  int                             dev_ref;
-  pod_type_e                      type;
-  libusb_device                   *device;
-  libusb_device_handle            *handle;
-  struct libusb_device_descriptor desc;
-  uint8_t                         bus_number;
-  uint8_t                         device_address;
-  char                            name[16]; /* 0000-0000 is 4 + 1 4 + 1 = 10 */
-} bdmusb_dev;
+/** Capabilities of the hardware */
+typedef enum  {
+   BDM_CAP_NONE             = (0),
+   BDM_CAP_RESET            = (1<<0),   /**< - RESET can be driven/sensed (HC12 support) */
+   BDM_CAP_FLASH            = (1<<1),   /**< - 12 V Flash programming supply available (RS08 support) */
+   BDM_CAP_VDDCONTROL       = (1<<2),   /**< - Control over target Vdd */
+   BDM_CAP_VDDSENSE         = (1<<3),   /**< - Sensing of target Vdd */
+   BDM_CAP_CFVx             = (1<<4),   /**< - Support for CFV 1,2 & 3 */
+} target_hw_cap_type_e;
 
-
-#define WRITE_BLOCK_CHECK /* Keep on. CCJ */
 
 /** Type of BDM target */
 typedef enum {
@@ -67,6 +61,62 @@ typedef enum {
 	T_EZFLASH  = 6,     /** - EzPort Flash interface (SPI?) */
 	T_OFF      = 0xFF,  /** - Turn off interface (no target) */
 } target_type_e;
+
+/** USBDM interface options */
+typedef struct {
+   // Options passed to the BDM
+   int  targetVdd;                /**< - Target Vdd (off, 3.3V or 5V) */
+   int  cycleVddOnReset;          /**< - Cycle target Power  when resetting */
+   int  cycleVddOnConnect;        /**< - Cycle target Power if connection problems) */
+   int  leaveTargetPowered;       /**< - Leave target power on exit */
+   int  autoReconnect;            /**< - Automatically re-connect to target (for speed change) */
+   int  guessSpeed;               /**< - Guess speed for target w/o ACKN */
+   int  useAltBDMClock;           /**< - Use alternative BDM clock source in target */
+   int  useResetSignal;           /**< - Whether to use RESET signal on BDM interface */
+   int  reserved1[3];             /**< - Reserved */
+
+   // Options used internally by DLL
+   int  manuallyCycleVdd;         /**< - Prompt user to manually cycle Vdd on connection problems */
+   int  derivative_type;          /**< - RS08 Derivative */
+   int  targetClockFreq;          /**< - RS08 - Clock sync value to trim to (0 indicates no trim value supplied).\n */
+                                  /**< - CFVx - Target clock frequency. \n */
+                                  /**< - Other targets automatically determine clock frequency. */
+   int  miscOptions;              /**< - Various misc options */
+   int  usePSTSignals;            /**< - CFVx, PST Signal monitors */
+   int  reserved2[2];             /**< - Reserved */
+} usbdm_options_type_e;
+
+/** Structure to hold version information for BDM
+  * @note bdmHardwareVersion should always equal icpHardwareVersion
+  */
+typedef struct {
+   unsigned char bdm_soft_ver; /**< Version of USBDM Firmware */
+   unsigned char bdm_hw_ver; /**< Version of USBDM Hardware */
+   unsigned char icp_soft_ver; /**< Version of ICP bootloader Firmware */
+   unsigned char icp_hw_ver; /**< Version of Hardware (reported by ICP code) */
+} usbmd_version_t;
+
+/*
+ * Manage the USB devices we have connected.
+ */
+typedef struct bdmusb_dev_s {
+  int                             dev_ref;
+  int                             use_only_ep0; //Backward compatibility mode for USBDM JS16 models
+  pod_type_e                      type;
+  libusb_device                   *device;
+  libusb_device_handle            *handle;
+  struct libusb_device_descriptor desc;
+  uint8_t                         bus_number;
+  uint8_t                         device_address;
+  char                            name[16]; /* 0000-0000 is 4 + 1 4 + 1 = 10 */
+  /* USBDM specific */
+  target_hw_cap_type_e            hw_cap;
+  target_type_e                   target;
+  usbdm_options_type_e            options;
+} bdmusb_dev;
+
+
+#define WRITE_BLOCK_CHECK /* Keep on. CCJ */
 
 
 /** Type of reset action required */
@@ -151,11 +201,6 @@ typedef enum  {
 } target_vpp_select_type_e;
 
 /** state of BDM communication */
-typedef struct { 
-  	reset_state_e reset_state;
-	reset_detection_e reset_detection;
-} bdmcf_status_t;
-
 typedef struct { 
   target_type_e             target_type;       /**< - Type of target (HCS12, HCS08 etc) */
   ack_mode_type_e           ackn_state;        /**< - Supports ACKN ? */
