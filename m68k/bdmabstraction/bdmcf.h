@@ -132,9 +132,13 @@ enum BDM_IOCTLS {
 
 /* RDMREG/WDMREG */
 #define BDM_REG_CSR    0x0   /* Configuration/Status */
+
 #define BDM_REG_RSRVD1 0x1 
+#define BDM_REG_XCSR   0x1   /* Extended Configuration/Status */
 #define BDM_REG_RSRVD2 0x2
+#define BDM_REG_CSR2   0x2   /* Configuration/Status 2*/
 #define BDM_REG_RSRVD3 0x3
+#define BDM_REG_CSR3   0x3   /* Configuration/Status 3*/
 #define BDM_REG_RSRVD4 0x4
 #define BDM_REG_RSRVD5 0x5
 #define BDM_REG_AATR   0x6   /* Address ATtribute breakpoint Register */

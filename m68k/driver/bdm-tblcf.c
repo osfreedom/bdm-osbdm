@@ -101,6 +101,8 @@ tblcf_init_hardware (struct BDM *self)
 {
   int status;
 
+  struct BDMioctl ioctl_csr2;
+
   /*
    * Swap the swap state as the USB pod will swap.
    *
@@ -132,6 +134,12 @@ tblcf_init_hardware (struct BDM *self)
    */
 
   self->cf_debug_ver = (self->cf_csr >> 20) & 0x0f;
+  /* Read the CSR2 also. */ 
+  ioctl_csr2.address = BDM_REG_CSR2;
+  if ( tblcf_read_sysreg (self, &ioctl_csr2, BDM_SYS_REG_MODE_CONTROL) == 0)
+    if ((ioctl_csr2.value >> 16) & 0x0f)
+      self->cf_debug_ver++; // CFv1
+  
 
   if (self->debugFlag)
     PRINTF (" tblcf_init_hardware: debug version is %d\n", self->cf_debug_ver);
@@ -217,7 +225,9 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     /*
      * Are the registers write only ?
      */
-    if ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address != BDM_REG_CSR)) {
+    if ((mode == BDM_SYS_REG_MODE_MAPPED) && ( (ioc->address != BDM_REG_CSR) && 
+	(ioc->address != BDM_REG_XCSR) && (ioc->address != BDM_REG_CSR2) &&
+	(ioc->address != BDM_REG_CSR3) ) ) {
       ioc->value = self->shadow_sysreg[ioc->address];
       if (self->debugFlag > 1)
         PRINTF (" tblcf_read_sysreg - Reg:0x%x is write only, 0x%08x\n",

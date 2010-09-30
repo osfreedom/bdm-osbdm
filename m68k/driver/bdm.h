@@ -243,7 +243,10 @@ struct BDMioctl {
 #define BDM_REG_ABLR   0x15    /* WR only, Coldfire */
 #define BDM_REG_DBR    0x16    /* WR only, Coldfire */
 #define BDM_REG_DBMR   0x17    /* WR only, Coldfire */
-#define BDM_MAX_SYSREG (BDM_REG_DBMR + 1)
+#define BDM_REG_XCSR   0x18    /* Coldfire V1 */
+#define BDM_REG_CSR2   0x19    /* Coldfire V1 */
+#define BDM_REG_CSR3   0x1A    /* Coldfire V1 */
+#define BDM_MAX_SYSREG (BDM_REG_CSR3 + 1)
 
 /*
  * Register codes for BDM_READ_REG/BDM_WRITE_REG ioctls

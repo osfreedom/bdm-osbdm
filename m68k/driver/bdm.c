@@ -187,7 +187,7 @@ static int mustSwap;
  * For a RCREG 0x1 is invalid.
  */
 
-static int cf_sysreg_map[BDM_REG_DBMR + 1] =
+static int cf_sysreg_map[BDM_MAX_SYSREG] =
 { 0x80f,    /* BDM_REG_RPC      */
   -1,       /* BDM_REG_PCC      */
   0x80e,    /* BDM_REG_SR       */
@@ -211,7 +211,10 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
   0xc,      /* BDM_REG_ABHR     */
   0xd,      /* BDM_REG_ABLR     */
   0xe,      /* BDM_REG_DBR      */
-  0xf       /* BDM_REG_DBMR     */
+  0xf,      /* BDM_REG_DBMR     */
+  0x1,      /* BDM_REG_XCSR     */
+  0x2,      /* BDM_REG_CSR2     */
+  0x3       /* BDM_REG_CSR3     */
 };
 
 /*
