@@ -32,7 +32,7 @@
 /* define symbol "LOG" during compilation to produce a log file tblcf_dll.log */
 
 //static unsigned char usb_data[MAX_DATA_SIZE+2];
-static unsigned char usb_data[MAX_DATA_SIZE+2];
+extern unsigned char usb_data[MAX_DATA_SIZE+2];
 
 /* returns version of the DLL in BCD format */
 unsigned char tblcf_version(void) {
