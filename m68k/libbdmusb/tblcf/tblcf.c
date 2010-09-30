@@ -72,7 +72,7 @@ unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us) {
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_read_mem8(int dev, unsigned long int address, unsigned char * result) {
 	usb_data[0]=2;	 /* get 2 bytes */
-	usb_data[1]=CMD_READ_MEM8;
+	usb_data[1]=CMD_TBLCF_READ_MEM8;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -81,14 +81,14 @@ unsigned char tblcf_read_mem8(int dev, unsigned long int address, unsigned char 
 	*result = usb_data[1];
 	bdm_print("TBLCF_READ_MEM8: Read byte from address 0x%08lX, result: 0x%02X (0x%02X)\r\n",
               address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_READ_MEM8));
+	return(!(usb_data[0]==CMD_TBLCF_READ_MEM8));
 }
 
 /* reads word from the specified address */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_read_mem16(int dev, unsigned long int address, unsigned int * result) {
 	usb_data[0]=3;	 /* get 3 bytes */
-	usb_data[1]=CMD_READ_MEM16;
+	usb_data[1]=CMD_TBLCF_READ_MEM16;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -97,14 +97,14 @@ unsigned char tblcf_read_mem16(int dev, unsigned long int address, unsigned int 
 	*result = ((unsigned int)usb_data[1]<<8)+usb_data[2];
 	bdm_print("TBLCF_READ_MEM16: Read word from address 0x%08lX, result: 0x%04X (0x%02X)\r\n",
               address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_READ_MEM16));
+	return(!(usb_data[0]==CMD_TBLCF_READ_MEM16));
 }
 
 /* reads long word from the specified address */
 /* returns 0 on success and non-zero on failure */
 unsigned char tblcf_read_mem32(int dev, unsigned long int address, unsigned long int * result) {
 	usb_data[0]=5;	 /* get 5 bytes */
-	usb_data[1]=CMD_READ_MEM32;
+	usb_data[1]=CMD_TBLCF_READ_MEM32;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -112,13 +112,13 @@ unsigned char tblcf_read_mem32(int dev, unsigned long int address, unsigned long
 	tblcf_usb_recv_ep0(dev, usb_data);
 	*result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
 	bdm_print("TBLCF_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_READ_MEM32));
+	return(!(usb_data[0]==CMD_TBLCF_READ_MEM32));
 }
 
 /* writes byte at the specified address */
 void tblcf_write_mem8(int dev, unsigned long int address, unsigned char value) {
 	usb_data[0]=6;	 /* send 6 bytes */
-	usb_data[1]=CMD_WRITE_MEM8;
+	usb_data[1]=CMD_TBLCF_WRITE_MEM8;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -131,7 +131,7 @@ void tblcf_write_mem8(int dev, unsigned long int address, unsigned char value) {
 /* writes word at the specified address */
 void tblcf_write_mem16(int dev, unsigned long int address, unsigned int value) {
 	usb_data[0]=7;	 /* send 7 bytes */
-	usb_data[1]=CMD_WRITE_MEM16;
+	usb_data[1]=CMD_TBLCF_WRITE_MEM16;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -145,7 +145,7 @@ void tblcf_write_mem16(int dev, unsigned long int address, unsigned int value) {
 /* writes long word at the specified address */
 void tblcf_write_mem32(int dev, unsigned long int address, unsigned long int value) {
 	usb_data[0]=9;	 /* send 9 bytes */
-	usb_data[1]=CMD_WRITE_MEM32;
+	usb_data[1]=CMD_TBLCF_WRITE_MEM32;
 	usb_data[2]=(address>>24)&0xff;
 	usb_data[3]=(address>>16)&0xff;
 	usb_data[4]=(address>>8)&0xff;
@@ -167,7 +167,7 @@ unsigned char tblcf_read_block8(int dev, unsigned long int address,
 	bdm_print("TBLCF_READ_BLOCK8: Read 0x%08lX byte(s) from address 0x%08lX:\r\n",bytecount,address);
 	while (bytecount>=MAX_DATA_SIZE) {
 		usb_data[0]=MAX_DATA_SIZE+1;	 /* receive block of maximum size */
-		usb_data[1]=CMD_READ_MEMBLOCK8;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK8;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -175,14 +175,14 @@ unsigned char tblcf_read_block8(int dev, unsigned long int address,
 		tblcf_usb_recv_ep0(dev, usb_data);
 		bdm_print("TBLCF_READ_BLOCK8: Block read, size 0x%02X (0x%02X):\r\n",MAX_DATA_SIZE,usb_data[0]);
 		bdm_print_dump(usb_data+1, MAX_DATA_SIZE);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK8) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK8) return(1);
 		for (i=0;i<MAX_DATA_SIZE;i++) *(buffer++)=usb_data[1+i];	/* copy results */
 		bytecount-=MAX_DATA_SIZE;
 		address+=MAX_DATA_SIZE;
 	}
 	if (bytecount) {
 		usb_data[0]=bytecount+1;
-		usb_data[1]=CMD_READ_MEMBLOCK8;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK8;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -190,7 +190,7 @@ unsigned char tblcf_read_block8(int dev, unsigned long int address,
 		tblcf_usb_recv_ep0(dev, usb_data);
 		bdm_print("TBLCF_READ_BLOCK8: Block read, size 0x%02X (0x%02X):\r\n",bytecount,usb_data[0]);
 		bdm_print_dump(usb_data+1, bytecount);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK8) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK8) return(1);
 		for (i=0;i<bytecount;i++) *(buffer++)=usb_data[1+i];	/* copy results */
 	}
 	return(0);
@@ -213,7 +213,7 @@ unsigned char tblcf_read_block16(int dev, unsigned long int address,
 	}
 	while (bytecount>=(MAX_DATA_SIZE&0xfffe)) {
 		usb_data[0]=(MAX_DATA_SIZE&0xfffe)+1;	 /* receive block of maximum size */
-		usb_data[1]=CMD_READ_MEMBLOCK16;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK16;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -224,13 +224,13 @@ unsigned char tblcf_read_block16(int dev, unsigned long int address,
 		for (i=0;i<(MAX_DATA_SIZE&0xfffe);i++) *(buffer++)=usb_data[1+i];	/* copy results */
 		bytecount-=(MAX_DATA_SIZE&0xfffe);
 		address+=(MAX_DATA_SIZE&0xfffe);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK16) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK16) return(1);
 
 	}
 	if (bytecount) {
 		usb_data[0]=bytecount+1;
 		if ((bytecount&0x01)==1) usb_data[0]++;		/* increase the number of bytes to return to a whole number of words */
-		usb_data[1]=CMD_READ_MEMBLOCK16;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK16;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -238,7 +238,7 @@ unsigned char tblcf_read_block16(int dev, unsigned long int address,
 		tblcf_usb_recv_ep0(dev, usb_data);
 		bdm_print("TBLCF_READ_BLOCK16: Block read, size 0x%02X (0x%02X):\r\n",bytecount,usb_data[0]);
 		bdm_print_dump(usb_data+1, bytecount);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK16) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK16) return(1);
 		for (i=0;i<bytecount;i++) *(buffer++)=usb_data[1+i];	/* copy results */
 	}
 	return(0);
@@ -268,7 +268,7 @@ unsigned char tblcf_read_block32(int dev, unsigned long int address,
 	}
 	while (bytecount>=(MAX_DATA_SIZE&0xfffc)) {
 		usb_data[0]=(MAX_DATA_SIZE&0xfffc)+1;	 /* receive block of maximum size */
-		usb_data[1]=CMD_READ_MEMBLOCK32;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK32;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -279,13 +279,13 @@ unsigned char tblcf_read_block32(int dev, unsigned long int address,
 		for (i=0;i<(MAX_DATA_SIZE&0xfffc);i++) *(buffer++)=usb_data[1+i];	/* copy results */
 		bytecount-=(MAX_DATA_SIZE&0xfffc);
 		address+=(MAX_DATA_SIZE&0xfffc);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK32) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK32) return(1);
 
 	}
 	if (bytecount) {
 		usb_data[0]=bytecount+1;
 		usb_data[0]+=((4-(bytecount&0x03))&0x03);	/* increase the number of bytes to make it a multiple of 4 */
-		usb_data[1]=CMD_READ_MEMBLOCK32;
+		usb_data[1]=CMD_TBLCF_READ_MEMBLOCK32;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -293,7 +293,7 @@ unsigned char tblcf_read_block32(int dev, unsigned long int address,
 		tblcf_usb_recv_ep0(dev, usb_data);
 		bdm_print("TBLCF_READ_BLOCK32: Block read, size 0x%02X (0x%02X):\r\n",bytecount,usb_data[0]);
 		bdm_print_dump(usb_data+1, bytecount);
-		if (usb_data[0]!=CMD_READ_MEMBLOCK32) return(1);
+		if (usb_data[0]!=CMD_TBLCF_READ_MEMBLOCK32) return(1);
 		for (i=0;i<bytecount;i++) *(buffer++)=usb_data[1+i];	/* copy results */
 	}
 	return(0);
@@ -308,7 +308,7 @@ unsigned char tblcf_write_block8(int dev, unsigned long int address,
 	bdm_print("TBLCF_WRITE_BLOCK8: Write 0x%08lX byte(s) to address 0x%08lX:\r\n",bytecount,address);
 	while (bytecount>=MAX_DATA_SIZE) {
 		usb_data[0]=MAX_DATA_SIZE+5;	 /* write block of maximum size */
-		usb_data[1]=CMD_WRITE_MEMBLOCK8;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK8;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -325,7 +325,7 @@ unsigned char tblcf_write_block8(int dev, unsigned long int address,
 	}
 	if (bytecount) {
 		usb_data[0]=bytecount+5;
-		usb_data[1]=CMD_WRITE_MEMBLOCK8;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK8;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -362,7 +362,7 @@ unsigned char tblcf_write_block16(int dev, unsigned long int address,
 	}
 	while (bytecount>=(MAX_DATA_SIZE&0xfffe)) {
 		usb_data[0]=(MAX_DATA_SIZE&0xfffe)+5;	 /* send block of maximum size */
-		usb_data[1]=CMD_WRITE_MEMBLOCK16;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK16;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -380,7 +380,7 @@ unsigned char tblcf_write_block16(int dev, unsigned long int address,
 	if (bytecount>=2) {
 		usb_data[0]=bytecount+5;
 		if ((bytecount&0x01)==1) usb_data[0]--;		/* decrease the number of bytes to write a whole number of words */
-		usb_data[1]=CMD_WRITE_MEMBLOCK16;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK16;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -436,7 +436,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	}
 	while (bytecount>=(MAX_DATA_SIZE&0xfffc)) {
 		usb_data[0]=(MAX_DATA_SIZE&0xfffc)+5;	 /* send block of maximum size */
-		usb_data[1]=CMD_WRITE_MEMBLOCK32;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK32;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;
@@ -454,7 +454,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	if (bytecount>=4) {
 		usb_data[0]=bytecount+5;
 		usb_data[0]-=(bytecount&0x03);			/* decrease the number of bytes to write a whole number of long words */
-		usb_data[1]=CMD_WRITE_MEMBLOCK32;
+		usb_data[1]=CMD_TBLCF_WRITE_MEMBLOCK32;
 		usb_data[2]=(address>>24)&0xff;
 		usb_data[3]=(address>>16)&0xff;
 		usb_data[4]=(address>>8)&0xff;

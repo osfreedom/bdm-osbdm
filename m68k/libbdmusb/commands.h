@@ -140,6 +140,22 @@ typedef enum {
    CMD_TBLCF_READ_DREG             = 46 ,  /**< parameter 8-bit register number to read, returns 32-bit debug module register contents */
    CMD_TBLCF_WRITE_DREG            = 47,   /**< parameter 8-bit register number to write & the 32-bit debug module register contents to be written */
 
+   CMD_TBLCF_READ_MEM8             = 30,  /**< parameter 32bit address, returns 8bit value read from address */
+   CMD_TBLCF_READ_MEM16            = 31,  /**< parameter 32bit address, returns 16bit value read from address */
+   CMD_TBLCF_READ_MEM32            = 32,  /**< parameter 32bit address, returns 32bit value read from address */
+   
+   CMD_TBLCF_READ_MEMBLOCK8        = 33,  /**< parameter 32bit address, returns block of 8bit values read from the address and onwards */
+   CMD_TBLCF_READ_MEMBLOCK16       = 34,  /**< parameter 32bit address, returns block of 16bit values read from the address and onwards */
+   CMD_TBLCF_READ_MEMBLOCK32       = 35,  /**< parameter 32bit address, returns block of 32bit values read from the address and onwards */
+   
+   CMD_TBLCF_WRITE_MEM8            = 36,  /**< parameter 32bit address & an 8-bit value to be written to the address */
+   CMD_TBLCF_WRITE_MEM16           = 37,  /**< parameter 32bit address & a 16-bit value to be written to the address */
+   CMD_TBLCF_WRITE_MEM32           = 38,  /**< parameter 32bit address & a 32-bit value to be written to the address */
+   
+   CMD_TBLCF_WRITE_MEMBLOCK8       = 39,  /**< parameter 32bit address & a block of 8-bit values to be written from the address */
+   CMD_TBLCF_WRITE_MEMBLOCK16      = 40,  /**< parameter 32bit address & a block of 16-bit values to be written from the address */
+   CMD_TBLCF_WRITE_MEMBLOCK32      = 41,  /**< parameter 32bit address & a block of 32-bit values to be written from the address */
+
 /** Generic OSBDM (Compatibility mode) */
    CMD_OSBDM_DEBUG                 =  8,  /**< Debugging commands (parameter determines actual command) @param [2]  Debug command see \ref DebugSubCommands */
    CMD_OSBDM_OPTION                = 10,  /**< Set/clear various options (only has affect after next \ref CMD_SET_TARGET) \n */
@@ -327,23 +343,6 @@ typedef enum  {
 
 /* if command fails, the device responds with command code CMD_FAILED */
 /* if command succeeds, the device responds with the same command number followed by any results as appropriate */
-
-/* CPU related commands */
-#define CMD_READ_MEM8         30 /* parameter 32bit address, returns 8bit value read from address */
-#define CMD_READ_MEM16        31 /* parameter 32bit address, returns 16bit value read from address */
-#define CMD_READ_MEM32        32 /* parameter 32bit address, returns 32bit value read from address */
-
-#define CMD_READ_MEMBLOCK8    33 /* parameter 32bit address, returns block of 8bit values read from the address and onwards */
-#define CMD_READ_MEMBLOCK16   34 /* parameter 32bit address, returns block of 16bit values read from the address and onwards */
-#define CMD_READ_MEMBLOCK32   35 /* parameter 32bit address, returns block of 32bit values read from the address and onwards */
-
-#define CMD_WRITE_MEM8        36 /* parameter 32bit address & an 8-bit value to be written to the address */
-#define CMD_WRITE_MEM16       37 /* parameter 32bit address & a 16-bit value to be written to the address */
-#define CMD_WRITE_MEM32       38 /* parameter 32bit address & a 32-bit value to be written to the address */
-
-#define CMD_WRITE_MEMBLOCK8   39 /* parameter 32bit address & a block of 8-bit values to be written from the address */
-#define CMD_WRITE_MEMBLOCK16  40 /* parameter 32bit address & a block of 16-bit values to be written from the address */
-#define CMD_WRITE_MEMBLOCK32  41 /* parameter 32bit address & a block of 32-bit values to be written from the address */
 
 /* JTAG commands */
 #define CMD_JTAG_GOTORESET    80 /* no parameters, takes the TAP to TEST-LOGIC-RESET state, re-select the JTAG target to take TAP back to RUN-TEST/IDLE */
