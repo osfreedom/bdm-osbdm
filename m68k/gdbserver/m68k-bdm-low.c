@@ -1483,16 +1483,6 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   if (m68k_bdm_debug_level)
     printf_filtered ("m68k-bdm: opening: %s\n", m68k_bdm_dev_name);
   
-  if (bdmOpen (m68k_bdm_dev_name) < 0)
-    m68k_bdm_report_error ();
-
-  if (debug_level > 0) {
-    if (m68k_bdm_debug_level)
-      printf_filtered ("m68k-bdm: set BDM lib debug level: %d\n",
-                       debug_level);
-    bdmSetDebugFlag (debug_level);
-  }
-  
   if (driver_debug_level > 0) {
     if (m68k_bdm_debug_level)
       printf_filtered ("m68k-bdm: set driver debug level: %d\n",
@@ -1500,6 +1490,16 @@ m68k_bdm_create_inferior (char *program, char *argv[])
     bdmSetDriverDebugFlag (driver_debug_level);
   }
   
+  if (debug_level > 0) {
+    if (m68k_bdm_debug_level)
+      printf_filtered ("m68k-bdm: set BDM lib debug level: %d\n",
+                       debug_level);
+    bdmSetDebugFlag (debug_level);
+  }
+  
+  if (bdmOpen (m68k_bdm_dev_name) < 0)
+    m68k_bdm_report_error ();
+
   if (delay > 0) {
     if (bdmSetDelay (delay) < 0)
       m68k_bdm_report_error ();
