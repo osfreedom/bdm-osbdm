@@ -583,6 +583,63 @@ The configurations supported are:
   name and each user in a team can place the actual device they use in the a
   user specific file in their home directory.
 
+ TargetType:
+     "TargetType               CFv1"
+  Selects the Target type. Available targets are: CFv1, CFv2, CFv3
+
+ TargetVdd:
+     "TargetVdd                Off"
+   The USBDM Target Vdd control option(Off, 3.3V or 5 V) default Off
+  
+ CycleTargetVddOnReset:
+     "CycleTargetVddOnReset    Disable"
+   Cycle target Vdd On Reset (1 or 0) default off
+
+ CycleTargetVddOnConnect:
+     "CycleTargetVddOnConnect  Disable"
+   Cycle target Vdd On Connect (1 or 0) default off
+
+ LeaveTargetVddOnExit:
+     "LeaveTargetVddOnExit     Disable"
+    Leave Target Powered on exit (1 or 0) default off
+
+ TargetAutoReconnect:
+     "TargetAutoReconnect      Enable"
+    Automatically re-connect  to Target (1 or 0) default on
+ GuessSpeed:
+     "GuessSpeed               Enable"
+    Guess speed for target w/o ACKN (1 or 0) default on
+
+ AltBDMClock:
+     "AltBDMClock              Disable"
+    Use alternative BDM clock source in target (1 or 0) default off
+
+ UseResetSignal:
+     "UseResetSignal           Enable"
+    Whether to use RESET signal on BDM interface (1 or 0) default on
+
+ ManualCycleVdd:
+     "ManualCycleVdd           Enable"
+    Ask user to manually cycle Vdd on connection problems (1 or 0) default on
+
+ DerivativeType:
+     "DerivativeType           Unused"
+    RS08 Derivative (not used)
+
+ TargetClock:
+     "TargetClock              0"
+    For RS08 devices, it indicates the clock sync value to trim to (0 indicates 
+  no trim value supplied). For CFVx devices, indicates the target clock frequency.
+  Other targets automatically determine clock frequency. By default 500
+
+ UsePSTSignals
+     "UsePSTSignals            Disable"
+    CFVx, use PST/PSTALL to determine run/halt state (1 or 0) default off
+
+ MiscOptions:
+     "MiscOptions              0"
+    Other targets automatically determine clock frequency.
+
 TBLCF USB SUPPORT
 =================
 

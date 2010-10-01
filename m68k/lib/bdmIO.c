@@ -152,6 +152,19 @@ static const char *const regName[] = {
   "A4", "A5", "A6", "A7",
 };
 
+const char *cfg_target_vdd_names[] = {
+  "Off",
+  "3.3V",
+  "5V"
+};
+
+const char *cfg_en_dis_names[] = {
+  "Enable",
+  "Disable"
+};
+
+usbdm_options_type_e usbdm_config_options;
+
 void
 bdmLogSyslog (void)
 {
@@ -584,6 +597,8 @@ usbOpen (const char *name)
   if (bdmNoLastError () && ((fd = bdm_usb_open (name, &iface)) < 0))
     if (errno != ENOENT)
       bdmIO_lastErrorString = bdmStrerror (errno);
+    
+  bdm_usb_set_options(fd, &usbdm_config_options);
 #endif
   return fd;
 }
@@ -623,6 +638,7 @@ bdmOpen (const char *user_name)
 #endif
   char* name = NULL;
   const char* mapping = NULL;
+  usbdm_options_type_e *config_options = &usbdm_config_options;
 
   bdmIO_lastErrorString = bdmNoError;
 
@@ -657,6 +673,204 @@ bdmOpen (const char *user_name)
   {
     bdmIO_lastErrorString = bdmStrerror (ENOMEM);
     return -1;
+  }
+  
+  /*
+   * Getting the USBDM pod config options.
+   */
+  // Target Vdd control (Off, 3.3V or 5 V) default Off
+  while ((mapping = bdmConfigGet ("TargetVdd", mapping)))
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_target_vdd_names[0], strlen (cfg_target_vdd_names[0])) >= 0)
+    {
+      config_options->targetVdd = BDM_TARGET_VDD_OFF;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_vdd_names[1], strlen (cfg_target_vdd_names[1])) >= 0)
+    {
+      config_options->targetVdd = BDM_TARGET_VDD_3V3;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_vdd_names[2], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      config_options->targetVdd = BDM_TARGET_VDD_5V;
+      break;
+    }
+  };
+  
+  // Cycle target Vdd On Reset (1 or 0) default off
+  while ((mapping = bdmConfigGet ("CycleTargetVddOnReset", mapping)))
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->cycleVddOnReset = 1;
+      break;
+    }
+    else
+    {
+      config_options->cycleVddOnReset = 0;
+      break;
+    }
+  };
+  
+  // Cycle target Vdd On Connect (1 or 0) default off
+  while ((mapping = bdmConfigGet ("CycleTargetVddOnConnect", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->cycleVddOnConnect = 1;
+      break;
+    }
+    else
+    {
+      config_options->cycleVddOnConnect = 0;
+      break;
+    }
+  };
+  
+  // Leave Target Powered on exit (1 or 0) default off
+  while ((mapping = bdmConfigGet ("LeaveTargetVddOnExit", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->leaveTargetPowered = 1;
+      break;
+    }
+    else
+    {
+      config_options->leaveTargetPowered = 0;
+      break;
+    }
+  };
+  
+  // Automatically re-connect  to Target (1 or 0) default on
+  while ((mapping = bdmConfigGet ("TargetAutoReconnect", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->autoReconnect = 1;
+      break;
+    }
+    else
+    {
+      config_options->autoReconnect = 0;
+      break;
+    }
+  };
+  
+  // Guess speed for target w/o ACKN (1 or 0) default on
+  while ((mapping = bdmConfigGet ("GuessSpeed", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->guessSpeed = 1;
+      break;
+    }
+    else
+    {
+      config_options->guessSpeed = 0;
+      break;
+    }
+  };
+  
+  // Use alternative BDM clock source in target (1 or 0) default off
+  while ((mapping = bdmConfigGet ("AltBDMClock", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->useAltBDMClock = 1;
+      break;
+    }
+    else
+    {
+      config_options->useAltBDMClock = 0;
+      break;
+    }
+  };
+  
+  // Whether to use RESET signal on BDM interface (1 or 0) default on
+  while ((mapping = bdmConfigGet ("UseResetSignal", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->useResetSignal = 1;
+      break;
+    }
+    else
+    {
+      config_options->useResetSignal = 0;
+      break;
+    }
+  };
+  
+  // Ask user to manually cycle Vdd on connection problems (1 or 0) default on
+  while ((mapping = bdmConfigGet ("ManualCycleVdd", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->manuallyCycleVdd = 1;
+      break;
+    }
+    else
+    {
+      config_options->manuallyCycleVdd = 0;
+      break;
+    }
+  };
+  
+  // RS08 Derivative  - not used
+  /*while ((mapping = bdmConfigGet ("DerivativeType", mapping))) 
+  {
+    config_options->derivative_type;
+  };*/
+  
+  // RS08 - Clock sync value to trim to (0 indicates no trim value supplied).CFVx - Target clock frequency.
+  while ((mapping = bdmConfigGet ("TargetClock", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    config_options->targetClockFreq = atoi(mapping);
+    break;
+  };
+  
+  // Whether to mask interrupts when  stepping (1 or 0) default off
+  while ((mapping = bdmConfigGet ("UsePSTSignals", mapping)))
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->usePSTSignals = 1;
+      break;
+    }
+    else
+    {
+      config_options->usePSTSignals = 0;
+      break;
+    }
+  };
+  
+  // Other targets automatically determine clock frequency.
+  while ((mapping = bdmConfigGet ("MiscOptions", mapping))) 
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_en_dis_names[0], strlen (user_name)) >= 0)
+    {
+      config_options->usePSTSignals = 1;
+      break;
+    }
+    else
+    {
+      config_options->miscOptions = 0;
+      break;
+    }
   }
   
   /*
