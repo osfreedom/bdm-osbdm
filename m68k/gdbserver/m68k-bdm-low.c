@@ -1650,7 +1650,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
 
   add_thread (m68k_bdm_ptid, NULL, m68k_bdm_ptid);
 
-  return 0;
+  return m68k_bdm_ptid;
 }
 
 static int
