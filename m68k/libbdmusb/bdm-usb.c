@@ -134,6 +134,29 @@ static bdm_iface usbIface = {
   .error_str = NULL
 };
 
+int 
+bdm_usb_set_options(int dev_dec, usbdm_options_type_e *cfg_options)
+{
+
+  bdmusb_dev *udev = &usb_devs[dev_dec];
+  
+  /* Set the usbdm configurable options */
+  udev->options.targetVdd = cfg_options->targetVdd;
+  udev->options.cycleVddOnReset = cfg_options->cycleVddOnReset;
+  udev->options.cycleVddOnConnect = cfg_options->cycleVddOnConnect;
+  udev->options.leaveTargetPowered = cfg_options->leaveTargetPowered;
+  udev->options.autoReconnect = cfg_options->autoReconnect;
+  udev->options.guessSpeed = cfg_options->guessSpeed;
+  udev->options.useAltBDMClock = cfg_options->useAltBDMClock;
+  udev->options.useResetSignal = cfg_options->useResetSignal;
+  udev->options.targetClockFreq = cfg_options->targetClockFreq;
+  
+  if (udev->type == P_USBDM_V2)
+    usbdm_set_options(udev);
+  
+  return 0;
+}
+
 int
 bdm_usb_open (const char *device, bdm_iface** iface)
 {
@@ -273,10 +296,41 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		udev->use_only_ep0 = (usbdm_version.icp_hw_ver & 0xC0) == 0;
 		//bdmusb_usb_close(udev->dev_ref);
 		
+		// Set the target type or test it?
+		target_type_e targetType = T_CFV1;
 		udev->target = targetType;
 		
 		/* Get the hw capabilities */
 		usbdm_get_capabilities(udev);
+		
+		/* Set the default configurable options 
+		  "TargetVdd                Off"
+		  "CycleTargetVddOnReset    Disable"
+		  "CycleTargetVddOnConnect  Disable"
+		  "LeaveTargetVddOnExit     Disable"
+		  "TargetAutoReconnect      Enable"
+		  "GuessSpeed               Enable"
+		  "AltBDMClock              Disable"
+		  "UseResetSignal           Enable"
+		  "ManualCycleVdd           Enable"
+		  "DerivativeType           Unused"
+		  "TargetClock              500"
+		  "UsePSTSignals            Disable"
+		  "MiscOptions              0"
+		  */
+		udev->options.targetVdd = 0; // 3.3V
+		udev->options.cycleVddOnReset = 0;
+		udev->options.cycleVddOnConnect = 0;
+		udev->options.leaveTargetPowered = 0;
+		udev->options.autoReconnect = 1;
+		udev->options.guessSpeed = 1;
+		udev->options.useAltBDMClock = 0;
+		udev->options.useResetSignal = 1;
+		udev->options.manuallyCycleVdd = 1;
+		udev->options.derivative_type = 0;
+		udev->options.targetClockFreq = 500;
+		udev->options.usePSTSignals = 0;
+		udev->options.miscOptions = 0;
 		
 		if (bdmusb_set_target_type(udev->dev_ref, targetType) == 0)
 		    self->cf_running = 1;
