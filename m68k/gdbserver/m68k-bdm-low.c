@@ -57,12 +57,15 @@
 /*
  * The version of BDM hardware.
  */
-#define M68K_BDM_VER_A            (0)
-#define M68K_BDM_VER_B            (1)
-#define M68K_BDM_VER_B_PLUS       (9)
-#define M68K_BDM_VER_C            (2)
-#define M68K_BDM_VER_D            (3)
-#define M68K_BDM_VER_D_PLUS       (12)
+#define M68K_BDM_VER_A                 (0)
+#define M68K_BDM_VER_B                 (1)
+#define M68K_BDM_VER_B_PLUS            (9)
+#define M68K_BDM_CFV1_VER_B_PLUS      (10) // This is the BDM B+ converted to HCS08 1-pin BDM serial interface.
+#define M68K_BDM_VER_C                 (2)
+#define M68K_BDM_VER_D                 (3)
+#define M68K_BDM_VER_D_PLUS           (12)
+#define M68K_BDM_VER_D_PLUS_PST_BUFF  (15)
+
 
 /*
  * The type of CPU.
@@ -77,6 +80,7 @@
 #define M68K_BDM_MARCH_CF52223    (7)
 #define M68K_BDM_MARCH_CF5307     (8)
 #define M68K_BDM_MARCH_CFV4E      (9)
+#define M68K_BDM_MARCH_CFV1      (10)
 
 /*
  * The CPU labels.
@@ -91,6 +95,7 @@
 #define M68K_BDM_MARCH_CF52223_LABEL   "CF52223"
 #define M68K_BDM_MARCH_CF5307_LABEL    "CF5307"
 #define M68K_BDM_MARCH_CFV4E_LABEL     "CFV4E"
+#define M68K_BDM_MARCH_CFV1_LABEL      "CFV1"
 
 /*
  * The size of the register in bits.
@@ -154,6 +159,8 @@ extern const struct m68k_bdm_reg_mapping m68k_bdm_cf5307_reg_map[];
 extern const int m68k_bdm_cf5307_reg_map_size;
 extern const struct m68k_bdm_reg_mapping m68k_bdm_cfv4e_reg_map[];
 extern const int m68k_bdm_cfv4e_reg_map_size;
+extern const struct m68k_bdm_reg_mapping m68k_bdm_cfv1_reg_map[];
+extern const int m68k_bdm_cfv1_reg_map_size;
 
 /*
  * Must match the type of CPU index at the start of this file.
@@ -178,7 +185,9 @@ const struct m68k_bdm_registers m68k_bdm_reg_map[] = {
   /* 8 */ { "m68k-cf5307.xml",
     m68k_bdm_cf5307_reg_map, &m68k_bdm_cf5307_reg_map_size, 1, 1 },
   /* 9 */ { "m68k-cfv4e.xml",
-    m68k_bdm_cfv4e_reg_map, &m68k_bdm_cfv4e_reg_map_size, 2, 4 }
+    m68k_bdm_cfv4e_reg_map, &m68k_bdm_cfv4e_reg_map_size, 2, 4 },
+  /* 10 */ { "m68k-cfv1.xml",
+    m68k_bdm_cfv1_reg_map, &m68k_bdm_cfv1_reg_map_size, 1, 3 }
 };
 
 const char *m68k_bdm_expedite_regs[] = { "sp", "fp", "pc", 0 };
@@ -532,6 +541,7 @@ m68k_bdm_init_watchpoints(void)
     return -1;
 
   if (bdmWriteSystemRegister (BDM_REG_TDR, TDR_TRC_HALT) < 0) {
+    bdmClose();
     m68k_bdm_report_error ();
     return -1;
   }
@@ -1392,6 +1402,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
   int           arg = 0;
   unsigned int  version = 0;
   unsigned long csr = 0;
+  unsigned long csr2 = 0;
   int           delay = -1;
   int           driver_debug_level = 0;
   int           debug_level = 0;
@@ -1481,14 +1492,14 @@ m68k_bdm_create_inferior (char *program, char *argv[])
                        debug_level);
     bdmSetDebugFlag (debug_level);
   }
-
+  
   if (driver_debug_level > 0) {
     if (m68k_bdm_debug_level)
       printf_filtered ("m68k-bdm: set driver debug level: %d\n",
                        driver_debug_level);
     bdmSetDriverDebugFlag (driver_debug_level);
   }
-
+  
   if (delay > 0) {
     if (bdmSetDelay (delay) < 0)
       m68k_bdm_report_error ();
@@ -1540,6 +1551,8 @@ m68k_bdm_create_inferior (char *program, char *argv[])
       if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
         m68k_bdm_report_error ();
       m68k_bdm_cf_debug_ver = (csr >> 20) & 0x0f;
+      if (bdmReadSystemRegister (BDM_REG_CSR2, &csr2) == 0)
+	m68k_bdm_cf_debug_ver += (csr2 >> 16) & 0x0f;
       printf_filtered ("m68k-bdm: debug module version %" PRIdMAX "\n", m68k_bdm_cf_debug_ver);
 
       /*
@@ -1576,6 +1589,10 @@ m68k_bdm_create_inferior (char *program, char *argv[])
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CF52223;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CF52223_LABEL;
         printf_filtered ("m68k-bdm: detected MCF52223 (MCF52235)\n");
+      } else if (m68k_bdm_cf_debug_ver == M68K_BDM_CFV1_VER_B_PLUS) {
+	m68k_bdm_cpu_type = M68K_BDM_MARCH_CFV1;
+        m68k_bdm_cpu_label = M68K_BDM_MARCH_CFV1_LABEL;
+        printf_filtered ("m68k-bdm: detected CFv1 (CFV1)\n");
       } else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B) {
         m68k_bdm_cpu_type = M68K_BDM_MARCH_CF5307;
         m68k_bdm_cpu_label = M68K_BDM_MARCH_CF5307_LABEL;
@@ -1609,6 +1626,9 @@ m68k_bdm_create_inferior (char *program, char *argv[])
     else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_B_PLUS) {
       cf_type = "52223/52235";
       m68k_bdm_ptid = 0x52223;
+    } else if (m68k_bdm_cf_debug_ver == M68K_BDM_CFV1_VER_B_PLUS) {
+      cf_type = "cfv1";
+      m68k_bdm_ptid = 0x5100;
     }
     else if (m68k_bdm_cf_debug_ver == M68K_BDM_VER_C
           || m68k_bdm_cf_debug_ver == M68K_BDM_VER_D ) {

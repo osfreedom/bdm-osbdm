@@ -31,6 +31,7 @@ XML_FILES = \
 	$(srcdir)/m68k-cf5282.xml \
 	$(srcdir)/m68k-cf52223.xml \
 	$(srcdir)/m68k-cf5307.xml \
+	$(srcdir)/m68k-cfv1.xml \
 	$(srcdir)/m68k-cfv4e.xml
 
 ##
@@ -67,7 +68,7 @@ m68k_bdm_gdbserver_SOURCES = \
 	m68k-core-regs.c m68k-cpu32-regs.c m68k-cpu32plus-regs.c\
 	m68k-cf5200-regs.c m68k-cf52223-regs.c m68k-cf5235-regs.c \
 	m68k-cf5272-regs.c m68k-cf5282-regs.c m68k-cf5307-regs.c \
-	m68k-cfv4e-regs.c 
+	m68k-cfv1-regs.c m68k-cfv4e-regs.c 
 
 m68k_bdm_gdbserver_CPPFLAGS = \
 	@CFLAGS@ $(AM_CPPFLAGS)

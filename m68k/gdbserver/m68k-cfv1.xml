@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<!-- Copyright (C) 2007 Free Software Foundation, Inc.
+
+     Copying and distribution of this file, with or without modification,
+     are permitted in any medium without royalty provided the copyright
+     notice and this notice are preserved.  -->
+
+<!DOCTYPE feature SYSTEM "gdb-target.dtd">
+<feature name="org.gnu.gdb.coldfire.core">
+  <!-- The standard m68k register set  -->
+  <xi:include href="m68k-core.xml"/>
+  <!-- The CFv1 specific registers -->
+  <reg name="vbr"      bitsize="32" group="system" regnum="29"/>
+</feature>
