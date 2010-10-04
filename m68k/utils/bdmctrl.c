@@ -625,12 +625,13 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
   if ((shdr->sh_type == SHT_PROGBITS) &&
       (shdr->sh_flags & (SHF_WRITE | SHF_ALLOC))) {
 
-    unsigned char rbuf[1 * 1024];
+    unsigned char rbuf[4 * 1024];
     uint32_t off = 0;
     unsigned char *data;
     uint32_t size = 0;
     uint32_t dfc = 0;
     uint32_t paddr = (uint32_t) shdr->sh_addr;
+    unsigned int cnt;
     
     if(phdr) {
       paddr = phdr->p_paddr + (shdr->sh_addr - phdr->p_vaddr);
@@ -656,12 +657,15 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
       return 0;
     }
 
-    for (off = 0; off < shdr->sh_size; off += sizeof (rbuf)) {
-      unsigned int cnt = shdr->sh_size - off;
+    for (off = 0; off < shdr->sh_size; off += cnt) {
       int ret;
 
+      cnt = shdr->sh_size - off;
       if (cnt > sizeof (rbuf))
         cnt = sizeof (rbuf);
+      /* Force alignment to optimize flash programming */
+      if ((paddr + off) % 1024 && cnt >= 1024)
+	cnt = 1024 - (paddr + off) % 1024;
 
       if ((ret = write_memory (paddr + off, data + off, cnt)) != cnt) {
         if (verbosity)
