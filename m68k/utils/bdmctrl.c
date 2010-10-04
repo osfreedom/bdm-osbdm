@@ -676,8 +676,8 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
         if (memcmp (data + off, rbuf, cnt)) {
           if (verbosity)
             printf ("\b\bFAIL\n");
-          warn ("%sRead back contents from 0x%08lx don't match\n",
-                verbosity ? "" : "\n", paddr + off);
+          warn ("%sRead back contents from 0x%08lx with size %x don't match\n",
+                verbosity ? "" : "\n", paddr + off, cnt);
           return 0;
         }
       }
