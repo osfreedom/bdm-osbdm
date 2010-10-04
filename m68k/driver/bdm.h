@@ -61,7 +61,7 @@
 
 /*
  * Allocation of the minor numbers. The number of minors per interface
- * must be a factor of 2.
+ * must be a power of 2.
  */
 
 #define BDM_MINORS_PER_IFACE 4
