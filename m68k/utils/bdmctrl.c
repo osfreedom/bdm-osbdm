@@ -944,11 +944,12 @@ cmd_dump_mem (size_t argc, char **argv)
       fprintf (file, "\n 0x%08lx: ", (long unsigned int) (src + i));
     rlen = read_value (src + i, &val, argv[3][0]);
     fprintf (file, " 0x%0*lx", 2 * rlen, (long unsigned int) val);
-    fflush (file);
   }
 
-  if (file != stdout)
+  if (file != stdout) {
+    fprintf(file, "\n");
     fclose (file);
+  }
 
   printf ("\nOK\n");
 }
