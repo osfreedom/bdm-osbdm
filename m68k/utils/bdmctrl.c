@@ -670,7 +670,7 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
       if ((ret = write_memory (paddr + off, data + off, cnt)) != cnt) {
         if (verbosity)
           printf ("\b\bFAIL\n");
-        warn ("%swrite_memory(0x%x, xxx, 0x%x)==%d failed\n",
+        warn ("%swrite_memory(0x%x, xxx, 0x%x)==0x%x failed\n",
               verbosity ? "" : "\n", paddr + off, cnt, ret);
         return 0;
       }
