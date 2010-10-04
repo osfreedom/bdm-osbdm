@@ -30,6 +30,7 @@
 #include "flash29.h"
 #include "flashcfm.h"
 #include "flashintelc3.h"
+#include "flashintelp30.h"
 #include "flash_filter.h"
 
 #if HOST_FLASHING
@@ -75,6 +76,7 @@ alg_t algorithm[] = {
   {init_flash29},
   {init_flashcfm},
   {init_flashintelc3},
+  {init_flashintelp30},
 };
 
 /* Description of memory areas.
