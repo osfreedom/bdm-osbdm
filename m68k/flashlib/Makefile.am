@@ -106,10 +106,10 @@ $(fpi_flashintelp30_plugins): $(fpi_flashintelp30_source)
 
 install-data-local: \
 		$(fpi_plugins)
-	test -z "$(prefix)/share/m68k-bdm/plugins" || \
-		mkdir -p "$(prefix)/share/m68k-bdm/plugins"; \
+	test -z "$(DESTDIR)$(prefix)/share/m68k-bdm/plugins" || \
+		mkdir -p "$(DESTDIR)$(prefix)/share/m68k-bdm/plugins"; \
 	for f in $^; do \
-	 install -m 644 $$f $(prefix)/share/m68k-bdm/plugins/$$f; \
+	 install -m 644 $$f $(DESTDIR)$(prefix)/share/m68k-bdm/plugins/$$f; \
 	done
 
 clean-local:
