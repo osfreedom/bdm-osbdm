@@ -203,20 +203,21 @@ flashintelc3_lock(void *chip_descr, uint32_t start, uint32_t bytes, int cmd)
 }
 
 /* The actual programming function.
- * NOTE: pos and cnt need to be 2 byte aligned!
+ * NOTE: pos need to be 2 byte aligned!
  */
 static uint32_t
 flashintelc3_prog(void *chip_descr,
                   uint32_t pos, unsigned char *data, uint32_t cnt)
 {
   chiptype_t *ct = (chiptype_t *) chip_descr;
-  uint32_t n = 0;
+  uint32_t word_cnt;
+  uint32_t n;
   uint16_t status;
 
   flashintelc3_lock(ct, pos, cnt, 0);
 
-  cnt /= 2;
-  for (n = 0; n < cnt; ++n) {
+  word_cnt = (cnt + 1) / 2;
+  for (n = 0; n < word_cnt; ++n) {
     uint16_t d = ((uint16_t *) (void*) data)[n];
     
     chip_wr_word(pos, 0x40);
@@ -243,7 +244,7 @@ flashintelc3_prog(void *chip_descr,
   
   chip_wr_word(ct->flash_address, 0xff);
 
-  return n * 2;
+  return cnt;
 }
 
 static void
