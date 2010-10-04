@@ -26,6 +26,7 @@ static const char *const sysreg_name[BDM_MAX_SYSREG] = {
 static int stop_on_error = 1;
 static int stop_quite = 0;
 static int force_reset_on_fail = 0;
+static int bdm_revision;
 
 const unsigned long test_pattern[10 * 4] = {
   0x00000000, 0xffffffff, 0xaaaaaaaa, 0x55555555,
@@ -160,6 +161,7 @@ void
 do_reset (int cpu)
 {
   unsigned long csr;
+  const char *cputype;
   
   /*
    * Reset the target
@@ -179,9 +181,15 @@ do_reset (int cpu)
       cleanExit (1);
     }
     printf ("CSR break set, target stopped.\n");
-    printf ("Debug module version is %d, (%s)\n",
-            (unsigned char) (csr >> 20) & 0x0f,
-            ((csr >> 20) & 0x0f) == 0 ? "5206(e)" : "5307");
+    bdm_revision = (csr >> 20) & 0x0f;
+    switch (bdm_revision) {
+      case 0: cputype = "5206(e)"; break;
+      case 1: cputype = "5307"; break;
+      case 2: cputype = "5407"; break;
+      case 3: cputype = "547x/548x"; break;
+      default: cputype = "post-548x";
+    }
+    printf ("Debug module version is %d, (%s)\n", bdm_revision, cputype);
   }
 }
 
@@ -319,6 +327,10 @@ coldfireExecute ()
     showError("Buffer mismatch");
   }
 
+  if (bdm_revision >= 2 /* 5407, 547x & 548x need 0x81 for execution */
+  && bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 0x81) < 0)
+    showError ("Changing RAMBAR");
+
   printf ("Stepping code.\n");
   
   for (i = 0; i < 18; i++) {
@@ -366,6 +378,10 @@ coldfireExecute ()
           status & BDM_TARGETSTOPPED ? "STOPPED" : "NOT STOPPED", 
           status & BDM_TARGETPOWER   ? "POWER OFF" : "POWER ON", 
           status & BDM_TARGETNC      ? "NOT CONNECTED" : "CONNECTED");
+  
+  if (bdm_revision >= 2 /* restore data access on 5407, 547x & 548x */
+  && bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 0x1) < 0)
+    showError ("Restoring RAMBAR");
 }
 
 void
