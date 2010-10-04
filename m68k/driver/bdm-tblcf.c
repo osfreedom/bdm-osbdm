@@ -180,8 +180,9 @@ tblcf_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
     }
 
     if (tblcf_read_creg (self->usbDev, cmd, &ioc->value)) {
-      PRINTF (" tblcf_read_sysreg - Reg:0x%x failed with cmd 0x%02x\n",
-              ioc->address, cmd);
+      if (self->debugFlag)
+        PRINTF (" tblcf_read_sysreg - Reg:0x%x failed with cmd 0x%02x\n",
+                ioc->address, cmd);
       return BDM_FAULT_RESPONSE;
     }
   }
@@ -708,7 +709,7 @@ tblcf_read_long_word (struct BDM *self, struct BDMioctl *ioc)
   self->address = ioc->address + 4;
   
   if (self->debugFlag)
-    PRINTF ("tblcf_read_long_word : *0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("tblcf_read_long_word : *0x%08x -> 0x%08x\n", ioc->address, ioc->value);
 
   return 0;
 }
@@ -733,7 +734,7 @@ tblcf_read_word (struct BDM *self, struct BDMioctl *ioc)
   self->address = ioc->address + 2;
   
   if (self->debugFlag)
-    PRINTF ("tblcf_read_word : *0x%08x = 0x%04x\n", ioc->address, ioc->value);
+    PRINTF ("tblcf_read_word : *0x%08x -> 0x%04x\n", ioc->address, ioc->value);
 
   return 0;
 }
@@ -758,7 +759,7 @@ tblcf_read_byte (struct BDM *self, struct BDMioctl *ioc)
   self->address = ioc->address + 1;
 
   if (self->debugFlag)
-    PRINTF ("tblcf_read_byte : *0x%08x = 0x%02x\n", ioc->address, ioc->value);
+    PRINTF ("tblcf_read_byte : *0x%08x -> 0x%02x\n", ioc->address, ioc->value);
   return 0;
 }
 
@@ -784,7 +785,7 @@ static int
 tblcf_write_long_word (struct BDM *self, struct BDMioctl *ioc)
 {
   if (self->debugFlag)
-    PRINTF ("tblcf_write_long_word : 0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("tblcf_write_long_word : *0x%08x <- 0x%08x\n", ioc->address, ioc->value);
 
   self->address = ioc->address + 4;
   
@@ -807,7 +808,7 @@ static int
 tblcf_write_word (struct BDM *self, struct BDMioctl *ioc)
 {
   if (self->debugFlag)
-    PRINTF ("tblcf_write_word : 0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
+    PRINTF ("tblcf_write_word : *0x%08x <- 0x%04x\n", ioc->address, (ioc->value & 0xffff));
 
   self->address = ioc->address + 2;
 
@@ -830,7 +831,7 @@ static int
 tblcf_write_byte (struct BDM *self, struct BDMioctl *ioc)
 {
   if (self->debugFlag)
-    PRINTF ("tblcf_write_byte : 0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+    PRINTF ("tblcf_write_byte : *0x%08x <- 0x%02x\n", ioc->address, (ioc->value & 0xff));
 
   self->address = ioc->address + 1;
 

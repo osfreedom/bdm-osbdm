@@ -244,6 +244,10 @@ bdm_usb_open (const char *device, bdm_iface** iface)
             bdm_tblcf_init_self (self);
 
             *iface = &usbIface;
+
+            errno = bdm_open (0);
+            if (errno)
+              return -1;
             
             return 0;
           }

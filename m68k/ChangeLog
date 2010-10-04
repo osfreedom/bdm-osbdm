@@ -1,3 +1,23 @@
+2010-10-04  Chris Johns <cjohns@users.sourceforge.net>
+
+	* tblcf/log.h: Output TBLCF debug when the debug level is greated
+	than 1.
+
+	* lib/BDMlib.h, lib/bdmIO.c: Add a call to return the debug flag
+	so the TBLCF code can use it to control its output.
+
+	* driver/bdm.c: Add decls for referenced functions.
+
+	* driver/bdm-tblcf.c: Change the read/write output to make it
+	easier to follow.
+
+	* tblcf/bdm-usb.c: Add the bdm_open call. Nothing works without
+	it.
+
+	* gdbserver/regcache.c: Fix the register to string code. If this
+	is not done the Coldfire (5235) breaks. If the CPU32 breaks I
+	think there maybe something wrong with its XML.
+	
 2010-08-13  Chris Johns <cjohns@users.sourceforge.net>
 
 	* tblcf/tblcf_usb.c: Fix memory problems in find.

@@ -50,6 +50,7 @@ int  bdmIsOpen (void);
 int  bdmSetDelay (int delay);
 int  bdmSetDriverDebugFlag (int flag);
 void bdmSetDebugFlag (int flag);
+int  bdmGetDebugFlag (void);
 void bdmLogSyslog (void);
 
 int         bdmStatus (void);

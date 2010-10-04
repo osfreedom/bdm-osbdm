@@ -92,6 +92,8 @@
  *     Common Functions                                                 *
  ************************************************************************
  */
+static int bdm_invalidate_cache (struct BDM *self);
+static int bdm_pc_read_check (struct BDM *self);
 
 static int bdmDrvGetStatus (struct BDM *self);
 static int bdmDrvInitHardware (struct BDM *self);

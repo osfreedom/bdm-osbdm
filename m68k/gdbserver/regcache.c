@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern int remote_debug;
+
 /* The private data for the register cache.  Note that we have one
    per inferior; this is primarily for simplicity, as the performance
    benefit is minimal.  */
@@ -184,17 +186,19 @@ registers_to_string (char *buf)
           if ((reg_defs[i].flags & REG_NON_CACHEABLE) && 
               ((reg_defs[i].flags & REG_WRITE_ONLY) == 0))
             {
-              printf_filtered("m68k-bdm: adding register %d to response\n", i);
+              if (remote_debug)
+                printf_filtered ("m68k-bdm: adding register %d to response\n", i);
               fetch_inferior_registers (i);
-              convert_int_to_ascii(regptr, bufptr, reg_defs[i].size / 8);
-              /* Increment bufptr by asciified size (2 chars per byte) */
-              bufptr += (reg_defs[i].size / 8) * 2;
             }
         }
+      convert_int_to_ascii(regptr, bufptr, reg_defs[i].size / 8);
+      /* Increment bufptr by asciified size (2 chars per byte) */
+      bufptr += (reg_defs[i].size / 8) * 2;
       /* Increment regptr by size of reg, defined in bits */
       regptr += reg_defs[i].size / 8;
     }
-  printf_filtered("m68k-bdm: built register string response: %s\n", buf);
+  if (remote_debug)
+    printf_filtered ("m68k-bdm: built register string response: %s\n", buf);
 }
 
 /* Received from GDB */

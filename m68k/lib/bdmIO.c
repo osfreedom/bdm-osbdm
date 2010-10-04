@@ -209,6 +209,12 @@ bdmSetDebugFlag (int flag)
   debugFlag = flag;
 }
 
+int
+bdmGetDebugFlag (void)
+{
+  return debugFlag;
+}
+
 /*
  * Verify that device is open
  */
