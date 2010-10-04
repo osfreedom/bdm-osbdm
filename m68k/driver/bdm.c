@@ -104,8 +104,6 @@ static int bdmDrvStopChip (struct BDM *self);
 static int bdmDrvSerialClock (struct BDM *self, unsigned short wval, int holdback);
 static int bdmDrvGenerateBusError (struct BDM *self);
 static int bdmDrvStepChip (struct BDM *self);
-static int bdmDrvSendCommandTillTargetReady (struct BDM *self,
-                                          unsigned short command);
 static int bdmDrvFillBuf (struct BDM *self, int count);
 static int bdmDrvSendBuf (struct BDM *self, int count);
 static int bdmDrvGo (struct BDM *self);
@@ -218,7 +216,7 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
 
 /*
  ************************************************************************
- *     Genric Bit Bash Functions Decls                                  *
+ *     Generic Bit Bash Functions Decls                                  *
  ************************************************************************
  */
 
@@ -226,7 +224,7 @@ static int bdmBitBashSendCommandTillTargetReady (struct BDM *self,
                                                  unsigned short command);
 static int bdmBitBashFillBuf (struct BDM *self, int count);
 static int bdmBitBashSendBuf (struct BDM *self, int count);
-static int bdmbitBashFetchWord (struct BDM *self, unsigned short *sp);
+static int bdmBitBashFetchWord (struct BDM *self, unsigned short *sp);
 static int bdmBitBashReadProcessorRegister (struct BDM *self,
                                             struct BDMioctl *ioc);
 static int bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc);
