@@ -3,48 +3,24 @@
 # MAKEDEV - create BDM character special file
 #
 cd /dev
-if [ ! -c bdmcpu320 ]
+for port in 0 1 2 3
+do
+name=bdmcpu32${port}
+if [ ! -c ${name} ]
 then
-  mknod bdmcpu320 c 34 0
-  chmod 666 bdmcpu320 
+  mknod ${name} c 34 `expr 0 + ${port}`
+  chmod 666 ${name} 
 fi
-if [ ! -c bdmcpu321 ]
+name=bdmcf${port}
+if [ ! -c ${name} ]
 then
-  mknod bdmcpu321 c 34 1 
-  chmod 666 bdmcpu321
+  mknod ${name} c 34 `expr 4 + ${port}`
+  chmod 666 ${name}
 fi
-if [ ! -c bdmcpu322 ]
+name=bdmicd${port}
+if [ ! -c ${name} ]
 then
-  mknod bdmcpu322 c 34 2 
-  chmod 666 bdmcpu322
+  mknod ${name} c 34 `expr 8 + ${port}` 
+  chmod 666 ${name}
 fi
-if [ ! -c bdmcf0 ]
-then
-  mknod bdmcf0    c 34 4 
-  chmod 666 bdmcf0
-fi
-if [ ! -c bdmcf1 ]
-then
-  mknod bdmcf1    c 34 5 
-  chmod 666 bdmcf1
-fi
-if [ ! -c bdmcf2 ]
-then
-  mknod bdmcf2    c 34 6 
-  chmod 666 bdmcf2 
-fi
-if [ ! -c bdmicd0 ]
-then
-  mknod bdmicd0   c 34 8  
-  chmod 666 bdmicd0
-fi
-if [ ! -c bdmicd1 ]
-then
-  mknod bdmicd1   c 34 9  
-  chmod 666 bdmicd1
-fi
-if [ ! -c bdmicd2 ]
-then
-  mknod bdmicd2   c 34 10 
-  chmod 666 bdmicd2
-fi
+done
