@@ -1401,7 +1401,7 @@ static struct command_s {
   },
   { "check-mem",       "ADR SIZ",             1, 3,       3, cmd_check_mem,
     "The specified memory region is checked with a random testpattern.  In\n"
-    "addition, an alingnment test is done.  After the test the original\n"
+    "addition, an alignment test is done.  After the test the original\n"
     "memory contents are restored.\n"
     "ADR and SIZ can be a number, a register or a symbol.\n"
   },
@@ -1462,13 +1462,13 @@ static struct command_s {
     "Print seconds since bdmctrl was started.\n"
   },
   { "echo",            "[ARG ...]",           0, 1, INT_MAX, cmd_echo,
-    "Print a line of text."
+    "Print a line of text.\n"
   },
   { "exit",            "",                    0, 1,       1, cmd_exit,
     "Exit bdmctrl immediately.\n"
   },
   { "source",          "[FN [ARG ...]]",      0, 1, INT_MAX, cmd_source,
-    "Execute commands from file FN.  Withhin FN, the variables $1, $2, $3\n"
+    "Execute commands from file FN.  Within FN, the variables $1, $2, $3\n"
     "(and so on) are replaced by the specified arguments.  After all the\n"
     "commands from FN are executed, control returns to the original\n"
     "position, so recursive execution is possible. When FN is omitted,\n"
