@@ -9,7 +9,7 @@ name=bdmcpu32${port}
 if [ ! -c ${name} ]
 then
   mknod ${name} c 34 `expr 0 + ${port}`
-  chmod 666 ${name} 
+  chmod 666 ${name}
 fi
 name=bdmcf${port}
 if [ ! -c ${name} ]
@@ -20,7 +20,7 @@ fi
 name=bdmicd${port}
 if [ ! -c ${name} ]
 then
-  mknod ${name} c 34 `expr 8 + ${port}` 
+  mknod ${name} c 34 `expr 8 + ${port}`
   chmod 666 ${name}
 fi
 done
