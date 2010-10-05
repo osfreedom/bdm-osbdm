@@ -411,7 +411,7 @@ int bdm_read (unsigned int minor, unsigned char *buf, int count);
 int bdm_write (unsigned int minor, unsigned char *buf, int count);
 
 struct BDM* bdm_get_device_info (int minor);
-int bdm_get_device_info_count ();
+int bdm_get_device_info_count (void);
 
 /*
  * Pod Interface initialisation calls.

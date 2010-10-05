@@ -1376,7 +1376,7 @@ bdm_get_device_info (int minor)
 }
 
 int
-bdm_get_device_info_count ()
+bdm_get_device_info_count (void)
 {
   return BDM_NUM_OF_MINORS;
 }
