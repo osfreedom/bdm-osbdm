@@ -48,6 +48,10 @@ endif
 KERNEL_VERSION := $(shell awk -F\" '/REL/ {print $$2}' \
 	$(KERNEL_LOCATION)/include/linux/version.h | awk -F\- '{print $$1}')
 
+ifeq ($(KERNEL_VERSION),)
+KERNEL_VERSION := $(CURRENT)
+endif
+
 KERNEL_MODULE_V26 := $(shell echo $(KERNEL_VERSION) \
 	| sed -n 's/^.*2\.[5-9]\..*$$/yes/p')
 
@@ -95,7 +99,8 @@ install_this_module: make_this_module
 clean:
 	rm -f $(M_OBJS) $(MX_OBJS) *.ko .*.o.flags .*.o.cmd .*.ko.cmd .depend *~ 
 
-ifndef KERNEL_MODULE_V26
+ifneq ($(KERNEL_MODULE_V26),yes)
+include $(KERNEL_MODULE_V26)
 export TOPDIR=$(KERNEL_LOCATION)
 include $(KERNEL_LOCATION)/Rules.make
 endif
