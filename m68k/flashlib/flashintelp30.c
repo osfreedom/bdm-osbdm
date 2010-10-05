@@ -1,7 +1,7 @@
 /* $Id:
  *
  * Portions of this program which I authored may be used for any purpose
- * so long as this notice is left intact. 
+ * so long as this notice is left intact.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ typedef struct
   const uint32_t top;
 } chip_t;
 
-/* 
+/*
  * Warning! do not change this struct without changing the download_struct
  * function.
  */
@@ -100,7 +100,7 @@ swap16(uint16_t a_v)
   return (uint16_t) (((a_v >> 8) & 0x00ff) | ((a_v << 8) & 0xff00));
 }
 
-static inline int 
+static inline int
 is_little_endian(void)
 {
   uint32_t i = 1;
@@ -170,7 +170,7 @@ static uint32_t
 flashintelp30_sector_index(chiptype_t* ct, uint32_t start)
 {
   int i;
-  
+
   start -= ct->flash_address;
   for(i = 0; i < ct->num_sectors; ++i) {
     uint32_t off = flashintelp30_sector_offset(ct, i);
@@ -196,10 +196,10 @@ flashintelp30_lock(void *chip_descr, uint32_t start, uint32_t bytes, int cmd)
   chiptype_t *ct = (chiptype_t *) chip_descr;
   int i, s, e = 0;
   int ucmd = (cmd) ? 0x01 : 0xD0;
-  
+
   if(bytes == 0)
     return;
-  
+
   /* find start sector */
   s = flashintelp30_sector_index(ct, start);
 
@@ -212,7 +212,7 @@ flashintelp30_lock(void *chip_descr, uint32_t start, uint32_t bytes, int cmd)
       break;
     }
   }
-  
+
   /* unlock range */
   for(i = s; i <= e; ++i) {
     uint32_t sa = ct->flash_address + flashintelp30_sector_offset(ct, i);
@@ -244,7 +244,7 @@ flashintelp30_prog(void *chip_descr,
   word_cnt = (cnt + 1) / 2;
   for (n = 0; n < word_cnt; ++n) {
     uint16_t d = ((uint16_t *) (void*) data)[n];
-    
+
 #ifdef USE_BUFFERED_PROGRAM
     {
       uint32_t sa = flashintelp30_sector_address(ct, pos);
@@ -306,13 +306,13 @@ if (status != 0x80) {
     }
 #else
     chip_wr_word(pos, 0x40);
-    
+
     /* write_word on host assumes host endianess so will perform a
      * byte order swap if host is little endian.  we need to swap if little
      * endian such that the swap will just swap back to the correct endianess
      */
     if(is_little_endian())
-      d = swap16(d);    
+      d = swap16(d);
     chip_wr_word(pos, d);
 
     /*
@@ -329,11 +329,11 @@ if (status != 0x80) {
 #endif
 	return status;
 }
-    
+
     pos += 2;
 #endif
   }
-  
+
   chip_wr_word(ct->flash_address, 0xff);
 
   return cnt;
@@ -347,15 +347,15 @@ flashintelp30_erase(void *chip_descr, int32_t sector_address)
   int i;
 #if HOST_FLASHING
   int spin = 0;
-#endif        
-  
+#endif
+
   if(sector_address == -1) {
     flashintelp30_lock(ct, ct->flash_address, ct->flash_size, 0);
 
     /* erasing all sectors */
     for(i = 0; i < ct->num_sectors; ++i) {
       uint32_t off = flashintelp30_sector_offset(ct, i);
-      
+
       chip_wr_word(ct->flash_address + off, 0x20);
       chip_wr_word(ct->flash_address + off, 0xD0);
 
@@ -365,7 +365,7 @@ flashintelp30_erase(void *chip_descr, int32_t sector_address)
         status = chip_rd_word(ct->flash_address + off);
 #if HOST_FLASHING
         spin = flash_spin(spin);
-#endif        
+#endif
       } while(!(status & 0x80));
     }
   }
@@ -376,14 +376,14 @@ flashintelp30_erase(void *chip_descr, int32_t sector_address)
     /* erasing said sector address */
     chip_wr_word(ct->flash_address + off, 0x20);
     chip_wr_word(ct->flash_address + off, 0xD0);
-    
+
     /* wait */
     do {
       chip_wr_word(ct->flash_address + off, 0x70);
       status = chip_rd_word(ct->flash_address + off);
 #if HOST_FLASHING
         spin = flash_spin(spin);
-#endif        
+#endif
     } while(!(status & 0x80));
   }
 
@@ -398,7 +398,7 @@ flashintelp30_blank_chk(void *chip_descr, int32_t sector_address)
 {
 #if HOST_FLASHING
   printf("intelp30: blank_chk not implemented!\n");
-#endif        
+#endif
 
   return 0;
 }
@@ -410,8 +410,8 @@ flashintelp30_erase_wait(void *chip_descr)
 {
 #if HOST_FLASHING
   printf("intelp30: no wait needed!\n");
-#endif        
-  
+#endif
+
   return 0;
 }
 
@@ -432,7 +432,7 @@ flashintelp30_search_chip(void *chip_descr, char *description, uint32_t pos)
   const chip_t *chip;
   int i;
   int bufsizlog;
-  
+
   /* read the manufacturer id */
   chip_wr_word(pos, 0x90);
   m = chip_rd_word(pos + 0);
@@ -440,7 +440,7 @@ flashintelp30_search_chip(void *chip_descr, char *description, uint32_t pos)
   /* read the device id */
   chip_wr_word(pos, 0x90);
   d = chip_rd_word(pos + 2);
-  
+
   /* find our device */
   for (i = 0; i < NUMOF(chips); i++) {
     chip = &chips[i];
@@ -450,23 +450,23 @@ flashintelp30_search_chip(void *chip_descr, char *description, uint32_t pos)
       ct->num_sectors = chip->num_sectors;
       ct->top = chip->top;
       size = chip->size;
-  
+
       /* read the log2 of the write buffer size */
       chip_wr_word(pos, 0x90);
       bufsizlog = chip_rd_word(pos + 0x54);
       ct->wbuf_mask = (1 << (bufsizlog - 1)) - 1;
 printf("bufsizlog = %d, bufsizmask = %d\n", bufsizlog, ct->wbuf_mask);
-      
+
       if (description) {
         sprintf(description, "%10s @ 0x%08lx..0x%08lx "
                 "manuf:0x%02lx device:0x%04lx size:0x%08lx",
                 chip->name, pos, pos + chip->size, m, d, chip->size);
       }
-      
+
       break;
     }
   }
-  
+
   /* put the device back into read mode */
   chip_wr_word(pos, 0xff);
 
@@ -488,7 +488,7 @@ download_struct(void *chip_descr, uint32_t adr)
   adr += 4;
   bdmWriteLongWord(adr, ct->wbuf_mask);
   adr += 4;
-  
+
   return adr;
 }
 
