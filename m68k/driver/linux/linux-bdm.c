@@ -53,15 +53,19 @@
 
 #define BDM_DEFAULT_DEBUG 0
 
-#include <linux/config.h>
-
-#if CONFIG_MODVERSIONS
-#define MODVERSIONS
-#include <linux/modversions.h>
-#endif
-
 #include <linux/module.h>
 #include <linux/version.h>
+
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,17)
+#include <linux/config.h>
+#endif
+
+#if CONFIG_MODVERSIONS
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,5,60)
+#define MODVERSIONS
+#include <linux/modversions.h>
+#endif /* 2.5.60 */
+#endif
 
 #include <linux/kernel.h>
 #include <linux/sched.h>
@@ -189,13 +193,17 @@ os_copy_out (void *dst, void *src, int size)
 static void
 os_lock_module (void)
 {
+#ifdef MOD_INC_USE_COUNT
   MOD_INC_USE_COUNT;
+#endif
 }
 
 static void
 os_unlock_module (void)
 {
+#ifdef MOD_DEC_USE_COUNT
   MOD_DEC_USE_COUNT;
+#endif
 }
 
 /*
