@@ -324,9 +324,9 @@ init_module ()
     self->delayTimer  = 0;
     
     switch (BDM_IFACE (minor)) {
-      case BDM_CPU32_PD:     cpu32_pd_init_self (self); break;
-      case BDM_CPU32_ICD:    cpu32_icd_init_self (self); break;
-      case BDM_COLDFIRE_PE:  cf_pe_init_self (self); break;
+      case BDM_CPU32_PD:     bdm_cpu32_pd_init_self (self); break;
+      case BDM_CPU32_ICD:    bdm_cpu32_icd_init_self (self); break;
+      case BDM_COLDFIRE_PE:  bdm_cf_pe_init_self (self); break;
       default:
         PRINTF ("BDM driver has no interface for minor number\n");
         cleanup_module ();
