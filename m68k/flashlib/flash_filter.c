@@ -30,6 +30,7 @@
 #include "flash29.h"
 #include "flashcfm.h"
 #include "flashintelc3.h"
+#include "flashintelp30.h"
 #include "flash_filter.h"
 
 #if HOST_FLASHING
@@ -47,8 +48,6 @@
 # include <elf-utils.h>
 # include <BDMlib.h>
 #endif
-
-#define mkstring(_s) #_s
 
 /* Interface to flash modules.
  */
@@ -77,6 +76,7 @@ alg_t algorithm[] = {
   {init_flash29},
   {init_flashcfm},
   {init_flashintelc3},
+  {init_flashintelp30},
 };
 
 /* Description of memory areas.
@@ -194,7 +194,8 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
   struct stat sb;
   elf_handle handle;
   const char *dmagic;
-  const char* prefix = mkstring (PREFIX);
+  const char* prefix = PREFIX;
+  static const char suffix[] = "share/m68k-bdm/plugins/";
   char* name = (char*) fname;
   int i;
 
@@ -206,23 +207,19 @@ elf_flash_plugin_load(int (*prfunc) (const char *format, ...),
     {
       if (errno == ENOENT)
       {
-        if (prefix[strlen (prefix) - 1] != '/')
-        {
-          name = strdup (prefix);
-          name = strcat (name, "/");
-        }
-        else
-          name = strdup (prefix);
-      
-        name = strcat (name, "share/m68k-bdm/plugins/");
-        name = strcat (name, fname);
+	int prefixlen = strlen(prefix);
+	int needsep = prefix[prefixlen - 1] != '/';
+	int pathlen = prefixlen + needsep + sizeof suffix + strlen(fname);
+
+	name = malloc(pathlen);
+	sprintf(name, "%s%s%s%s", prefix, needsep ? "/" : "", suffix, fname);
 
         if (stat (name, &sb) < 0)
         {
           if (errno == ENOENT)
           {
             prfunc ("cannot find plugin: %s\n", fname);
-            prfunc ("searched:\n  .\n  %s: ", mkstring (PREFIX));
+            prfunc ("searched:\n  .\n  %s/%s\n", PREFIX, suffix);
             return 0;
           }
         }

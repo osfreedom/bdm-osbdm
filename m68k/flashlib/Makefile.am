@@ -11,7 +11,7 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../libelf/lib -I../libelf/lib \
               -I$(srcdir)/../driver -I$(srcdir)/../lib \
-	      -DPREFIX="$(prefix)"
+	      -DPREFIX='"$(prefix)"'
 
 lib_LIBRARIES = libbdmflash.a
 
@@ -21,7 +21,8 @@ include_HEADERS = \
 	flash_filter.h \
 	flash29.h \
 	flashcfm.h \
-	flashintelc3.h
+	flashintelc3.h \
+	flashintelp30.h
 
 libbdmflash_a_SOURCES = \
 	elf-utils.c \
@@ -30,7 +31,8 @@ libbdmflash_a_SOURCES = \
 	flash_filter.c \
 	flash29.c \
 	flashcfm.c \
-	flashintelc3.c
+	flashintelc3.c \
+	flashintelp30.c
 
 if BUILD_FLASH_PLUGINS
 #
@@ -76,10 +78,16 @@ fpi_flashintelc3_targets = $(fpi_multilib)
 fpi_flashintelc3_source  = $(call fpi_source, flashintelc3)
 fpi_flashintelc3_plugins = $(call fpi_target, flashintelc3, $(fpi_flashintelc3_targets))
 
+fpi_flashintelp30 = flashintelp30
+fpi_flashintelp30_targets = $(fpi_multilib)
+fpi_flashintelp30_source  = $(call fpi_source, flashintelp30)
+fpi_flashintelp30_plugins = $(call fpi_target, flashintelp30, $(fpi_flashintelp30_targets))
+
 fpi_plugins = \
 	$(fpi_flash29_plugins) \
 	$(fpi_flashcfm_plugins) \
-	$(fpi_flashintelc3_plugins)
+	$(fpi_flashintelc3_plugins) \
+	$(fpi_flashintelp30_plugins)
 
 all-local: \
 	$(fpi_plugins)
@@ -93,12 +101,15 @@ $(fpi_flashcfm_plugins): $(fpi_flashcfm_source)
 $(fpi_flashintelc3_plugins): $(fpi_flashintelc3_source)
 	$(srcdir)/m68k-bdm-compile-plugin @FLASH_PLUGIN_GCC@ $< $@
 
+$(fpi_flashintelp30_plugins): $(fpi_flashintelp30_source)
+	$(srcdir)/m68k-bdm-compile-plugin @FLASH_PLUGIN_GCC@ $< $@
+
 install-data-local: \
 		$(fpi_plugins)
-	test -z "$(prefix)/share/m68k-bdm/plugins" || \
-		mkdir -p "$(prefix)/share/m68k-bdm/plugins"; \
+	test -z "$(DESTDIR)$(prefix)/share/m68k-bdm/plugins" || \
+		mkdir -p "$(DESTDIR)$(prefix)/share/m68k-bdm/plugins"; \
 	for f in $^; do \
-	 install -m 644 $$f $(prefix)/share/m68k-bdm/plugins/$$f; \
+	 install -m 644 $$f $(DESTDIR)$(prefix)/share/m68k-bdm/plugins/$$f; \
 	done
 
 clean-local:

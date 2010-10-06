@@ -730,7 +730,7 @@ cpu32_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
   if (cmd == -1) {
     ioc->value = 0;
     if (self->debugFlag)
-      PRINTF (" cpu32_read_sysreg - Reg(%d):0x%x is not mapped; ignored\n",
+      PRINTF (" cpu32_read_sysreg - Reg(%d):0x%lx is not mapped; ignored\n",
               mode, ioc->address);
     return 0;
   }

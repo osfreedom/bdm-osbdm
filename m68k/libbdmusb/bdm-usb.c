@@ -344,7 +344,10 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 	    }
 	    
 	    // Now init the HW
-	    self->init_hardware(self);
+	    //self->init_hardware(self);
+	    errno = bdm_open (0);
+            if (errno)
+              return -1;
             
             return 0;
           }

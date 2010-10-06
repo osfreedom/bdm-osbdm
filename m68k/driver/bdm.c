@@ -10,7 +10,7 @@
  *  2. `Linux device driver for public domain BDM Interface',
  *     M. Schraut, Technische Universitaet Muenchen, Lehrstuhl
  *     fuer Prozessrechner, 1995.
- * 
+ *
  * Extended to support the ColdFire BDM interface using the P&E
  * module which comes with the EVB. Currently only tested with the
  * 5206 (5V) device.
@@ -19,23 +19,23 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
  * (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
- * 
+ *
  * W. Eric Norum
  * Saskatchewan Accelerator Laboratory
  * University of Saskatchewan
  * 107 North Road
  * Saskatoon, Saskatchewan, CANADA
  * S7N 5C6
- * 
+ *
  * eric@skatter.usask.ca
  *
  * Coldfire support by:
@@ -92,6 +92,8 @@
  *     Common Functions                                                 *
  ************************************************************************
  */
+static int bdm_invalidate_cache (struct BDM *self);
+static int bdm_pc_read_check (struct BDM *self);
 
 static int bdmDrvGetStatus (struct BDM *self);
 static int bdmDrvInitHardware (struct BDM *self);
@@ -102,8 +104,6 @@ static int bdmDrvStopChip (struct BDM *self);
 static int bdmDrvSerialClock (struct BDM *self, unsigned short wval, int holdback);
 static int bdmDrvGenerateBusError (struct BDM *self);
 static int bdmDrvStepChip (struct BDM *self);
-static int bdmDrvSendCommandTillTargetReady (struct BDM *self,
-                                          unsigned short command);
 static int bdmDrvFillBuf (struct BDM *self, int count);
 static int bdmDrvSendBuf (struct BDM *self, int count);
 static int bdmDrvGo (struct BDM *self);
@@ -219,7 +219,7 @@ static int cf_sysreg_map[BDM_MAX_SYSREG] =
 
 /*
  ************************************************************************
- *     Genric Bit Bash Functions Decls                                  *
+ *     Generic Bit Bash Functions Decls                                  *
  ************************************************************************
  */
 
@@ -227,7 +227,7 @@ static int bdmBitBashSendCommandTillTargetReady (struct BDM *self,
                                                  unsigned short command);
 static int bdmBitBashFillBuf (struct BDM *self, int count);
 static int bdmBitBashSendBuf (struct BDM *self, int count);
-static int bdmbitBashFetchWord (struct BDM *self, unsigned short *sp);
+static int bdmBitBashFetchWord (struct BDM *self, unsigned short *sp);
 static int bdmBitBashReadProcessorRegister (struct BDM *self,
                                             struct BDMioctl *ioc);
 static int bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc);
@@ -318,17 +318,17 @@ bdmBitBashFillBuf (struct BDM *self, int count)
 
   if (self->debugFlag)
     PRINTF ("bdmBitBashFillBuf - count:%d\n", count);
-  
+
   if (count == 0)
     return 0;
-  
+
   if (count >= 4)
     cmd = BDM_DUMP_CMD | BDM_SIZE_LONG;
   else if (count >= 2)
     cmd = BDM_DUMP_CMD | BDM_SIZE_WORD;
   else
     cmd = BDM_DUMP_CMD | BDM_SIZE_BYTE;
-  
+
   err = bdmDrvSerialClock (self, cmd, 0);
   if (err)
     return err;
@@ -423,7 +423,7 @@ bdmBitBashSendBuf (struct BDM *self, int count)
 
   if (count == 0)
     return 0;
-  
+
   for (;;) {
     if (count >= 4)
       cmd = BDM_FILL_CMD | BDM_SIZE_LONG;
@@ -491,15 +491,15 @@ bdmBitBashReadProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x, failed err=%d\n",
+      PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02lx, failed err=%d\n",
               ioc->address & 0xF, err);
     return err;
   }
-  
+
   ioc->value = (msw << 16) | lsw;
-  
+
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02x = 0x%08x\n",
+    PRINTF ("bdmBitBashReadProcessorRegister - reg:0x%02lx = 0x%08lx\n",
             ioc->address & 0xF, ioc->value);
   return 0;
 }
@@ -519,14 +519,14 @@ bdmBitBashReadLongWord (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmBitBashFetchWord (self, &msw)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &lsw)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadLongWord : *0x%08x failed, err=%d\n", ioc->address, err);
+      PRINTF ("bdmBitBashReadLongWord : *0x%08lx failed, err=%d\n", ioc->address, err);
     return err;
   }
-  
+
   ioc->value = (msw << 16) | lsw;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadLongWord : *0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("bdmBitBashReadLongWord : *0x%08lx = 0x%08lx\n", ioc->address, ioc->value);
 
   return 0;
 }
@@ -545,14 +545,14 @@ bdmBitBashReadWord (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &w)) != 0)) {
     if (self->debugFlag)
-      PRINTF ("bdmBitBashReadWord : *0x%08x failed, err=%d\n", ioc->address, err);
+      PRINTF ("bdmBitBashReadWord : *0x%08lx failed, err=%d\n", ioc->address, err);
     return err;
   }
-  
+
   ioc->value = w;
-  
+
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadWord : *0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
+    PRINTF ("bdmBitBashReadWord : *0x%08lx = 0x%04lx\n", ioc->address, (ioc->value & 0xffff));
 
   return 0;
 }
@@ -571,15 +571,15 @@ bdmBitBashReadByte (struct BDM *self, struct BDMioctl *ioc)
       ((err = bdmDrvSerialClock (self, ioc->address, 0)) != 0) ||
       ((err = bdmBitBashFetchWord (self, &w)) != 0)){
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadByte : *0x%08x failed, err=%d\n", ioc->address, err);
-    
+    PRINTF ("bdmBitBashReadByte : *0x%08lx failed, err=%d\n", ioc->address, err);
+
   return err;
   }
-  
+
   ioc->value = w;
-  
+
   if (self->debugFlag)
-    PRINTF ("bdmBitBashReadByte : *0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+    PRINTF ("bdmBitBashReadByte : *0x%08lx = 0x%02lx\n", ioc->address, (ioc->value & 0xff));
   return 0;
 }
 
@@ -592,7 +592,7 @@ bdmBitBashWriteProcessorRegister (struct BDM *self, struct BDMioctl *ioc)
   int err;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteProcessorRegister - reg:%d, val:0x%08x\n",
+    PRINTF ("bdmBitBashWriteProcessorRegister - reg:%ld, val:0x%08lx\n",
             ioc->address & 0xF, ioc->value);
 
   if (((err = bdmDrvSerialClock (self, BDM_WREG_CMD | (ioc->address & 0xF), 0)) != 0) ||
@@ -612,7 +612,7 @@ bdmBitBashWriteLongWord (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteLongWord : 0x%08x = 0x%08x\n", ioc->address, ioc->value);
+    PRINTF ("bdmBitBashWriteLongWord : 0x%08lx = 0x%08lx\n", ioc->address, ioc->value);
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_LONG, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
@@ -634,7 +634,7 @@ bdmBitBashWriteWord (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteWord : 0x%08x = 0x%04x\n", ioc->address, (ioc->value & 0xffff));
+    PRINTF ("bdmBitBashWriteWord : 0x%08lx = 0x%04lx\n", ioc->address, (ioc->value & 0xffff));
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_WORD, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
@@ -655,7 +655,7 @@ bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc)
   unsigned short w;
 
   if (self->debugFlag)
-    PRINTF ("bdmBitBashWriteByte : 0x%08x = 0x%02x\n", ioc->address, (ioc->value & 0xff));
+    PRINTF ("bdmBitBashWriteByte : 0x%08lx = 0x%02lx\n", ioc->address, (ioc->value & 0xff));
 
   if (((err = bdmDrvSerialClock (self, BDM_WRITE_CMD | BDM_SIZE_BYTE, 0)) != 0) ||
       ((err = bdmDrvSerialClock (self, ioc->address >> 16, 0)) != 0) ||
@@ -707,7 +707,7 @@ bdmDrvGenerateBusError (struct BDM *self)
 {
   return (self->gen_bus_error) (self);
 }
-  
+
 /*
  * Restart chip and stop on the first instruction fetch
  */
@@ -716,7 +716,7 @@ bdmDrvRestartChip (struct BDM *self)
 {
   return (self->restart_chip) (self);
 }
-  
+
 /*
  * Restart chip and disable background debugging mode
  */
@@ -763,7 +763,7 @@ bdmDrvStepChip (struct BDM *self)
 {
   return (self->step_chip) (self);
 }
-  
+
 /*
  * Fill I/O buffer with data from target
  */
@@ -937,7 +937,7 @@ bdm_invalidate_cache (struct BDM *self)
 
   cacr_ioc.address = BDM_REG_CACR;
 
-  if (tblcf_read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
+  if (self->read_sysreg (self, &cacr_ioc, BDM_SYS_REG_MODE_MAPPED) < 0)
       return BDM_TARGETNC;
 
   /*
@@ -992,10 +992,10 @@ bdm_pc_read_check (struct BDM *self)
 
 BDM_STATIC int
 bdm_open (unsigned int minor)
-{  
+{
   struct BDM *self;
   int status, err = 0;
-  
+
   union {
     char     c[4];
     uint32_t l;
@@ -1031,7 +1031,7 @@ bdm_open (unsigned int minor)
     PRINTF ("bdm_open -- host machine has peculiar byte ordering");
     return ENODEV;
   }
-  
+
   self = &bdm_device_info[minor];
 
   if (self->debugFlag > 0)
@@ -1050,18 +1050,18 @@ bdm_open (unsigned int minor)
 
   if (err)
     return err;
-  
+
   self->portsAreMine = 1;
-  
+
   if (self->debugFlag)
     PRINTF ("bdm_open -- %s using port 0x%x.\n", self->name, self->portBase);
-  
+
   /*
    * Set up the driver.
    */
 
   status = bdmDrvInitHardware (self);
-  
+
   if (status & BDM_TARGETNC)
     err = BDM_FAULT_CABLE;
   else if (status & BDM_TARGETPOWER)
@@ -1078,7 +1078,7 @@ bdm_open (unsigned int minor)
 
   if (self->debugFlag)
     PRINTF ("BDMopen return %d, delayTimer %d\n", err, self->delayTimer);
-  
+
   return err;
 }
 
@@ -1095,7 +1095,7 @@ BDM_STATIC int
 bdm_close (unsigned int minor)
 {
   struct BDM *self = &bdm_device_info[minor];
-  
+
   if (self->isOpen) {
     bdmDrvReleaseChip (self);
     if (self->exists && self->portsAreMine)
@@ -1124,7 +1124,7 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
    */
   if (self->debugFlag > 3)
     PRINTF ("BDMioctl cmd:0x%x\n", cmd);
-  
+
   switch (cmd) {
     case BDM_READ_REG:
     case BDM_READ_CTLREG:
@@ -1144,8 +1144,8 @@ bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg)
       break;
 
     case BDM_SPEED:
-    case BDM_DEBUG:      
-    case BDM_SET_CF_PST:      
+    case BDM_DEBUG:
+    case BDM_SET_CF_PST:
       err = os_copy_in ((void*) &iarg, (void*) arg, sizeof iarg);
       if (self->debugFlag > 3)
         PRINTF ("BDMioctl cmd->iarg:0x%x\n", iarg);
@@ -1322,7 +1322,7 @@ bdm_read (unsigned int minor, unsigned char *buf, int count)
   struct BDM *self = &bdm_device_info[minor];
   int        nleft, ncopy;
   int        err;
-  
+
   nleft = count;
   while (nleft) {
     if (nleft > sizeof self->ioBuffer)
@@ -1345,7 +1345,7 @@ bdm_read (unsigned int minor, unsigned char *buf, int count)
 
 BDM_STATIC int
 bdm_write (unsigned int minor, unsigned char *buf, int count)
-{  
+{
   struct BDM *self = &bdm_device_info[minor];
   int        nleft, ncopy;
   int        err;

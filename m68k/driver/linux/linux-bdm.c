@@ -433,9 +433,7 @@ cleanup_module (void)
 
   if (bdm_dev_registered) {
     bdm_dev_registered = 0;
-    if (unregister_chrdev (BDM_MAJOR_NUMBER, "bdm"))
-      printk ("Unable to unregister BDM driver.\n");
-    else
-      printk ("BDM driver unregistered.\n");
+    unregister_chrdev (BDM_MAJOR_NUMBER, "bdm");
+    printk ("BDM driver unregistered.\n");
   }
 }

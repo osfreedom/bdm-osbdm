@@ -625,12 +625,13 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
   if ((shdr->sh_type == SHT_PROGBITS) &&
       (shdr->sh_flags & (SHF_WRITE | SHF_ALLOC))) {
 
-    unsigned char rbuf[1 * 1024];
+    unsigned char rbuf[4 * 1024];
     uint32_t off = 0;
     unsigned char *data;
     uint32_t size = 0;
     uint32_t dfc = 0;
     uint32_t paddr = (uint32_t) shdr->sh_addr;
+    unsigned int cnt;
     
     if(phdr) {
       paddr = phdr->p_paddr + (shdr->sh_addr - phdr->p_vaddr);
@@ -656,17 +657,20 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
       return 0;
     }
 
-    for (off = 0; off < shdr->sh_size; off += sizeof (rbuf)) {
-      unsigned int cnt = shdr->sh_size - off;
+    for (off = 0; off < shdr->sh_size; off += cnt) {
       int ret;
 
+      cnt = shdr->sh_size - off;
       if (cnt > sizeof (rbuf))
         cnt = sizeof (rbuf);
+      /* Force alignment to optimize flash programming */
+      if ((paddr + off) % 1024 && cnt >= 1024)
+	cnt = 1024 - (paddr + off) % 1024;
 
       if ((ret = write_memory (paddr + off, data + off, cnt)) != cnt) {
         if (verbosity)
           printf ("\b\bFAIL\n");
-        warn ("%swrite_memory(0x%x, xxx, 0x%x)==%d failed\n",
+        warn ("%swrite_memory(0x%x, xxx, 0x%x)==0x%x failed\n",
               verbosity ? "" : "\n", paddr + off, cnt, ret);
         return 0;
       }
@@ -676,8 +680,8 @@ load_section (elf_handle * elf, GElf_Phdr * phdr, GElf_Shdr * shdr,
         if (memcmp (data + off, rbuf, cnt)) {
           if (verbosity)
             printf ("\b\bFAIL\n");
-          warn ("%sRead back contents from 0x%08lx don't match\n",
-                verbosity ? "" : "\n", paddr + off);
+          warn ("%sRead back contents from 0x%08lx with size %x don't match\n",
+                verbosity ? "" : "\n", paddr + off, cnt);
           return 0;
         }
       }
@@ -940,11 +944,12 @@ cmd_dump_mem (size_t argc, char **argv)
       fprintf (file, "\n 0x%08lx: ", (long unsigned int) (src + i));
     rlen = read_value (src + i, &val, argv[3][0]);
     fprintf (file, " 0x%0*lx", 2 * rlen, (long unsigned int) val);
-    fflush (file);
   }
 
-  if (file != stdout)
+  if (file != stdout) {
+    fprintf(file, "\n");
     fclose (file);
+  }
 
   printf ("\nOK\n");
 }
@@ -1396,7 +1401,7 @@ static struct command_s {
   },
   { "check-mem",       "ADR SIZ",             1, 3,       3, cmd_check_mem,
     "The specified memory region is checked with a random testpattern.  In\n"
-    "addition, an alingnment test is done.  After the test the original\n"
+    "addition, an alignment test is done.  After the test the original\n"
     "memory contents are restored.\n"
     "ADR and SIZ can be a number, a register or a symbol.\n"
   },
@@ -1457,13 +1462,13 @@ static struct command_s {
     "Print seconds since bdmctrl was started.\n"
   },
   { "echo",            "[ARG ...]",           0, 1, INT_MAX, cmd_echo,
-    "Print a line of text."
+    "Print a line of text.\n"
   },
   { "exit",            "",                    0, 1,       1, cmd_exit,
     "Exit bdmctrl immediately.\n"
   },
   { "source",          "[FN [ARG ...]]",      0, 1, INT_MAX, cmd_source,
-    "Execute commands from file FN.  Withhin FN, the variables $1, $2, $3\n"
+    "Execute commands from file FN.  Within FN, the variables $1, $2, $3\n"
     "(and so on) are replaced by the specified arguments.  After all the\n"
     "commands from FN are executed, control returns to the original\n"
     "position, so recursive execution is possible. When FN is omitted,\n"
