@@ -141,7 +141,7 @@ static int cf_pe_reset_chip (struct BDM *self);
 static int
 cf_pe_get_direct_status (struct BDM *self)
 {
-  unsigned char sr = inb (self->statusPort);
+  unsigned char sr = bdm_inb_status (self);
   int           ret;
   
   if (self->cf_use_pst) {
@@ -150,10 +150,10 @@ cf_pe_get_direct_status (struct BDM *self)
     ret = 0;
     if (!(sr & CF_PE_SR_POWERED))
       ret = BDM_TARGETPOWER;
-    else if ((inb (self->dataPort) & CF_PE_DR_RESET) == 0)
+    else if ((bdm_inb_data (self) & CF_PE_DR_RESET) == 0)
       ret = BDM_TARGETRESET;
     else if (sr & CF_PE_SR_FROZEN) {
-      cr = inb(self->controlPort);
+      cr = bdm_inb_control(self);
 
       pst = 0;
       if (sr & CF_PE_SR_PST1)
@@ -201,7 +201,7 @@ cf_pe_get_direct_status (struct BDM *self)
     if ((sr & CF_PE_SR_POWERED) == 0)
       ret = BDM_TARGETPOWER;
     else
-      ret = (inb (self->dataPort) & CF_PE_DR_RESET ? 0 : BDM_TARGETRESET);
+      ret = (bdm_inb_data (self) & CF_PE_DR_RESET ? 0 : BDM_TARGETRESET);
 
     if (self->debugFlag > 3)
       PRINTF (" cf_pe_get_direct_status -- Status:0x%x, sr:0x%x\n", ret, sr);
@@ -278,7 +278,7 @@ cf_pe_init_hardware (struct BDM *self)
    * machine.
    */
 
-  outb (0x00, self->controlPort);
+  bdm_outb_control (0x00, self);
   
   /*
    * Force breakpoint
@@ -337,26 +337,26 @@ cf_pe_serial_clocker (struct BDM *self, unsigned short wval, int holdback)
 
     shiftRegister <<= 1;
     
-    outb (CF_PE_MAKE_DR (dataBit), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (dataBit), self);
 
     if (self->delayTimer)
       bdm_delay (self->delayTimer << 1);
 
-    outb (CF_PE_MAKE_DR (dataBit | CF_PE_DR_CLOCK_HIGH), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (dataBit | CF_PE_DR_CLOCK_HIGH), self);
     
     if (self->delayTimer)
       bdm_delay (self->delayTimer);
 
-    outb (CF_PE_MAKE_DR (dataBit), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (dataBit), self);
     
     if (self->delayTimer)
       bdm_delay (self->delayTimer);
 
-    if ((inb (self->statusPort) & CF_PE_SR_DATA_OUT) == 0)
+    if ((bdm_inb_status (self) & CF_PE_SR_DATA_OUT) == 0)
       shiftRegister |= 1;    
   }
 
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (0), self);
   
   self->readValue = shiftRegister & 0x1FFFF;
   
@@ -651,9 +651,9 @@ cf_pe_gen_bus_error (struct BDM *self)
     if (self->debugFlag)
       PRINTF (" cf_pe_gen_bus_error\n");
   
-    outb (CF_PE_MAKE_DR (CF_PE_DR_TEA), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_TEA), self);
     udelay (400);
-    outb (CF_PE_MAKE_DR (0), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (0), self);
   
     return BDM_FAULT_BERR;
   } else {
@@ -697,11 +697,11 @@ cf_pe_release_chip (struct BDM *self)
 {
   if (self->debugFlag)
     PRINTF (" cf_pe_release_chip\n");
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (0), self);
   bdm_sleep (250);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_RESET), self);
   bdm_sleep (500);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (0), self);
   
   self->cf_running = 1;
   
@@ -719,15 +719,15 @@ cf_pe_reset_chip (struct BDM *self)
   if (self->debugFlag)
     PRINTF (" cf_pe_reset_chip\n");
 
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (0), self);
   bdm_sleep (100);
-//  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET), self->dataPort);
+//  bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_RESET), self);
 //  bdm_sleep (100);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_RESET | CF_PE_DR_BKPT), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_RESET | CF_PE_DR_BKPT), self);
   bdm_sleep (500);
-  outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self);
   bdm_sleep (1500);
-  outb (CF_PE_MAKE_DR (0), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (0), self);
   bdm_sleep (500);
 
   self->cf_running = 1;
@@ -747,12 +747,12 @@ cf_pe_stop_chip (struct BDM *self)
     PRINTF (" cf_pe_stop_chip\n");
 
   while (retries--) {
-    outb (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (CF_PE_DR_BKPT), self);
   
     bdm_sleep (10);
     status = cf_pe_get_status (self);
     
-    outb (CF_PE_MAKE_DR (0), self->dataPort);
+    bdm_outb_data (CF_PE_MAKE_DR (0), self);
     
     if (status & (BDM_TARGETHALT | BDM_TARGETSTOPPED)) {
       return 0;
@@ -947,7 +947,7 @@ cf_bit_bash (struct BDM *self, unsigned short mask, unsigned short bits)
   if (self->bit_bash_bits & BDM_BB_CLOCK)
     data_port |= CF_PE_DR_CLOCK_HIGH;
 
-  outb (CF_PE_MAKE_DR (data_port), self->dataPort);
+  bdm_outb_data (CF_PE_MAKE_DR (data_port), self);
 
   if (self->debugFlag)
     PRINTF (" cf_bit_bash: mask=%04x, bits=%04x, data reg=%02x\n",

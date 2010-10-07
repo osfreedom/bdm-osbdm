@@ -214,6 +214,41 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
   0xf       /* BDM_REG_DBMR     */
 };
 
+static inline unsigned char bdm_inb_data(struct BDM *descr)
+{
+	return inb(descr->dataPort);
+}
+
+static inline unsigned char bdm_inb_status(struct BDM *descr)
+{
+	return inb(descr->statusPort);
+}
+
+static inline unsigned char bdm_inb_control(struct BDM *descr)
+{
+	return inb(descr->controlPort);
+}
+
+static inline void bdm_outb_data(int data, struct BDM *descr)
+{
+	outb(data, descr->dataPort);
+}
+
+static inline void bdm_outb_control(int data, struct BDM *descr)
+{
+	outb(data, descr->controlPort);
+}
+
+static inline int bdm_claim_parport(struct BDM *descr)
+{
+	return os_claim_io_ports (descr->name, descr->portBase, 4);
+}
+
+static inline void bdm_release_parport(struct BDM *descr)
+{
+	os_release_io_ports (descr->portBase, 4);
+}
+
 /*
  ************************************************************************
  *     Generic Bit Bash Functions Decls                                  *
@@ -1047,7 +1082,7 @@ bdm_open (unsigned int minor)
    * Ask the OS to try and claim the port.
    */
 
-  err = os_claim_io_ports (self->name, self->portBase, 4);
+  err = bdm_claim_parport(self);
 
   if (err)
     return err;
@@ -1069,7 +1104,7 @@ bdm_open (unsigned int minor)
     err = BDM_FAULT_POWER;
 
   if (err) {
-    os_release_io_ports (self->portBase, 4);
+    bdm_release_parport (self);
     self->portsAreMine = 0;
   }
   else {
@@ -1100,7 +1135,7 @@ bdm_close (unsigned int minor)
   if (self->isOpen) {
     bdmDrvReleaseChip (self);
     if (self->exists && self->portsAreMine)
-      os_release_io_ports (self->portBase, 4);
+      bdm_release_parport (self);
     self->portsAreMine = 0;
     self->isOpen = 0;
     os_unlock_module ();

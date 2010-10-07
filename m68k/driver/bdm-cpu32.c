@@ -216,7 +216,7 @@ cpu32_serial_clock (struct BDM *self, unsigned short wval, int holdback)
 static int
 cpu32_pd_get_status (struct BDM *self)
 {
-  unsigned char sr = inb (self->statusPort);
+  unsigned char sr = bdm_inb_status (self);
   int           ret;
 
   if (!(sr & CPU32_PD_SR_CONNECTED))
@@ -225,7 +225,7 @@ cpu32_pd_get_status (struct BDM *self)
     ret = BDM_TARGETPOWER;
   else
     ret = (sr & CPU32_PD_SR_FROZEN ? BDM_TARGETSTOPPED : 0) |
-      (inb (self->controlPort) & CPU32_PD_CR_RESET_STATUS ? BDM_TARGETRESET : 0);
+      (bdm_inb_control (self) & CPU32_PD_CR_RESET_STATUS ? BDM_TARGETRESET : 0);
   if (self->debugFlag > 1)
     PRINTF (" cpu32_pd_get_status -- Status Port:0x%02x  Status:0x%04x\n",
             sr, ret);
@@ -243,18 +243,18 @@ cpu32_pd_init_hardware (struct BDM *self)
   /*
    * Force breakpoint
    */
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (100);
-  outb (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   bdm_sleep (HZ / 100);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (100);
   status = cpu32_pd_get_status (self);
   if (self->debugFlag)
     PRINTF (" cpu32_pd_init_hardware: status:0x%02x control port:0x%02x\n",
-            status, inb (self->controlPort));
+            status, bdm_inb_control (self));
   return status;
 }
 
@@ -280,12 +280,11 @@ cpu32_pd_serial_clock (struct BDM *self, unsigned short wval, int holdback)
   while (counter--) {
     dataBit = ((shiftRegister & 0x10000) ? CPU32_PD_CR_DATA : 0);
     shiftRegister <<= 1;
-    outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-          self->controlPort);
+    bdm_outb_control (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
     bdm_delay (self->delayTimer + 1);
-    if ((inb (self->statusPort) & CPU32_PD_SR_DATA_BAR) == 0)
+    if ((bdm_inb_status (self) & CPU32_PD_SR_DATA_BAR) == 0)
       shiftRegister |= 1;
-    outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP, self->controlPort);
+    bdm_outb_control (dataBit | CPU32_PD_CR_NOT_SINGLESTEP, self);
     bdm_delay ((self->delayTimer >> 1) + 1);
   }
   self->readValue = shiftRegister & 0x1FFFF;
@@ -311,13 +310,13 @@ cpu32_pd_restart_chip (struct BDM *self)
 
   if (self->debugFlag)
     PRINTF (" cpu32_pd_restart_chip\n");
-  outb (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_FORCE_RESET | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
+    if (bdm_inb_status (self) & CPU32_PD_SR_FROZEN)
       return 0;
   }
   return BDM_FAULT_RESPONSE;
@@ -331,9 +330,9 @@ cpu32_pd_release_chip (struct BDM *self)
 {
   if (self->debugFlag)
     PRINTF (" cpu32_pd_release_chip\n");
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_FORCE_RESET, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_FORCE_RESET, self);
   udelay (10);
-  outb (CPU32_PD_CR_NOT_SINGLESTEP, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP, self);
   return 0;
 }
 
@@ -350,13 +349,11 @@ cpu32_pd_reset_chip (struct BDM *self)
 {
   if (self->debugFlag)
     PRINTF (" cpu32_pd_reset_chip\n");
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_FORCE_RESET,
-        self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_FORCE_RESET, self);
   udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT, self);
   udelay (10);
-  outb (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_NOT_SINGLESTEP,
-        self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT | CPU32_PD_CR_NOT_SINGLESTEP, self);
   return 0;
 }
 
@@ -370,12 +367,11 @@ cpu32_pd_stop_chip (struct BDM *self)
 
   if (self->debugFlag)
     PRINTF (" cpu32_pd_stop_chip\n");
-  if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
+  if (bdm_inb_status (self) & CPU32_PD_SR_FROZEN)
     return 0;
-  outb (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-        self->controlPort);
+  bdm_outb_control (CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN)
+    if (bdm_inb_status (self) & CPU32_PD_SR_FROZEN)
       return 0;
   }
   return BDM_FAULT_RESPONSE;
@@ -402,16 +398,15 @@ cpu32_pd_step_chip (struct BDM *self)
    * Send the last bit of the command
    */
   dataBit = (BDM_GO_CMD & 0x1) ? CPU32_PD_CR_DATA : 0;
-  outb (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT,
-        self->controlPort);
+  bdm_outb_control (dataBit | CPU32_PD_CR_NOT_SINGLESTEP | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   bdm_delay (self->delayTimer + 1);
 
   /*
    * Enable single-step
    */
-  outb (dataBit | CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+  bdm_outb_control (dataBit | CPU32_PD_CR_CLOCKBAR_BKPT, self);
   bdm_delay (1);
-  outb (dataBit, self->controlPort);
+  bdm_outb_control (dataBit, self);
 
   /*
    * Wait for step to complete
@@ -427,8 +422,8 @@ cpu32_pd_step_chip (struct BDM *self)
    * clocks a garbage bit into the target chip.
    */
   for (check = 0 ; check < 1000 ; check++) {
-    if (inb (self->statusPort) & CPU32_PD_SR_FROZEN) {
-      outb (CPU32_PD_CR_CLOCKBAR_BKPT, self->controlPort);
+    if (bdm_inb_status (self) & CPU32_PD_SR_FROZEN) {
+      bdm_outb_control (CPU32_PD_CR_CLOCKBAR_BKPT, self);
       return 0;
     }
   }
@@ -441,7 +436,7 @@ cpu32_pd_step_chip (struct BDM *self)
 static int
 cpu32_icd_get_status (struct BDM *self)
 {
-  unsigned char sr = inb (self->statusPort);
+  unsigned char sr = bdm_inb_status (self);
   int           ret;
 
   ret = sr & CPU32_ICD_FREEZE ? BDM_TARGETSTOPPED : 0;
@@ -462,12 +457,12 @@ cpu32_icd_init_hardware (struct BDM *self)
   /*
    * Force breakpoint
    */
-  outb (CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self);
   udelay (10);
   status = cpu32_icd_get_status (self);
   if (self->debugFlag)
     PRINTF (" cpu32_icd_init_hardware: status:0x%02x, data port:0x%02x\n",
-            status, inb (self->dataPort));
+            status, bdm_inb_data (self));
   return status;
 }
 
@@ -502,22 +497,18 @@ cpu32_icd_serial_clock (struct BDM *self, unsigned short wval, int holdback)
   while (counter--) {
     dataBit = ((shiftRegister & 0x10000) ? CPU32_ICD_DSI : 0);
     shiftRegister <<= 1;
-    outb (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT,
-          self->dataPort);
+    bdm_outb_data (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT, self);
     bdm_delay (self->delayTimer + 1);
-    if ((inb (self->statusPort) & CPU32_ICD_DSO) == 0)
+    if ((bdm_inb_status (self) & CPU32_ICD_DSO) == 0)
       shiftRegister |= 1;
-    outb (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-          self->dataPort);
+    bdm_outb_data (dataBit | CPU32_ICD_RST_OUT | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK, self);
     bdm_delay ((self->delayTimer >> 1) + 1);
   }
   if (holdback == 0) {
-    outb (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-          self->dataPort);
+    bdm_outb_data (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK, self);
     bdm_delay (self->delayTimer + 1);
   }
-  outb (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK,
-        self->dataPort);
+  bdm_outb_data (CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT | CPU32_ICD_DSCLK, self);
   self->readValue = shiftRegister & 0x1FFFF;
   if (self->debugFlag)
     PRINTF (" cpu32_icd_serial_clock -- send 0x%05x, receive 0x%05x\n",
@@ -543,7 +534,7 @@ cpu32_icd_stop_chip (struct BDM *self)
   if (self->debugFlag)
     PRINTF (" cpu32_icd_stop_chip: ");
   /* if FREEZE is already high, we're stopped and we're done here */
-  if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
+  if (bdm_inb_status (self) & CPU32_ICD_FREEZE) {
     if (self->debugFlag)
       PRINTF ("already stopped\n");
     return 0;
@@ -554,25 +545,24 @@ cpu32_icd_stop_chip (struct BDM *self)
 
     /* even times, simply assert DSCLK and RESET */
     if (pass%2 == 0) {
-      outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
+      bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self);
     }
     /* odd times, yank BERR as well, in case the target is wedged */
     else {
-      outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_FORCE_BERR,
-            self->dataPort);
+      bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_FORCE_BERR, self);
     }
 
     /* now hang around and wait for the freeze line to come up
      * XXX we're depending on a nop loop for timing?  arrrgh!
      */
     for (check = 0 ; check < (1000 + ((pass+1)%2) * 9000) ; check++) {
-      if (inb (self->statusPort) & CPU32_ICD_FREEZE) {
+      if (bdm_inb_status (self) & CPU32_ICD_FREEZE) {
         /* if freeze line is high we're OK
          * XXX let reset go too?
          */
         if (self->debugFlag)
           PRINTF("stopped after %d bdm_delays\n", check);
-        outb (CPU32_ICD_RST_OUT, self->dataPort);
+        bdm_outb_data (CPU32_ICD_RST_OUT, self);
         return 0;
       }
       bdm_delay (10);
@@ -580,7 +570,7 @@ cpu32_icd_stop_chip (struct BDM *self)
 
   }
   /* we've failed... */
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_RST_OUT, self);
   if (self->debugFlag)
     PRINTF("failed!\n");
   return BDM_FAULT_RESPONSE;
@@ -594,7 +584,7 @@ cpu32_icd_restart_chip (struct BDM *self)
 {
   if (self->debugFlag)
     PRINTF (" cpu32_icd_restart_chip\n");
-  outb (CPU32_ICD_DSCLK, self->dataPort);
+  bdm_outb_data (CPU32_ICD_DSCLK, self);
   udelay (1);
   return cpu32_icd_stop_chip (self);
 }
@@ -607,9 +597,9 @@ cpu32_icd_release_chip (struct BDM *self)
 {
   if (self->debugFlag)
     PRINTF (" cpu32_icd_release_chip\n");
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_STEP_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_STEP_OUT, self);
   udelay (10);
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT | CPU32_ICD_STEP_OUT, self);
   udelay (10);
   return 0;
 }
@@ -631,7 +621,7 @@ cpu32_icd_reset_chip (struct BDM *self)
   /*
    * Assert RESET*, BKPT*, and BREAK*
    */
-  outb (0, self->dataPort);
+  bdm_outb_data (0, self);
   udelay (100);
   
   /*
@@ -639,7 +629,7 @@ cpu32_icd_reset_chip (struct BDM *self)
    * Leaving BKPT* and BREAK* asserted gets us ready for first data txfer
    * as per Figure 7-8 in CPU32RM/AD
    */
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_RST_OUT, self);
   udelay (100);
 
   return 0;
@@ -666,15 +656,14 @@ cpu32_icd_step_chip (struct BDM *self)
    * Send the last bit of the command
    */
   dataBit = (BDM_GO_CMD & 0x1) ? CPU32_ICD_DSI : 0;
-  outb (dataBit | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_RST_OUT,
-        self->dataPort);
+  bdm_outb_data (dataBit | CPU32_ICD_OE | CPU32_ICD_STEP_OUT | CPU32_ICD_RST_OUT, self);
   bdm_delay (self->delayTimer + 1);
-  outb (dataBit | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (dataBit | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self);
   bdm_delay (1);
   /* Raise CPU32_ICD_DSCLK before dropping CPU32_ICD_OEA */
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_OE | CPU32_ICD_RST_OUT, self);
   bdm_delay (1);
-  outb (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_DSCLK | CPU32_ICD_RST_OUT, self);
 
   return cpu32_icd_stop_chip (self);
 }
@@ -810,9 +799,9 @@ cpu32_icd_gen_bus_error (struct BDM *self)
   if (self->debugFlag)
     PRINTF(" cpu32_icd_gen_bus_error\n");
 
-  outb (CPU32_ICD_FORCE_BERR | CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_FORCE_BERR | CPU32_ICD_RST_OUT, self);
   udelay (400);
-  outb (CPU32_ICD_RST_OUT, self->dataPort);
+  bdm_outb_data (CPU32_ICD_RST_OUT, self);
 
   return BDM_FAULT_BERR;
 }
