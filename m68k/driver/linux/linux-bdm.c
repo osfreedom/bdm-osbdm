@@ -445,3 +445,6 @@ cleanup_module (void)
     printk ("BDM driver unregistered.\n");
   }
 }
+
+MODULE_SUPPORTED_DEVICE("bdm");
+MODULE_LICENSE("GPL");
