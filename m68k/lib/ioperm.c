@@ -25,7 +25,6 @@
 #include <config.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -385,7 +384,7 @@ bdm_ioperm_open (const char *devname, bdm_iface** iface)
     {
       int fd;
       bdmInfo ("trying kernel driver: %s\n", devname);
-      if ((fd = driver_open (devname, O_RDWR)) < 0) {
+      if ((fd = bdmLocalOpen(devname, iface)) < 0) {
         if ((strlen (devname) + sizeof ("localhost")) < 128)
         {
           char lname[128];
