@@ -52,6 +52,7 @@
  */
 
 #define BDM_DEFAULT_DEBUG 0
+#define BDM_USE_PARPORT
 
 #include <linux/module.h>
 #include <linux/version.h>
@@ -82,6 +83,9 @@
 #include <asm/uaccess.h>
 #endif /* LINUX_VERSION_CODE */
 #include <linux/errno.h>
+#ifdef BDM_USE_PARPORT
+#include <linux/parport.h>
+#endif
 
 /*
  ************************************************************************
@@ -154,6 +158,7 @@ static int copy_to_user (void *to_user, const void *from, unsigned long len)
  ************************************************************************
  */
 
+#ifndef BDM_USE_PARPORT
 static int
 os_claim_io_ports (char *name, unsigned int base, unsigned int num)
 {
@@ -169,6 +174,7 @@ os_release_io_ports (unsigned int base, unsigned int num)
   release_region (base, 4);
   return 0;
 }
+#endif
 
 #define os_move_in os_copy_in
 
@@ -364,7 +370,11 @@ init_module (void)
   for (minor = 0 ;
        minor < (sizeof bdm_device_info / sizeof bdm_device_info[0]) ;
        minor++) {
+#ifndef BDM_USE_PARPORT
     int port;
+#else
+    struct parport *port;
+#endif
     struct BDM *self = &bdm_device_info[minor];
 
     /*
@@ -373,6 +383,7 @@ init_module (void)
     
     self->debugFlag = BDM_DEFAULT_DEBUG;
     
+#ifndef BDM_USE_PARPORT
     /*
      * Choose a port number
      */
@@ -392,29 +403,54 @@ init_module (void)
      * See if the port exists
      */
     
-    self->exists = 1;
-    
     outb (0x00, port);
     udelay (50);
     if (inb (port) != 0x00) {
-      self->exists = 0;
       if (self->debugFlag)
         printk ("BDM driver cannot detect LPT%d.\n", BDM_IFACE_MINOR (minor) + 1);
       continue;
     }
+#else
+    switch (BDM_IFACE_MINOR (minor)) {
+      case 0:  /* LPT1 */
+      case 1:  /* LPT2 */
+      case 2:  /* LPT3 */
+      case 3:  /* LPT4 */
+	port = parport_find_number(BDM_IFACE_MINOR (minor));
+	if (port)
+		parport_put_port(port);
+	break;
+      default:
+        printk ("BDM driver has no address for LPT%d.\n", BDM_IFACE_MINOR (minor) + 1);
+        cleanup_module();  
+        return -EIO;
+    }
+    if (!port) {
+      if (self->debugFlag)
+        printk ("BDM driver cannot detect LPT%d.\n", BDM_IFACE_MINOR (minor) + 1);
+      continue;
+    }
+#endif
+    self->exists = 1;
     
     sprintf (self->name, "bdm%d", minor);
+#ifndef BDM_USE_PARPORT
     self->portBase    = self->dataPort = port;
     self->statusPort  = port + 1;
     self->controlPort = port + 2;  
+#else
+    self->port        = port;
+    self->portBase    = port->base;
+#endif
     self->delayTimer  = 0;
     
     switch (BDM_IFACE (minor)) {
       case BDM_CPU32_PD:     bdm_cpu32_pd_init_self (self); break;
       case BDM_CPU32_ICD:    bdm_cpu32_icd_init_self (self); break;
       case BDM_COLDFIRE_PE:  bdm_cf_pe_init_self (self); break;
+      case BDM_COLDFIRE_TBLCF: /* usb, nothing to do here */ break;
       default:
-        printk ("BDM driver has no interface for minor number\n");
+        printk ("BDM driver has no interface for minor number %d\n", minor);
         cleanup_module();  
         return -EIO;
     }

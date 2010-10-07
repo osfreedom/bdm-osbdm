@@ -301,9 +301,14 @@ struct BDM {
   int  exists;
   int  portsAreMine;
   int  portBase;
+#ifndef BDM_USE_PARPORT
   int  dataPort;
   int  statusPort;
   int  controlPort;
+#else
+  struct parport *port;
+  struct pardevice *pardev;
+#endif
   int  usbDev;
 
   /*

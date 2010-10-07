@@ -214,6 +214,7 @@ static int cf_sysreg_map[BDM_REG_DBMR + 1] =
   0xf       /* BDM_REG_DBMR     */
 };
 
+#ifndef BDM_USE_PARPORT
 static inline unsigned char bdm_inb_data(struct BDM *descr)
 {
 	return inb(descr->dataPort);
@@ -248,6 +249,50 @@ static inline void bdm_release_parport(struct BDM *descr)
 {
 	os_release_io_ports (descr->portBase, 4);
 }
+#else
+static inline unsigned char bdm_inb_data(struct BDM *descr)
+{
+	return parport_read_data(descr->port);
+}
+
+static inline unsigned char bdm_inb_status(struct BDM *descr)
+{
+	return parport_read_status(descr->port);
+}
+
+static inline unsigned char bdm_inb_control(struct BDM *descr)
+{
+	return parport_read_control(descr->port);
+}
+
+static inline void bdm_outb_data(int data, struct BDM *descr)
+{
+	parport_write_data(descr->port, data);
+}
+
+static inline void bdm_outb_control(int data, struct BDM *descr)
+{
+	parport_write_control(descr->port, data);
+}
+
+static int bdm_preempt(void *handle)
+{
+	return 1; /* 1=don't release parport */
+}
+
+static inline int bdm_claim_parport(struct BDM *descr)
+{
+	descr->pardev = parport_register_device(descr->port,
+				"bdm", bdm_preempt, NULL, NULL, 0, NULL);
+	return parport_claim(descr->pardev);
+}
+
+static inline void bdm_release_parport(struct BDM *descr)
+{
+	parport_release(descr->pardev);
+	parport_unregister_device(descr->pardev);
+}
+#endif
 
 /*
  ************************************************************************
