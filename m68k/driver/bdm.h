@@ -401,6 +401,7 @@ struct BDM {
 #endif
 };
 
+#ifdef BDM_USERLAND_LIB
 /*
  * BDM call when built into user-land.
  */
@@ -409,6 +410,7 @@ int bdm_close (unsigned int minor);
 int bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg);
 int bdm_read (unsigned int minor, unsigned char *buf, int count);
 int bdm_write (unsigned int minor, unsigned char *buf, int count);
+#endif
 
 struct BDM* bdm_get_device_info (int minor);
 int bdm_get_device_info_count (void);

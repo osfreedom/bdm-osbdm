@@ -243,7 +243,7 @@ static int bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc);
  *     CPU32 for PD/ICD interface support routines                      *
  ************************************************************************
  */
-#if BDM_DEVICE_IOPERM
+#if defined(BDM_DEVICE_IOPERM) || !defined(BDM_USERLAND_LIB)
 #include "bdm-cpu32.c"
 #endif
 
@@ -252,7 +252,7 @@ static int bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc);
  *     Coldfire P&E support routines                                    *
  ************************************************************************
  */
-#if BDM_DEVICE_IOPERM
+#if defined(BDM_DEVICE_IOPERM) || !defined(BDM_USERLAND_LIB)
 #include "bdm-cf-pe.c"
 #endif
 
@@ -261,7 +261,7 @@ static int bdmBitBashWriteByte (struct BDM *self, struct BDMioctl *ioc);
  *     Coldfire P&E support routines                                    *
  ************************************************************************
  */
-#if BDM_DEVICE_USB
+#if defined(BDM_DEVICE_USB)
 #include "bdm-tblcf.c"
 #endif
 
@@ -980,6 +980,10 @@ bdm_pc_read_check (struct BDM *self)
  *      Driver Functions which are common to the different OS's         *
  ************************************************************************
  */
+
+#ifndef BDM_STATIC
+#define BDM_STATIC static
+#endif
 
 /*
  * Requires the OS to define `os_claim_io_ports' and
