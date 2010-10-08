@@ -38,7 +38,7 @@ const unsigned long test_pattern[10 * 4] = {
   0x00010000, 0x00020000, 0x00040000, 0x00080000,
   0x00100000, 0x00200000, 0x00400000, 0x00800000,
   0x01000000, 0x02000000, 0x04000000, 0x08000000,
-  0x10000000, 0x20000000, 0x40000000, 0x80000000 
+  0x10000000, 0x20000000, 0x40000000, 0x80000000
 };
 
 #define SRAMBAR 0x20000000
@@ -52,7 +52,7 @@ cleanExit (int exit_code)
   }
   exit (exit_code);
 }
-  
+
 void
 showError (char *msg)
 {
@@ -82,7 +82,7 @@ showRegs (int cpu)
   for (i = 0 ; i < 8 ; i++) {
     if ((bdmReadRegister (i, &d) < 0) || (bdmReadRegister (i+8, &a) < 0))
       showError ("Read register");
-    
+
     printf ("A%d: %.8lX   D%d: %.8lX\n", i, a, i, d);
   }
 
@@ -92,7 +92,7 @@ showRegs (int cpu)
         default:
           s = i;
           break;
-    
+
         case BDM_REG_CACR:
         case BDM_REG_ACR0:
         case BDM_REG_ACR1:
@@ -115,7 +115,7 @@ showRegs (int cpu)
         default:
           s = i;
           break;
-    
+
         case BDM_REG_PCC:
         case BDM_REG_USP:
         case BDM_REG_SSP:
@@ -127,7 +127,7 @@ showRegs (int cpu)
           break;
       }
     }
-    
+
     if (s <  BDM_MAX_SYSREG) {
       if (bdmReadSystemRegister (s, &r) < 0)
         showError ("Read system register");
@@ -140,13 +140,13 @@ void
 cpu32Execute (unsigned long chkpc)
 {
   unsigned long pc;
-  
+
   printf ("Run to %#8lx\n", chkpc);
-  
+
   if ((bdmWriteSystemRegister (BDM_REG_SFC, 5) < 0) ||
       (bdmWriteSystemRegister (BDM_REG_DFC, 5) < 0))
     showError ("Write SFC/DFC");
-  
+
   for (;;) {
     if (bdmReadSystemRegister (BDM_REG_RPC, &pc) < 0)
       showError ("Read PC");
@@ -162,7 +162,7 @@ do_reset (int cpu)
 {
   unsigned long csr;
   const char *cputype;
-  
+
   /*
    * Reset the target
    */
@@ -175,7 +175,7 @@ do_reset (int cpu)
   if (cpu == BDM_COLDFIRE) {
     if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
       showError ("Reading CSR");
-    
+
     if ((csr & 0x01000000) == 0) {
       printf ("CSR break not set, target failed to break, CSR = 0x%08lx\n", csr);
       cleanExit (1);
@@ -240,7 +240,7 @@ coldfireExecute ()
   int status;
   int code_len;
   int i, b;
-  
+
   const char *code =
     "46fc 2700"		// "movew #0x2700,%sr\n"	| enter supervisor mode
     "2e7c 2000 0000"	// "movel #0x20000000,%sp\n"	| setup the stack
@@ -278,7 +278,7 @@ coldfireExecute ()
     ;
 
   printf ("Coldfire execution test, loading code to SRAM.\n");
-  
+
   /*
    * Convert the code to binary to load. The code is
    * like this as it is easy to cut and paste in.
@@ -292,16 +292,16 @@ coldfireExecute ()
   }
 
   b = 0;
-  
+
   for (i = 0; i < code_len; i++) {
     if (code[i] > ' ') {
       if (code[i] >= '0' && code[i] <= '9')
         wbuf[b] = code[i] - '0';
       else if (code[i] >= 'a' && code[i] <= 'f')
         wbuf[b] = code[i] - 'a' + 10;
-      
+
       i++;
-      
+
       if (code[i] >= '0' && code[i] <= '9')
         wbuf[b] = (wbuf[b] << 4) | (code[i] - '0');
       else if (code[i] >= 'a' && code[i] <= 'f')
@@ -310,13 +310,13 @@ coldfireExecute ()
       b++;
     }
   }
-  
+
   if (bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 1) < 0)
     showError ("Writing RAMBAR");
-  
+
   if (bdmWriteMemory (SRAMBAR, wbuf, b) < 0)
     showError ("Writing SRAM buffer");
-    
+
   if (bdmReadMemory (SRAMBAR, rbuf, b) < 0)
     showError ("Reading SRAM buffer");
 
@@ -332,7 +332,7 @@ coldfireExecute ()
     showError ("Changing RAMBAR");
 
   printf ("Stepping code.\n");
-  
+
   for (i = 0; i < 18; i++) {
     if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
       showError ("Reading CSR");
@@ -341,15 +341,15 @@ coldfireExecute ()
 
     printf ("Stepping, pc is 0x%08lx, csr = 0x%08lx\n", pc, csr);
 
-    if ((pc & 0xfffff000) != SRAMBAR) 
+    if ((pc & 0xfffff000) != SRAMBAR)
     {
       printf ("WARNING: PC is not in the SRAM, something is wrong.\n");
     }
-  
+
     if (bdmStep () < 0)
       showError ("Step");
   }
-  
+
   showRegs (BDM_COLDFIRE);
   checkRegValues();
 
@@ -367,18 +367,18 @@ coldfireExecute ()
   }
 
   printf ("CSR halt set, target halted.\n");
-  
+
   /*
    * For the Coldfire the target must be halted. This tests the csr caching.
    */
   status = bdmStatus ();
   printf ("Target status: 0x%x -- %s, %s, %s, %s, %s.\n", status,
-          status & BDM_TARGETRESET   ? "RESET" : "NOT RESET", 
-          status & BDM_TARGETHALT    ? "HALTED" : "NOT HALTED", 
-          status & BDM_TARGETSTOPPED ? "STOPPED" : "NOT STOPPED", 
-          status & BDM_TARGETPOWER   ? "POWER OFF" : "POWER ON", 
+          status & BDM_TARGETRESET   ? "RESET" : "NOT RESET",
+          status & BDM_TARGETHALT    ? "HALTED" : "NOT HALTED",
+          status & BDM_TARGETSTOPPED ? "STOPPED" : "NOT STOPPED",
+          status & BDM_TARGETPOWER   ? "POWER OFF" : "POWER ON",
           status & BDM_TARGETNC      ? "NOT CONNECTED" : "CONNECTED");
-  
+
   if (bdm_revision >= 2 /* restore data access on 5407, 547x & 548x */
   && bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 0x1) < 0)
     showError ("Restoring RAMBAR");
@@ -389,7 +389,7 @@ coldfireSramVerify (int loops)
 {
 #define SRAM_BYTE_SIZE (1024) /* (1024 * 2) change for 5206e */
 #define SRAM_BUF_SIZE  (SRAM_BYTE_SIZE / sizeof(unsigned long))
-  
+
   unsigned long buf[SRAM_BUF_SIZE];
   unsigned int  test;
   unsigned int  i;
@@ -397,10 +397,10 @@ coldfireSramVerify (int loops)
   int           loop = 0;
 
   printf ("Read/Write SRAM Test, %d loops\n", loops);
-  
+
   if (bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 1) < 0)
     showError ("Writing RAMBAR");
-  
+
   while (loop < loops) {
     loop++;
     printf (" %5i : ", loop);
@@ -410,7 +410,7 @@ coldfireSramVerify (int loops)
       }
 
       sram_ok = 1;
-      
+
       if (bdmWriteMemory (SRAMBAR, (unsigned char*) buf, SRAM_BYTE_SIZE) < 0) {
         if (stop_quite)
           printf ("W");
@@ -456,7 +456,7 @@ checkRegisters (int cpu, int loops)
   int           reg_chk_loop_failed = 0;
   int           reg_chk_failed = 0;
   int           loop = 0;
-  
+
   while (loop < loops) {
     loop++;
     if (reg_chk_loop_failed && force_reset_on_fail)
@@ -501,7 +501,7 @@ checkRegisters (int cpu, int loops)
           printf (".");
       }
       printf ("\n");
-    }    
+    }
   }
 
   if (reg_chk_failed) {
@@ -520,7 +520,7 @@ verifyAlignment (int cpu)
   unsigned char  byte;
   unsigned short word;
   unsigned long  lword;
-  
+
   /*
    * Check the values using a byte read.
    */
@@ -628,15 +628,15 @@ checkAlignment (int cpu, int loops)
   int           failed = 0;
   int           loop = 0;
   unsigned char buf[ALIGN_MEM_SIZE];
-  
+
   printf ("Alignment SRAM Test, %d loops\n", loops);
-  
+
   if (bdmWriteSystemRegister (BDM_REG_RAMBAR, SRAMBAR | 1) < 0)
     showError ("Writing RAMBAR");
-  
+
   for (addr = 0; addr < 256; addr++)
     buf[addr] = addr;
-  
+
   while (loop < loops) {
     loop++;
     if (loop_failed && force_reset_on_fail) {
@@ -647,7 +647,7 @@ checkAlignment (int cpu, int loops)
     loop_failed = 0;
     /*
      * Fill the memory with a byte count.
-     */    
+     */
     printf ("Byte Write alignment write, %4d of %4d : ", loop, loops);
     for (addr = 0; addr < 256; addr++) {
       if (bdmWriteByte (addr + SRAMBAR, addr) < 0) {
@@ -677,7 +677,7 @@ checkAlignment (int cpu, int loops)
     }
     /*
      * Fill the memory with a byte count.
-     */    
+     */
     printf ("\nWord (16bits) Write alignment verify, %4d of %4d : ", loop, loops);
     for (addr = 0; addr < 256; addr += 2) {
       if (bdmWriteWord (addr + SRAMBAR, (addr << 8) | (addr + 1)) < 0) {
@@ -708,7 +708,7 @@ checkAlignment (int cpu, int loops)
     }
     /*
      * Fill the memory with a byte count.
-     */    
+     */
     printf ("\nLong Word (32bits) Write alignment verify, %4d of %4d : ", loop, loops);
     for (addr = 0; addr < 256; addr += 4) {
       if (bdmWriteLongWord (addr + SRAMBAR,
@@ -803,7 +803,7 @@ main (int argc, char **argv)
   }
 
   printf ("BDM Check for Coldfire processors.\n");
-  
+
   for (arg = 1; arg < argc; arg++) {
     if (argv[arg][0] != '-') {
       if (dev) {
@@ -858,7 +858,7 @@ main (int argc, char **argv)
             }
           sram_chk_loops = strtoul (argv[arg], NULL, 0);
           break;
-          
+
         case 'a':
           arg++;
             if (arg == argc) {
@@ -871,7 +871,7 @@ main (int argc, char **argv)
         case 'C':
           options_stop_on_error = 0;
           break;
-          
+
         case 'Q':
           options_stop_quite = 1;
           break;
@@ -879,10 +879,10 @@ main (int argc, char **argv)
         case 'R':
           force_reset_on_fail = 1;
           break;
-          
+
         default:
           printf(" unknown option!");
-    
+
         case '?':
         case 'h':
           Usage();
@@ -898,7 +898,7 @@ main (int argc, char **argv)
   }
 
   printf ("Device: %s\n", dev);
-  
+
   /*
    * Open the BDM interface driver
    */
@@ -966,31 +966,31 @@ main (int argc, char **argv)
   }
 
   do_reset (cpu);
-  
+
   stop_on_error = options_stop_on_error;
   stop_quite = options_stop_quite;
-  
+
   /*
    * For the Coldfire the target must be stopped. This tests the csr caching.
    */
   status = bdmStatus ();
   printf ("Target status: 0x%x -- %s, %s, %s, %s, %s.\n", status,
-          status & BDM_TARGETRESET   ? "RESET" : "NOT RESET", 
-          status & BDM_TARGETHALT    ? "HALTED" : "NOT HALTED", 
-          status & BDM_TARGETSTOPPED ? "STOPPED" : "NOT STOPPED", 
-          status & BDM_TARGETPOWER   ? "POWER OFF" : "POWER ON", 
+          status & BDM_TARGETRESET   ? "RESET" : "NOT RESET",
+          status & BDM_TARGETHALT    ? "HALTED" : "NOT HALTED",
+          status & BDM_TARGETSTOPPED ? "STOPPED" : "NOT STOPPED",
+          status & BDM_TARGETPOWER   ? "POWER OFF" : "POWER ON",
           status & BDM_TARGETNC      ? "NOT CONNECTED" : "CONNECTED");
 
   if (reg_chk_loops)
     checkRegisters (cpu, reg_chk_loops);
-  
+
   if ((cpu == BDM_COLDFIRE) && sram_chk_loops)
     coldfireSramVerify (sram_chk_loops);
 
-  
+
   if (align_chk_loops)
     checkAlignment (cpu, align_chk_loops);
-  
+
   /*
    * Verify that target register can be written and read
    */
@@ -1000,7 +1000,7 @@ main (int argc, char **argv)
   else {
     coldfireExecute ();
   }
-  
+
   showRegs (cpu);
   showLong (0x0FC00000);
   showLong (0x01000000);

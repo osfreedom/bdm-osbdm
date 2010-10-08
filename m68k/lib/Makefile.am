@@ -10,13 +10,13 @@
 ##
 
 AM_CPPFLAGS = -I$(srcdir)/../driver
-AM_CFLAGS =
+AM_CFLAGS = -DBDM_USERLAND_LIB
 
 DRIVER_SRC = ../driver/bdm-user-land.c
 DRIVER_HDR = ../driver/bdm.h
 
 if BDM_IOPERM
-AM_CFLAGS += -DBDM_DEVICE_IOPERM=1
+AM_CFLAGS += -DBDM_DEVICE_IOPERM
 if WIN32
 DRIVER_SRC += win-ioperm.c
 else

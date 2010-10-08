@@ -311,9 +311,14 @@ struct BDM {
   int  exists;
   int  portsAreMine;
   int  portBase;
+#ifndef BDM_USE_PARPORT
   int  dataPort;
   int  statusPort;
   int  controlPort;
+#else
+  struct parport *port;
+  struct pardevice *pardev;
+#endif
   int  usbDev;
 
   /*
@@ -411,6 +416,7 @@ struct BDM {
 #endif
 };
 
+#ifdef BDM_USERLAND_LIB
 /*
  * Driver Functions which are common to different PODs
  */
@@ -426,9 +432,10 @@ int bdm_close (unsigned int minor);
 int bdm_ioctl (unsigned int minor, unsigned int cmd, unsigned long arg);
 int bdm_read (unsigned int minor, unsigned char *buf, int count);
 int bdm_write (unsigned int minor, unsigned char *buf, int count);
+#endif
 
 struct BDM* bdm_get_device_info (int minor);
-int bdm_get_device_info_count ();
+int bdm_get_device_info_count (void);
 
 /*
  * Pod Interface initialisation calls.
