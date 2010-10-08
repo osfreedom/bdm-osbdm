@@ -52,7 +52,7 @@ struct m68k_bdm_reg_mapping m68k_bdm_cfv1_reg_map[] = {
   { "sp",  M68K_BDM_REG_TYPE_VOID_DATA_PTR, 15, BDM_REG_A7,  0 },
   { "ps",  M68K_BDM_REG_TYPE_INT32,         16, BDM_REG_SR,  0 },
   { "pc",  M68K_BDM_REG_TYPE_INT32,         17, BDM_REG_RPC, 0 },
-  { "vbr", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801), M68K_BDM_CF_VBR_FLAGS }
+  { "vbr", M68K_BDM_REG_TYPE_VOID_DATA_PTR, 18, BDM_REG_CTRL (0x801), REG_NON_CACHEABLE }
   
   
 };
