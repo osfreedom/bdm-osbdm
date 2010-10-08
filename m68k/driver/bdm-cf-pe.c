@@ -314,7 +314,7 @@ cf_pe_init_hardware (struct BDM *self)
   self->cf_debug_ver = (self->cf_csr >> 20) & 0x0f;
   /* Read the CSR2 also. */ 
   ioctl_csr2.address = BDM_REG_CSR2;
-  if ( tblcf_read_sysreg (self, &ioctl_csr2, BDM_SYS_REG_MODE_CONTROL) == 0)
+  if ( cf_pe_read_sysreg (self, &ioctl_csr2, BDM_SYS_REG_MODE_CONTROL) == 0)
     if ((ioctl_csr2.value >> 16) & 0x0f)
       self->cf_debug_ver++; // CFv1
 
