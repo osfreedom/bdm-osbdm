@@ -1710,6 +1710,9 @@ m68k_bdm_detach (void)
   if (m68k_bdm_debug_level)
     printf_filtered ("m68k-bdm: detach\n");
   m68k_bdm_ptid = null_ptid;
+  
+  // When we detach we have to close the device, force the close
+  m68k_bdm_close();
   return 0;
 }
 
