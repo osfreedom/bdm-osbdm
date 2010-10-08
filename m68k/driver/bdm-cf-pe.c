@@ -443,8 +443,12 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
       ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address < BDM_REG_CSR))) {
     if (mode == BDM_SYS_REG_MODE_CONTROL)
       cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
+    else {
+      if (self->cf_debug_ver == CF_BDM_REV_CFV1_B_PLUS)
+	cmd = cfv1_sysreg_map[ioc->address];
+      else
+	cmd = cf_sysreg_map[ioc->address];
+    }
 
     if (cmd == -1) {
       ioc->value = 0;
@@ -478,8 +482,12 @@ cf_pe_read_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
         }
       }
     }
-    else
-      cmd = cf_sysreg_map[ioc->address];
+    else {
+      if (self->cf_debug_ver == CF_BDM_REV_CFV1_B_PLUS)
+	cmd = cfv1_sysreg_map[ioc->address];
+      else
+	cmd = cf_sysreg_map[ioc->address];
+    }
 
     if (cmd == -1) {
       ioc->value = 0;
@@ -594,8 +602,12 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
       ((mode == BDM_SYS_REG_MODE_MAPPED) && (ioc->address < BDM_REG_CSR))) {
     if (mode == BDM_SYS_REG_MODE_CONTROL)
       cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
+    else {
+      if (self->cf_debug_ver == CF_BDM_REV_CFV1_B_PLUS)
+	cmd = cfv1_sysreg_map[ioc->address];
+      else
+	cmd = cf_sysreg_map[ioc->address];
+    }
 
     if (cmd == -1) {
       ioc->value = 0;
@@ -615,8 +627,12 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
   else {
     if (mode == BDM_SYS_REG_MODE_DEBUG)
       cmd = ioc->address & 0xffff;
-    else
-      cmd = cf_sysreg_map[ioc->address];
+    else {
+      if (self->cf_debug_ver == CF_BDM_REV_CFV1_B_PLUS)
+	cmd = cfv1_sysreg_map[ioc->address];
+      else
+	cmd = cf_sysreg_map[ioc->address];
+    }
     
     if (cmd == -1) {
       if (self->debugFlag)
