@@ -92,8 +92,8 @@
  *     Common Functions                                                 *
  ************************************************************************
  */
-static int bdm_invalidate_cache (struct BDM *self);
-static int bdm_pc_read_check (struct BDM *self);
+int bdm_invalidate_cache (struct BDM *self);
+int bdm_pc_read_check (struct BDM *self);
 
 static int bdmDrvGetStatus (struct BDM *self);
 static int bdmDrvInitHardware (struct BDM *self);
@@ -212,9 +212,44 @@ static int cf_sysreg_map[BDM_MAX_SYSREG] =
   0xd,      /* BDM_REG_ABLR     */
   0xe,      /* BDM_REG_DBR      */
   0xf,      /* BDM_REG_DBMR     */
+  -1,       /* BDM_REG_XCSR  - CFv1 */
+  -1,       /* BDM_REG_CSR2  - CFv1 */
+  -1,       /* BDM_REG_CSR3  - CFv1 */
+  -1        /* BDM_REG_CPUCR - CFv1 */
+};
+
+/*
+ * Specific version for Coldfire V1.
+ */
+static int cfv1_sysreg_map[BDM_MAX_SYSREG] =
+{ 0x0F,     /* BDM_REG_RPC      */
+  -1,       /* BDM_REG_PCC      */
+  0x0E,     /* BDM_REG_SR - CFv1 */ 
+  -1,       /* BDM_REG_USP      */
+  -1,       /* BDM_REG_SSP, use A7    */
+  -1,       /* BDM_REG_SFC      */
+  -1,       /* BDM_REG_DFC      */
+  -1,       /* BDM_REG_ATEMP    */
+  -1,       /* BDM_REG_FAR      */
+  0x801,    /* BDM_REG_VBR      */
+  -1,       /* BDM_REG_CACR     */
+  -1,       /* BDM_REG_ACR0     */
+  -1,       /* BDM_REG_ACR1     */
+  -1,       /* BDM_REG_RAMBAR   */
+  -1,       /* BDM_REG_MBAR     */
+  0x0,      /* BDM_REG_CSR      */
+  -1,       /* BDM_REG_AATR     */
+  -1,       /* BDM_REG_TDR      */
+  -1,       /* BDM_REG_PBR      */
+  -1,       /* BDM_REG_PBMR     */
+  -1,       /* BDM_REG_ABHR     */
+  -1,       /* BDM_REG_ABLR     */
+  -1,       /* BDM_REG_DBR      */
+  -1,       /* BDM_REG_DBMR     */
   0x1,      /* BDM_REG_XCSR     */
   0x2,      /* BDM_REG_CSR2     */
-  0x3       /* BDM_REG_CSR3     */
+  0x3,      /* BDM_REG_CSR3     */
+  0x2       /* BDM_REG_CPUCR - CFv1 */
 };
 
 /*
@@ -934,6 +969,11 @@ bdm_invalidate_cache (struct BDM *self)
 
   if (self->debugFlag > 1)
     PRINTF (" bdm_invalidate_cache\n");
+  
+  if (self->cf_debug_ver != CF_BDM_REV_CFV1_B_PLUS) {
+      PRINTF (" bdm_invalidate_cache -- cache not supported in this processor\n");
+      return 0;
+  }
 
   cacr_ioc.address = BDM_REG_CACR;
 
@@ -945,7 +985,7 @@ bdm_invalidate_cache (struct BDM *self)
    */
 
   if (cacr_ioc.value) {
-    if (self->cf_debug_ver == CF_REVISION_D)
+    if (self->cf_debug_ver == CF_BDM_REV_D)
       cacr_ioc.value |= 0x01040100;
     else
       cacr_ioc.value |= 0x01000100;

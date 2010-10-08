@@ -395,7 +395,7 @@ cf_pe_serial_clock (struct BDM *self, unsigned short wval, int holdback)
        * Force TA on a Coldfire if supported. We cannot do much else if
        * the Coldfire does not support the Forced TA command.
        */
-      if (self->cf_debug_ver >= CF_REVISION_D) {
+      if (self->cf_debug_ver >= CF_BDM_REV_D) {
         if (self->debugFlag)
           PRINTF (" cf_pe_serial_clock --  forced ta\n");
         cf_pe_serial_clocker (self, BDM_FORCED_TA_CMD, holdback);
@@ -647,7 +647,7 @@ cf_pe_write_sysreg (struct BDM *self, struct BDMioctl *ioc, int mode)
 static int 
 cf_pe_gen_bus_error (struct BDM *self)
 {
-  if (self->cf_debug_ver < CF_REVISION_D) {
+  if (self->cf_debug_ver < CF_BDM_REV_D) {
     if (self->debugFlag)
       PRINTF (" cf_pe_gen_bus_error\n");
   
@@ -802,7 +802,7 @@ cf_pe_run_chip (struct BDM *self)
    * we read the PC value, and then write it right back out.
    */
 
-  if ((self->cf_debug_ver == CF_REVISION_D) && self->cf_sr_masked) {
+  if ((self->cf_debug_ver == CF_BDM_REV_D) && self->cf_sr_masked) {
     sreg_ioc.address = BDM_REG_SR;
     if ((err = cf_pe_read_sysreg (self, &sreg_ioc,
                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
@@ -882,7 +882,7 @@ cf_pe_step_chip (struct BDM *self)
    * problem in certain instances for stepping. To resolve this,
    * we read the PC value, and then write it right back out.
    */
-  if ((self->cf_debug_ver == CF_REVISION_D) && !self->cf_sr_masked) {
+  if ((self->cf_debug_ver == CF_BDM_REV_D) && !self->cf_sr_masked) {
     sreg_ioc.address = BDM_REG_SR;
     if ((err = cf_pe_read_sysreg (self, &sreg_ioc,
                                   BDM_SYS_REG_MODE_MAPPED)) < 0)

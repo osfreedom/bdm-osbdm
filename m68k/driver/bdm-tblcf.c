@@ -512,7 +512,7 @@ tblcf_run_chip (struct BDM *self)
    * we read the PC value, and then write it right back out.
    */
 
-  if ((self->cf_debug_ver == CF_REVISION_D) && self->cf_sr_masked) {
+  if ((self->cf_debug_ver == CF_BDM_REV_D) && self->cf_sr_masked) {
     sreg_ioc.address = BDM_REG_SR;
     if ((err = tblcf_read_sysreg (self, &sreg_ioc,
                                   BDM_SYS_REG_MODE_MAPPED)) < 0)
@@ -591,7 +591,7 @@ tblcf_step_chip (struct BDM *self)
    * problem in certain instances for stepping. To resolve this,
    * we read the PC value, and then write it right back out.
    */
-  if ((self->cf_debug_ver == CF_REVISION_D) && !self->cf_sr_masked) {
+  if ((self->cf_debug_ver == CF_BDM_REV_D) && !self->cf_sr_masked) {
     sreg_ioc.address = BDM_REG_SR;
     if ((err = tblcf_read_sysreg (self, &sreg_ioc,
                                   BDM_SYS_REG_MODE_MAPPED)) < 0)

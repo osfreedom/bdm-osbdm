@@ -75,6 +75,7 @@
 
 #define BDM_CPU32           0
 #define BDM_COLDFIRE        1
+#define BDM_COLDFIRE_V1     2
 
 /*
  * Interfaces, used of offset the major number.
@@ -246,7 +247,8 @@ struct BDMioctl {
 #define BDM_REG_XCSR   0x18    /* Coldfire V1 */
 #define BDM_REG_CSR2   0x19    /* Coldfire V1 */
 #define BDM_REG_CSR3   0x1A    /* Coldfire V1 */
-#define BDM_MAX_SYSREG (BDM_REG_CSR3 + 1)
+#define BDM_REG_CPUCR  0x1B    /* Coldfire V1 */
+#define BDM_MAX_SYSREG (BDM_REG_CPUCR + 1)
 
 /*
  * Register codes for BDM_READ_REG/BDM_WRITE_REG ioctls
@@ -271,15 +273,15 @@ struct BDMioctl {
 /*
  * Coldfire revisions of BDM hardware.
  */
-#define CF_REVISION_A                (0)
-#define CF_REVISION_B                (1)
-#define CF_REVISION_C                (2)
-#define CF_REVISION_D                (3)
-#define CF_REVISION_E                (4)
-#define CF_REVISION_B_PLUS           (3)
-#define CF_REVISION_D_PLUS           (3)
-#define CF_REVISION_D_PLUS_PST_BUFF  (3)
-
+#define CF_BDM_REV_A                 (0)
+#define CF_BDM_REV_B                 (1)
+#define CF_BDM_REV_C                 (2)
+#define CF_BDM_REV_D                 (3)
+#define CF_BDM_REV_E                 (4)
+#define CF_BDM_REV_B_PLUS            (9)
+#define CF_BDM_REV_CFV1_B_PLUS      (10) // This is the BDM B+ converted to HCS08 1-pin BDM serial interface.
+#define CF_BDM_REV_D_PLUS           (11)
+#define CF_BDM_REV_D_PLUS_PST_BUFF  (15)
 
 /*
  * Default debug level.
