@@ -495,7 +495,10 @@ tblcf_run_chip (struct BDM *self)
    * Change the CSR:4 or the SSM bit to off then issue a go.
    */
   sreg_ioc.address = BDM_REG_CSR;
-  sreg_ioc.value   = 0x00000000;
+  if ((err = tblcf_read_sysreg (self, &sreg_ioc, BDM_SYS_REG_MODE_MAPPED)) < 0)
+    return err;
+  
+  sreg_ioc.value |= (sreg_ioc.value & 0xFFFFFFEF);
   if ((err = tblcf_write_sysreg (self, &sreg_ioc, BDM_SYS_REG_MODE_MAPPED)) < 0)
     return err;
 
