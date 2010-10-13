@@ -230,8 +230,6 @@ unsigned char usbdm_connect(int dev) {
     ret_val = bdm_usb_transaction(dev, 2, 1, usb_data);
     if (ret_val != BDM_RC_OK)
       bdm_print("USBDM_CONNECT() => rc = %d\n", ret_val);
-    else
-      usb_devs[dev].connected = 1;
-
+    
     return ret_val;
 }
