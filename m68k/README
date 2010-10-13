@@ -585,7 +585,9 @@ The configurations supported are:
 
  TargetType:
      "TargetType               CFv1"
-  Selects the Target type. Available targets are: CFv1, CFv2, CFv3
+  Selects the Target type. Available targets for USBDM are: HC12 (HC12 or HCS12), 
+  HCS08, RS08, CFV1, CFVx (Coldfire Version 2,3,4), JTAG (JTAG target - TAP is 
+  set to RUN-TEST/IDLE), EZFLASH (EzPort Flash interface) or OFF (no target).
 
  TargetVdd:
      "TargetVdd                Off"
