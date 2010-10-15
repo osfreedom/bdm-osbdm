@@ -113,5 +113,25 @@ unsigned char bdmusb_read_reg(int dev, unsigned int reg_index, unsigned long int
 /* writes specified register */
 void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value);
 
+/* reads byte from the specified address; returns 0 on success and non-zero on
+ * failure */
+unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char * result);
+
+/* reads word from the specified address; returns 0 on success and non-zero on
+ * failure */
+unsigned char bdmusb_read_mem16(int dev, unsigned long int address, unsigned int * result);
+
+/* reads long word from the specified address; returns 0 on success and
+ * non-zero on failure */
+unsigned char bdmusb_read_mem32(int dev, unsigned long int address, unsigned long int * result);
+
+/* writes byte at the specified address */
+void bdmusb_write_mem8(int dev, unsigned long int address, unsigned char value);
+
+/* writes word at the specified address */
+void bdmusb_write_mem16(int dev, unsigned long int address, unsigned int value);
+
+/* writes long word at the specified address */
+void bdmusb_write_mem32(int dev, unsigned long int address, unsigned long int value);
 
 #endif /* _BDMUSB_H_ */

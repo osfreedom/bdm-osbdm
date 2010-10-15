@@ -46,27 +46,6 @@ unsigned char tblcf_resynchronize(int dev);
  * success and non-zero on failure */
 unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us);
 
-/* reads byte from the specified address; returns 0 on success and non-zero on
- * failure */
-unsigned char tblcf_read_mem8(int dev, unsigned long int address, unsigned char * result);
-
-/* reads word from the specified address; returns 0 on success and non-zero on
- * failure */
-unsigned char tblcf_read_mem16(int dev, unsigned long int address, unsigned int * result);
-
-/* reads long word from the specified address; returns 0 on success and
- * non-zero on failure */
-unsigned char tblcf_read_mem32(int dev, unsigned long int address, unsigned long int * result);
-
-/* writes byte at the specified address */
-void tblcf_write_mem8(int dev, unsigned long int address, unsigned char value);
-
-/* writes word at the specified address */
-void tblcf_write_mem16(int dev, unsigned long int address, unsigned int value);
-
-/* writes long word at the specified address */
-void tblcf_write_mem32(int dev, unsigned long int address, unsigned long int value);
-
 /* reads the requested number of bytes from target memory from the supplied
  * address and stores results into the user supplied buffer; uses byte accesses
  * only; returns 0 on success and non-zero on failure */

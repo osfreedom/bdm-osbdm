@@ -733,7 +733,7 @@ tblcf_read_long_word (struct BDM *self, struct BDMioctl *ioc)
 {
   unsigned long int l;
   
-  if (tblcf_read_mem32 (self->usbDev, ioc->address, &l)) {
+  if (bdmusb_read_mem32 (self->usbDev, ioc->address, &l)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_long_word : *0x%08x failed\n", ioc->address);
@@ -758,7 +758,7 @@ tblcf_read_word (struct BDM *self, struct BDMioctl *ioc)
 {
   unsigned int w;
 
-  if (tblcf_read_mem16 (self->usbDev, ioc->address, &w)) {
+  if (bdmusb_read_mem16 (self->usbDev, ioc->address, &w)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_word : *0x%08x failed\n", ioc->address);
@@ -783,7 +783,7 @@ tblcf_read_byte (struct BDM *self, struct BDMioctl *ioc)
 {
   unsigned char b;
 
-  if (tblcf_read_mem8 (self->usbDev, ioc->address, &b)) {
+  if (bdmusb_read_mem8 (self->usbDev, ioc->address, &b)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_read_byte : *0x%08x failed\n", ioc->address);
@@ -825,7 +825,7 @@ tblcf_write_long_word (struct BDM *self, struct BDMioctl *ioc)
 
   self->address = ioc->address + 4;
   
-  tblcf_write_mem32 (self->usbDev, ioc->address, ioc->value);
+  bdmusb_write_mem32 (self->usbDev, ioc->address, ioc->value);
 
   if (tblcf_get_last_sts (self->usbDev)) {
     tblcf_gen_bus_error (self);
@@ -848,7 +848,7 @@ tblcf_write_word (struct BDM *self, struct BDMioctl *ioc)
 
   self->address = ioc->address + 2;
 
-  tblcf_write_mem16 (self->usbDev, ioc->address, ioc->value);
+  bdmusb_write_mem16 (self->usbDev, ioc->address, ioc->value);
 
   if (tblcf_get_last_sts (self->usbDev)) {
     tblcf_gen_bus_error (self);
@@ -871,7 +871,7 @@ tblcf_write_byte (struct BDM *self, struct BDMioctl *ioc)
 
   self->address = ioc->address + 1;
 
-  tblcf_write_mem8 (self->usbDev, ioc->address, ioc->value);
+  bdmusb_write_mem8 (self->usbDev, ioc->address, ioc->value);
 
   if (tblcf_get_last_sts (self->usbDev)) {
     tblcf_gen_bus_error (self);

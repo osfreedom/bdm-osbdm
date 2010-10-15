@@ -68,96 +68,6 @@ unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us) {
 	return(!(usb_data[0]==CMD_TBLCF_TARGET_ASSERT_TA));
 }
 
-/* reads byte from the specified address */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_mem8(int dev, unsigned long int address, unsigned char * result) {
-	usb_data[0]=2;	 /* get 2 bytes */
-	usb_data[1]=CMD_TBLCF_READ_MEM8;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	*result = usb_data[1];
-	bdm_print("TBLCF_READ_MEM8: Read byte from address 0x%08lX, result: 0x%02X (0x%02X)\r\n",
-              address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_TBLCF_READ_MEM8));
-}
-
-/* reads word from the specified address */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_mem16(int dev, unsigned long int address, unsigned int * result) {
-	usb_data[0]=3;	 /* get 3 bytes */
-	usb_data[1]=CMD_TBLCF_READ_MEM16;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	*result = ((unsigned int)usb_data[1]<<8)+usb_data[2];
-	bdm_print("TBLCF_READ_MEM16: Read word from address 0x%08lX, result: 0x%04X (0x%02X)\r\n",
-              address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_TBLCF_READ_MEM16));
-}
-
-/* reads long word from the specified address */
-/* returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_mem32(int dev, unsigned long int address, unsigned long int * result) {
-	usb_data[0]=5;	 /* get 5 bytes */
-	usb_data[1]=CMD_TBLCF_READ_MEM32;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	tblcf_usb_recv_ep0(dev, usb_data);
-	*result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
-	bdm_print("TBLCF_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
-	return(!(usb_data[0]==CMD_TBLCF_READ_MEM32));
-}
-
-/* writes byte at the specified address */
-void tblcf_write_mem8(int dev, unsigned long int address, unsigned char value) {
-	usb_data[0]=6;	 /* send 6 bytes */
-	usb_data[1]=CMD_TBLCF_WRITE_MEM8;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	usb_data[6]=(value)&0xff;
-	bdm_print("TBLCF_WRITE_MEM8: Write byte 0x%02X to address 0x%08lX\r\n",value,address);
-	tblcf_usb_send_ep0(dev, usb_data);
-}
-
-/* writes word at the specified address */
-void tblcf_write_mem16(int dev, unsigned long int address, unsigned int value) {
-	usb_data[0]=7;	 /* send 7 bytes */
-	usb_data[1]=CMD_TBLCF_WRITE_MEM16;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	usb_data[6]=(value>>8)&0xff;
-	usb_data[7]=(value)&0xff;
-	bdm_print("TBLCF_WRITE_MEM16: Write word 0x%04X to address 0x%08lX\r\n",value,address);
-	tblcf_usb_send_ep0(dev, usb_data);
-}
-
-/* writes long word at the specified address */
-void tblcf_write_mem32(int dev, unsigned long int address, unsigned long int value) {
-	usb_data[0]=9;	 /* send 9 bytes */
-	usb_data[1]=CMD_TBLCF_WRITE_MEM32;
-	usb_data[2]=(address>>24)&0xff;
-	usb_data[3]=(address>>16)&0xff;
-	usb_data[4]=(address>>8)&0xff;
-	usb_data[5]=(address)&0xff;
-	usb_data[6]=(value>>24)&0xff;
-	usb_data[7]=(value>>16)&0xff;
-	usb_data[8]=(value>>8)&0xff;
-	usb_data[9]=(value)&0xff;
-	bdm_print("TBLCF_WRITE_MEM32: Write long word 0x%08lX to address 0x%08lX\r\n",value,address);
-	tblcf_usb_send_ep0(dev, usb_data);
-}
-
 /* reads the requested number of bytes from target memory from the supplied address and stores results into the user supplied buffer */
 /* uses byte accesses only */
 /* returns 0 on success and non-zero on failure */
@@ -206,7 +116,7 @@ unsigned char tblcf_read_block16(int dev, unsigned long int address,
 	bdm_print("TBLCF_READ_BLOCK16: Read 0x%08lX byte(s) from address 0x%08lX:\r\n",bytecount,address);
 	if (address&0x01) {
 		bdm_print("TBLCF_READ_BLOCK16: Address is odd, performing 1 byte read\r\n");
-		if (tblcf_read_mem8(dev, address, buffer)) return(1);
+		if (bdmusb_read_mem8(dev, address, buffer)) return(1);
 		bytecount--;
 		address++;
 		buffer++;
@@ -254,14 +164,14 @@ unsigned char tblcf_read_block32(int dev, unsigned long int address,
 	bdm_print("TBLCF_READ_BLOCK32: Read 0x%08lX byte(s) from address 0x%08lX:\r\n",bytecount,address);
 	if (address&0x01) {
 		bdm_print("TBLCF_READ_BLOCK32: Address is odd, performing 1 byte read\r\n");
-		if (tblcf_read_mem8(dev, address, buffer)) return(1);
+		if (bdmusb_read_mem8(dev, address, buffer)) return(1);
 		bytecount--;
 		address++;
 		buffer++;
 	}
 	if (address&0x02) {
 		bdm_print("TBLCF_READ_BLOCK32: Address is not aligned, performing 1 word read\r\n");
-		if (tblcf_read_mem16(dev, address, (unsigned int*) buffer)) return(1);
+		if (bdmusb_read_mem16(dev, address, (unsigned int*) buffer)) return(1);
 		bytecount-=2;
 		address+=2;
 		buffer+=2;
@@ -352,7 +262,7 @@ unsigned char tblcf_write_block16(int dev, unsigned long int address,
 	bdm_print("TBLCF_WRITE_BLOCK16: Write 0x%08lX byte(s) from address 0x%08lX:\r\n",bytecount,address);
 	if (address&0x01) {
 		bdm_print("TBLCF_WRITE_BLOCK16: Address is odd, performing 1 byte write\r\n");
-		tblcf_write_mem8(dev, address, *buffer);
+		bdmusb_write_mem8(dev, address, *buffer);
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif
@@ -397,7 +307,7 @@ unsigned char tblcf_write_block16(int dev, unsigned long int address,
 	}
 	if (bytecount) {	/* leftover byte */
 		bdm_print("TBLCF_WRITE_BLOCK16: Misaligned byte at the end of the block, performing 1 byte write\r\n");
-		tblcf_write_mem8(dev, address, *buffer);
+		bdmusb_write_mem8(dev, address, *buffer);
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif
@@ -416,7 +326,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	bdm_print("TBLCF_WRITE_BLOCK32: Write 0x%08lX byte(s) at address 0x%08lX:\r\n",bytecount,address);
 	if (address&0x01) {
 		bdm_print("TBLCF_WRITE_BLOCK32: Address is odd, performing 1 byte write\r\n");
-		tblcf_write_mem8(dev, address, *buffer);
+		bdmusb_write_mem8(dev, address, *buffer);
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif
@@ -426,7 +336,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	}
 	if (address&0x02) {
 		bdm_print("TBLCF_WRITE_BLOCK32: Address is not aligned, performing 1 word write\r\n");
-		tblcf_write_mem16(dev, address, (*(buffer+0))*256+*(buffer+1));
+		bdmusb_write_mem16(dev, address, (*(buffer+0))*256+*(buffer+1));
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif
@@ -471,7 +381,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	}
 	if (bytecount>=2) {						/* leftover word */
 		bdm_print("TBLCF_WRITE_BLOCK32: Misaligned word at the end of the block, performing 1 word write\r\n");
-		tblcf_write_mem16(dev, address, (*(buffer+0))*256+*(buffer+1));
+		bdmusb_write_mem16(dev, address, (*(buffer+0))*256+*(buffer+1));
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif
@@ -481,7 +391,7 @@ unsigned char tblcf_write_block32(int dev, unsigned long int address,
 	}
 	if (bytecount) {						/* leftover byte */
 		bdm_print("TBLCF_WRITE_BLOCK32: Misaligned byte at the end of the block, performing 1 byte write\r\n");
-		tblcf_write_mem8(dev, address, *(buffer));
+		bdmusb_write_mem8(dev, address, *(buffer));
 		#ifdef WRITE_BLOCK_CHECK
 			if (tblcf_get_last_sts(dev)) return(1);
 		#endif

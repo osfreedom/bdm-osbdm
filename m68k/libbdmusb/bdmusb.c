@@ -821,3 +821,343 @@ void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value) 
     else
 	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
+
+/* reads byte from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char * result) {
+    int ret_val;
+    
+    usb_data[0]=2;	 /* get 2 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    
+    switch (usb_devs[dev].type) {
+	case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_READ_MEM;
+	    usb_data[2]=1; //element_size
+	    usb_data[3]=1; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_READ_MEM8;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_READ_MEM;
+	    usb_data[2]=1; //element_size
+	    usb_data[3]=1; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+    
+    //bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 2, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
+    bdm_print("BDMUSB_READ_MEM8: Read byte from address 0x%08lX, result: 0x%02X (0x%02X)\r\n",
+              address,*result,usb_data[0]);
+    
+    *result = usb_data[1];
+    
+    if (usb_devs[dev].type == P_TBLCF)
+      ret_val = (!(usb_data[0]==CMD_TBLCF_READ_MEM8));
+    
+    return ret_val;
+	
+}
+
+/* reads word from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_mem16(int dev, unsigned long int address, unsigned int * result) {
+    int ret_val;
+    
+    usb_data[0]=3;	 /* get 3 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    
+    switch (usb_devs[dev].type) {
+      case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_READ_MEM;
+	    usb_data[2]=2; //element_size
+	    usb_data[3]=2; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_READ_MEM16;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_READ_MEM;
+	    usb_data[2]=2; //element_size
+	    usb_data[3]=2; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+    //tblcf_usb_recv_ep0(dev, usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 3, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+
+    *result = ((unsigned int)usb_data[1]<<8)+usb_data[2];
+    bdm_print("BDMUSB_READ_MEM16: Read word from address 0x%08lX, result: 0x%04X (0x%02X)\r\n",
+	  address,*result,usb_data[0]);
+    
+    if (usb_devs[dev].type == P_TBLCF)
+      ret_val = !(usb_data[0]==CMD_TBLCF_READ_MEM16);
+    
+    return ret_val;
+}
+
+/* reads long word from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_mem32(int dev, unsigned long int address, unsigned long int * result) {
+    int ret_val;
+    
+    usb_data[0]=5;	 /* get 5 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    
+    switch (usb_devs[dev].type) {
+      case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_READ_MEM;
+	    usb_data[2]=4; //element_size
+	    usb_data[3]=4; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_READ_MEM32;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_READ_MEM;
+	    usb_data[2]=4; //element_size
+	    usb_data[3]=4; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+    //tblcf_usb_recv_ep0(dev, usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 8, 5, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    
+    *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
+    bdm_print("BDMUSB_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
+    
+    if (usb_devs[dev].type == P_TBLCF)
+      ret_val = !(usb_data[0]==CMD_TBLCF_READ_MEM32);
+    
+    return ret_val;
+}
+
+/* writes byte at the specified address */
+void bdmusb_write_mem8(int dev, unsigned long int address, unsigned char value) {
+    int ret_val;
+    
+    usb_data[0]=6;	 /* send 6 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    usb_data[6]=(value)&0xff;
+    
+    switch (usb_devs[dev].type) {
+      case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_WRITE_MEM;
+	    usb_data[2]=1; //element_size
+	    usb_data[3]=1; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_WRITE_MEM8;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_WRITE_MEM;
+	    usb_data[2]=1; //element_size
+	    usb_data[3]=1; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+    bdm_print("BDMUSB_WRITE_MEM8: Write byte 0x%02X to address 0x%08lX\r\n",value,address);
+    //bdmusb_usb_send_ep0(dev, usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 9, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+}
+
+/* writes word at the specified address */
+void bdmusb_write_mem16(int dev, unsigned long int address, unsigned int value) {
+    int ret_val;
+    
+    usb_data[0]=7;	 /* send 7 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    usb_data[6]=(value>>8)&0xff;
+    usb_data[7]=(value)&0xff;
+    
+    switch (usb_devs[dev].type) {
+      case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_WRITE_MEM;
+	    usb_data[2]=2; //element_size
+	    usb_data[3]=2; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value>>8)&0xff;
+	    usb_data[9]=(value)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_WRITE_MEM16;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_WRITE_MEM;
+	    usb_data[2]=2; //element_size
+	    usb_data[3]=2; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value>>8)&0xff;
+	    usb_data[9]=(value)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+
+    bdm_print("BDMUSB_WRITE_MEM16: Write word 0x%04X to address 0x%08lX\r\n",value,address);
+    //tblcf_usb_send_ep0(dev, usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 10, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+}
+
+/* writes long word at the specified address */
+void bdmusb_write_mem32(int dev, unsigned long int address, unsigned long int value) {
+    int ret_val;
+    
+    usb_data[0]=9;	 /* send 9 bytes */
+    usb_data[2]=(address>>24)&0xff;
+    usb_data[3]=(address>>16)&0xff;
+    usb_data[4]=(address>>8)&0xff;
+    usb_data[5]=(address)&0xff;
+    usb_data[6]=(value>>24)&0xff;
+    usb_data[7]=(value>>16)&0xff;
+    usb_data[8]=(value>>8)&0xff;
+    usb_data[9]=(value)&0xff;
+    
+    switch (usb_devs[dev].type) {
+      case P_USBDM_V2:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_USBDM_WRITE_MEM;
+	    usb_data[2]=4; //element_size
+	    usb_data[3]=4; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value>>24)&0xff;
+	    usb_data[9]=(value>>16)&0xff;
+	    usb_data[10]=(value>>8)&0xff;
+	    usb_data[11]=(value)&0xff;
+	    break;
+	case P_TBLCF:
+	    usb_data[1]=CMD_TBLCF_WRITE_MEM32;
+	    break;
+	case P_USBDM:
+	case P_OSBDM:
+	    usb_data[0]=0;
+	    usb_data[1]=CMD_CF_WRITE_MEM;
+	    usb_data[2]=4; //element_size
+	    usb_data[3]=4; // count (number of bytes)
+	    usb_data[4]=(address>>24)&0xff;
+	    usb_data[5]=(address>>16)&0xff;
+	    usb_data[6]=(address>>8)&0xff;
+	    usb_data[7]=(address)&0xff;
+	    usb_data[8]=(value>>24)&0xff;
+	    usb_data[9]=(value>>16)&0xff;
+	    usb_data[10]=(value>>8)&0xff;
+	    usb_data[11]=(value)&0xff;
+	    break;
+	case P_NONE:
+	case P_TBDML:
+	default:
+	    break;
+    };
+    
+    bdm_print("BDMUSB_WRITE_MEM32: Write long word 0x%08lX to address 0x%08lX\r\n",value,address);
+    //tblcf_usb_send_ep0(dev, usb_data);
+    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	ret_val = bdm_usb_transaction(dev, 12, 1, usb_data);
+    else
+	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+}
