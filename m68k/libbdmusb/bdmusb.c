@@ -886,13 +886,13 @@ unsigned char bdmusb_read_memory(int dev, unsigned char element_size, unsigned i
 	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK8;
 	break;
       case 2:
-	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
+	unaligned = (address&1) || (byte_count&1); // Multiple of 2
 	tblcf_cmd = CMD_TBLCF_READ_MEM16;
 	if (byte_count > 2) // If we are trying to read more than two bytes (word), use the TBLCF block16 function
 	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK16;
 	break;
       case 4:
-	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
+	unaligned = (address&3)|| (byte_count&3); // Multiple of 4
 	tblcf_cmd = CMD_TBLCF_READ_MEM32;
 	if (byte_count > 4) // If we are trying to read more than four bytes (int), use the TBLCF block32 function
 	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK32;
@@ -987,13 +987,13 @@ unsigned char bdmusb_write_memory(int dev, unsigned char element_size, unsigned 
 	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK8;
 	break;
       case 2:
-	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
+	unaligned = (address&1) || (byte_count&1); // Multiple of 2
 	tblcf_cmd = CMD_TBLCF_WRITE_MEM16;
 	if (byte_count > 2) // If we are trying to Write more than two bytes (word), use the TBLCF block16 function
 	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK16;
 	break;
       case 4:
-	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
+	unaligned = (address&3) || (byte_count&3); // Multiple of 4
 	tblcf_cmd = CMD_TBLCF_WRITE_MEM32;
 	if (byte_count > 4) // If we are trying to Write more than four bytes (int), use the TBLCF block32 function
 	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK32;
