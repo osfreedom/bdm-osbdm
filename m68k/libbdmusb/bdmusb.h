@@ -134,4 +134,42 @@ void bdmusb_write_mem16(int dev, unsigned long int address, unsigned int value);
 /* writes long word at the specified address */
 void bdmusb_write_mem32(int dev, unsigned long int address, unsigned long int value);
 
+/* reads the requested number of bytes from target memory from the supplied
+ * address and stores results into the user supplied buffer; uses byte accesses
+ * only; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block8(int dev, unsigned long int address, 
+                                unsigned long int bytecount, unsigned char *buffer);
+
+/* reads the requested number of bytes from target memory from the supplied
+ * address and stores results into the user supplied buffer; uses word
+ * accesses; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block16(int dev, unsigned long int address, 
+                                 unsigned long int bytecount, unsigned char *buffer);
+
+/* reads the requested number of bytes from target memory from the supplied
+ * address and stores results into the user supplied buffer; uses long word
+ * accesses; returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block32(int dev, unsigned long int address,
+                                 unsigned long int bytecount, unsigned char *buffer);
+
+/* writes the requested number of bytes to target memory from the supplied
+ * address; uses byte accesses only; returns 0 on success and non-zero on
+ * failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns
+ * 0) */
+unsigned char bdmusb_write_block8(int dev, unsigned long int address,
+                                 unsigned long int bytecount, unsigned char *buffer);
+
+/* writes the requested number of bytes to target memory at the supplied
+ * address; uses word accesses; returns 0 on success and non-zero on failure
+ * (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns 0) */
+unsigned char bdmusb_write_block16(int dev, unsigned long int address,
+                                  unsigned long int bytecount, unsigned char *buffer);
+
+/* writes the requested number of bytes to target memory at the supplied
+ * address; uses long word accesses; returns 0 on success and non-zero on
+ * failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns
+ * 0) */
+unsigned char bdmusb_write_block32(int dev, unsigned long int address,
+                                  unsigned long int bytecount, unsigned char *buffer);
+
 #endif /* _BDMUSB_H_ */

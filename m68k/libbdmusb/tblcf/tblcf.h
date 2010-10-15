@@ -46,44 +46,6 @@ unsigned char tblcf_resynchronize(int dev);
  * success and non-zero on failure */
 unsigned char tblcf_assert_ta(int dev, unsigned char duration_10us);
 
-/* reads the requested number of bytes from target memory from the supplied
- * address and stores results into the user supplied buffer; uses byte accesses
- * only; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_block8(int dev, unsigned long int address, 
-                                unsigned long int bytecount, unsigned char *buffer);
-
-/* reads the requested number of bytes from target memory from the supplied
- * address and stores results into the user supplied buffer; uses word
- * accesses; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_block16(int dev, unsigned long int address, 
-                                 unsigned long int bytecount, unsigned char *buffer);
-
-/* reads the requested number of bytes from target memory from the supplied
- * address and stores results into the user supplied buffer; uses long word
- * accesses; returns 0 on success and non-zero on failure */
-unsigned char tblcf_read_block32(int dev, unsigned long int address,
-                                 unsigned long int bytecount, unsigned char *buffer);
-
-/* writes the requested number of bytes to target memory from the supplied
- * address; uses byte accesses only; returns 0 on success and non-zero on
- * failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns
- * 0) */
-unsigned char tblcf_write_block8(int dev, unsigned long int address,
-                                 unsigned long int bytecount, unsigned char *buffer);
-
-/* writes the requested number of bytes to target memory at the supplied
- * address; uses word accesses; returns 0 on success and non-zero on failure
- * (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns 0) */
-unsigned char tblcf_write_block16(int dev, unsigned long int address,
-                                  unsigned long int bytecount, unsigned char *buffer);
-
-/* writes the requested number of bytes to target memory at the supplied
- * address; uses long word accesses; returns 0 on success and non-zero on
- * failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns
- * 0) */
-unsigned char tblcf_write_block32(int dev, unsigned long int address,
-                                  unsigned long int bytecount, unsigned char *buffer);
-
 /* JTAG - go from RUN-TEST/IDLE to SHIFT-DR (mode==0) or SHIFT-IR (mode!=0)
  * state */
 unsigned char tblcf_jtag_sel_shift(int dev, unsigned char mode);

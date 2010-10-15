@@ -882,14 +882,20 @@ unsigned char bdmusb_read_memory(int dev, unsigned char element_size, unsigned i
       case 1:
 	unaligned = 0;
 	tblcf_cmd = CMD_TBLCF_READ_MEM8;
+	if (byte_count > 1) // If we are trying to read more than one byte, use the TBLCF block8 function
+	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK8;
 	break;
       case 2:
 	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
 	tblcf_cmd = CMD_TBLCF_READ_MEM16;
+	if (byte_count > 2) // If we are trying to read more than two bytes (word), use the TBLCF block16 function
+	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK16;
 	break;
       case 4:
 	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
 	tblcf_cmd = CMD_TBLCF_READ_MEM32;
+	if (byte_count > 4) // If we are trying to read more than four bytes (int), use the TBLCF block32 function
+	  tblcf_cmd = CMD_TBLCF_READ_MEMBLOCK32;
 	break;
       default:
 	 unaligned = 1;
@@ -977,14 +983,20 @@ unsigned char bdmusb_write_memory(int dev, unsigned char element_size, unsigned 
       case 1:
 	unaligned = 0;
 	tblcf_cmd = CMD_TBLCF_WRITE_MEM8;
+	if (byte_count > 1) // If we are trying to Write more than one byte, use the TBLCF block8 function
+	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK8;
 	break;
       case 2:
 	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
 	tblcf_cmd = CMD_TBLCF_WRITE_MEM16;
+	if (byte_count > 2) // If we are trying to Write more than two bytes (word), use the TBLCF block16 function
+	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK16;
 	break;
       case 4:
 	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
 	tblcf_cmd = CMD_TBLCF_WRITE_MEM32;
+	if (byte_count > 4) // If we are trying to Write more than four bytes (int), use the TBLCF block32 function
+	  tblcf_cmd = CMD_TBLCF_WRITE_MEMBLOCK32;
 	break;
       default:
 	 unaligned = 1;
@@ -1054,7 +1066,7 @@ unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char
     ret_val = bdmusb_read_memory(dev, 1, 1, address, result);
     
     bdm_print("BDMUSB_READ_MEM8: Read byte from address 0x%08lX, result: 0x%02X (0x%02X)\r\n",
-              address,*result,usb_data[0]);
+              address, *result, ret_val);
     
     return ret_val;
 	
@@ -1067,7 +1079,7 @@ unsigned char bdmusb_read_mem16(int dev, unsigned long int address, unsigned int
     
     ret_val = bdmusb_read_memory(dev, 2, 2, address, (unsigned char*)result);
     bdm_print("BDMUSB_READ_MEM16: Read word from address 0x%08lX, result: 0x%04X (0x%02X)\r\n",
-	  address,*result,usb_data[0]);
+	  address, *result, ret_val);
     
     return ret_val;
 }
@@ -1079,8 +1091,8 @@ unsigned char bdmusb_read_mem32(int dev, unsigned long int address, unsigned lon
     
     ret_val = bdmusb_read_memory(dev, 4, 4, address, (unsigned char*)result);
     
-    *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
-    bdm_print("BDMUSB_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
+    //*result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
+    bdm_print("BDMUSB_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n", address, *result, ret_val);
     
     return ret_val;
 }
@@ -1090,7 +1102,7 @@ void bdmusb_write_mem8(int dev, unsigned long int address, unsigned char value) 
     int ret_val;
     
     ret_val = bdmusb_write_memory(dev, 1, 1, address, &value);
-    bdm_print("BDMUSB_WRITE_MEM8: Write byte 0x%02X to address 0x%08lX\r\n",value,address);
+    bdm_print("BDMUSB_WRITE_MEM8: Write byte 0x%02X to address 0x%08lX\r\n", value, address);
 }
 
 /* writes word at the specified address */
@@ -1099,7 +1111,7 @@ void bdmusb_write_mem16(int dev, unsigned long int address, unsigned int value) 
     
     ret_val = bdmusb_write_memory(dev, 2, 2, address, (unsigned char*)&value);
     
-    bdm_print("BDMUSB_WRITE_MEM16: Write word 0x%04X to address 0x%08lX\r\n",value,address);
+    bdm_print("BDMUSB_WRITE_MEM16: Write word 0x%04X to address 0x%08lX\r\n", value, address);
 }
 
 /* writes long word at the specified address */
@@ -1108,5 +1120,222 @@ void bdmusb_write_mem32(int dev, unsigned long int address, unsigned long int va
     
     ret_val = bdmusb_write_memory(dev, 4, 4, address, (unsigned char*)&value);
     
-    bdm_print("BDMUSB_WRITE_MEM32: Write long word 0x%08lX to address 0x%08lX\r\n",value,address);
+    bdm_print("BDMUSB_WRITE_MEM32: Write long word 0x%08lX to address 0x%08lX\r\n", value, address);
+}
+
+
+/* reads the requested number of bytes from target memory from the supplied address and stores results into the user supplied buffer */
+/* uses byte accesses only */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block8(int dev, unsigned long int address,
+                                unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    bdm_print("BDMUSB_READ_BLOCK8: Read 0x%08lX byte(s) from address 0x%08lX:\r\n", bytecount, address);
+    
+    ret_val = bdmusb_read_memory(dev, 1, bytecount, address, buffer);
+    
+    bdm_print("BDMUSB_READ_BLOCK8: Block read, size 0x%02X (0x%02X):\r\n", bytecount, ret_val);
+    bdm_print_dump(buffer, bytecount);
+    
+    return ret_val;
+}
+
+/* reads the requested number of bytes from target memory from the supplied address and stores results into the user supplied buffer */
+/* uses word accesses */
+/* if the address is odd a byte read is performed to make it even before performing the word reads */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block16(int dev, unsigned long int address,
+                                 unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    bdm_print("BDMUSB_READ_BLOCK16: Read 0x%08lX byte(s) from address 0x%08lX:\r\n", bytecount, address);
+
+    if (address&0x01) {
+	bdm_print("BDMUSB_READ_BLOCK16: Address is odd, performing 1 byte read\r\n");
+	ret_val = bdmusb_read_mem8(dev, address, buffer);
+	bytecount--;
+	address++;
+	buffer++;
+    }
+    
+    ret_val = bdmusb_read_memory(dev, 2, bytecount, address, buffer);
+    
+    bdm_print("BDMUSB_READ_BLOCK16: Block read, size 0x%02X (0x%02X):\r\n", bytecount, ret_val);
+    bdm_print_dump(buffer, bytecount);
+    
+    return ret_val;
+}
+
+/* reads the requested number of bytes from target memory from the supplied address and stores results into the user supplied buffer */
+/* uses long word accesses */
+/* if the address is not aligned byte/word reads are performed to align it */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_block32(int dev, unsigned long int address,
+                                 unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    bdm_print("BDMUSB_READ_BLOCK32: Read 0x%08lX byte(s) from address 0x%08lX:\r\n", bytecount, address);
+    if (address&0x01) {
+	bdm_print("BDMUSB_READ_BLOCK32: Address is odd, performing 1 byte read\r\n");
+	ret_val = bdmusb_read_mem8(dev, address, buffer);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	bytecount--;
+	address++;
+	buffer++;
+    }
+    if (address&0x02) {
+	unsigned int tmp_uint;
+	bdm_print("BDMUSB_READ_BLOCK32: Address is not aligned, performing 1 word read\r\n");
+	ret_val = bdmusb_read_mem16(dev, address, &tmp_uint);
+	*buffer = (tmp_uint & 0xff00 >> 8)&0xFF;
+	*(buffer+1) = tmp_uint & 0xff;
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	
+	bytecount-=2;
+	address+=2;
+	buffer+=2;
+    }
+    
+    ret_val = bdmusb_read_memory(dev, 4, bytecount, address, buffer);
+    
+    bdm_print("BDMUSB_READ_BLOCK32: Block read, size 0x%02X (0x%02X):\r\n", bytecount, ret_val);
+    bdm_print_dump(buffer, bytecount);
+    
+    return ret_val;
+}
+
+/* writes the requested number of bytes to target memory from the supplied address */
+/* uses byte accesses only */
+/* returns 0 on success and non-zero on failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns 0) */
+unsigned char bdmusb_write_block8(int dev, unsigned long int address,
+                                 unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    bdm_print("BDMUSB_WRITE_BLOCK8: Write 0x%08lX byte(s) to address 0x%08lX:\r\n", bytecount, address);
+
+    ret_val = bdmusb_write_memory(dev, 1, bytecount, address, buffer);
+    
+    bdm_print("BDMUSB_WRITE_BLOCK8: Block write, size 0x%02X:\r\n", bytecount);
+    bdm_print_dump(buffer, bytecount);
+    
+    return ret_val;
+}
+
+/* writes the requested number of bytes to target memory at the supplied address */
+/* uses word accesses */
+/* if the address is odd a byte write is performed to make it even before performing the word writes */
+/* if there is an odd byte at the end of the block it is written using a byte write */
+/* returns 0 on success and non-zero on failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns 0) */
+unsigned char bdmusb_write_block16(int dev, unsigned long int address,
+                                  unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    char leftover = 0;
+    
+    bdm_print("BDMUSB_WRITE_BLOCK16: Write 0x%08lX byte(s) from address 0x%08lX:\r\n", bytecount, address);
+    if (address&0x01) {
+	bdm_print("BDMUSB_WRITE_BLOCK16: Address is odd, performing 1 byte write\r\n");
+	bdmusb_write_mem8(dev, address, *buffer);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+	bytecount--;
+	address++;
+	buffer++;
+    }
+    leftover = bytecount%2;
+    if (leftover)
+      bytecount--;
+    
+    ret_val = bdmusb_write_memory(dev, 2, bytecount, address, buffer);
+    bdm_print("BDMUSB_WRITE_BLOCK16: Block write, size 0x%02X:\r\n", bytecount);
+    
+    if (leftover) {	/* leftover byte */
+	bdm_print("BDMUSB_WRITE_BLOCK16: Misaligned byte at the end of the block, performing 1 byte write\r\n");
+	bdmusb_write_mem8(dev, address, *buffer);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+    }
+    return(0);
+}
+
+/* writes the requested number of bytes to target memory at the supplied address */
+/* uses long word accesses */
+/* if the address is not aligned byte/word writes are performed */
+/* if there are odd bytes at the end of the block they is written using byte/word writes */
+/* returns 0 on success and non-zero on failure (must be compiled with WRITE_BLOCK_CHECK, otherwise always returns 0) */
+unsigned char bdmusb_write_block32(int dev, unsigned long int address,
+                                  unsigned long int bytecount, unsigned char *buffer) {
+    int ret_val;
+    char leftover = 0;
+    
+    bdm_print("BDMUSB_WRITE_BLOCK32: Write 0x%08lX byte(s) at address 0x%08lX:\r\n", bytecount, address);
+    if (address&0x01) {
+	bdm_print("BDMUSB_WRITE_BLOCK32: Address is odd, performing 1 byte write\r\n");
+	bdmusb_write_mem8(dev, address, *buffer);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+	bytecount--;
+	address++;
+	buffer++;
+    }
+    if (address&0x02) {
+	unsigned int tmp_uint;
+	bdm_print("BDMUSB_WRITE_BLOCK32: Address is not aligned, performing 1 word write\r\n");
+	tmp_uint = ((*buffer) >>8)+*(buffer+1);
+	bdmusb_write_mem16(dev, address, tmp_uint);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+	bytecount-=2;
+	address+=2;
+	buffer+=2;
+    }
+    
+    leftover = bytecount%4;
+    if (leftover >= 0)
+      bytecount -= leftover;
+    
+    ret_val = bdmusb_write_memory(dev, 4, bytecount, address, buffer);
+    
+    bdm_print("BDMUSB_WRITE_BLOCK32: Block write, size 0x%02X:\r\n", bytecount);
+    bdm_print_dump(usb_data+6, MAX_DATA_SIZE&0xfffc);
+    #ifdef WRITE_BLOCK_CHECK
+    ret_val = bdmusb_get_last_sts_value(dev);
+    if (ret_val != BDM_RC_OK)
+	return ret_val;
+    #endif
+    
+    if (leftover>=2) {						/* leftover word */
+	unsigned int tmp_uint;
+	bdm_print("BDMUSB_WRITE_BLOCK32: Misaligned word at the end of the block, performing 1 word write\r\n");
+	tmp_uint = ((*(buffer))>>8)+*(buffer+1);
+	bdmusb_write_mem16(dev, address, tmp_uint);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+	address+=2;
+	leftover-=2;
+	buffer+=2;
+    }
+    if (leftover) {						/* leftover byte */
+	bdm_print("BDMUSB_WRITE_BLOCK32: Misaligned byte at the end of the block, performing 1 byte write\r\n");
+	bdmusb_write_mem8(dev, address, *buffer);
+	#ifdef WRITE_BLOCK_CHECK
+	ret_val = bdmusb_get_last_sts_value(dev);
+	if (ret_val != BDM_RC_OK)
+	    return ret_val;
+	#endif
+    }
+    return(0);
 }

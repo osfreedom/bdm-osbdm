@@ -670,7 +670,7 @@ tblcf_fill_buf (struct BDM *self, int count)
    * We need to swap the data if it has already been swapped.
    */
   
-  if (tblcf_read_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
+  if (bdmusb_read_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_fill_buf - failed\n");
@@ -694,7 +694,7 @@ tblcf_send_buf (struct BDM *self, int count)
   if (count == 0)
     return 0;
   
-  if (tblcf_write_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
+  if (bdmusb_write_block32 (self->usbDev, self->address, count, self->ioBuffer)) {
     tblcf_gen_bus_error (self);
     if (self->debugFlag)
       PRINTF ("tblcf_send_buf - failed\n");
