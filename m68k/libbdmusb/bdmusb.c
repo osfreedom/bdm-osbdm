@@ -822,61 +822,239 @@ void bdmusb_write_reg(int dev, unsigned int reg_index, unsigned long int value) 
 	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
 
-/* reads byte from the specified address */
-/* returns 0 on success and non-zero on failure */
-unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char * result) {
-    int ret_val;
-    
-    usb_data[0]=2;	 /* get 2 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    
-    switch (usb_devs[dev].type) {
+#define USBDM_MEMORY_HEADER_SIZE    8
+#define TBLCF_MEMORY_HEADER_SIZE    6
+
+void __assemble_message_header(target_type_e type, unsigned char command, 
+			       unsigned char element_size, 
+			       unsigned char byte_count, unsigned int address) {
+  
+    usb_data[1]= command;
+    switch (type) {
+	case P_USBDM:
+	case P_OSBDM:
 	case P_USBDM_V2:
 	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_READ_MEM;
-	    usb_data[2]=1; //element_size
-	    usb_data[3]=1; // count (number of bytes)
+	    usb_data[2]=element_size; //element_size
+	    usb_data[3]=byte_count; // count (number of bytes)
 	    usb_data[4]=(address>>24)&0xff;
 	    usb_data[5]=(address>>16)&0xff;
 	    usb_data[6]=(address>>8)&0xff;
 	    usb_data[7]=(address)&0xff;
 	    break;
 	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_READ_MEM8;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_READ_MEM;
-	    usb_data[2]=1; //element_size
-	    usb_data[3]=1; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
+	    usb_data[0]=byte_count+1;	 /* get 2 bytes */
+	    usb_data[2]=(address>>24)&0xff;
+	    usb_data[3]=(address>>16)&0xff;
+	    usb_data[4]=(address>>8)&0xff;
+	    usb_data[5]=(address)&0xff;
 	    break;
 	case P_NONE:
 	case P_TBDML:
 	default:
 	    break;
     };
+}
+
+const char *mem_size_str[] = {
+  "byte",
+  "word",
+  "long"
+};
+
+/* reads memory from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_memory(int dev, unsigned char element_size, unsigned int  byte_count,
+                                  unsigned int  address, unsigned char *data) {
+    int ret_val;
+    int tblcf_cmd = -1;
+    int element_indx = 0;
+    char unaligned;
     
-    //bdm_usb_send_ep0(&usb_devs[dev], usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 8, 2, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    unsigned int original_byte_count = byte_count;
+    unsigned char *original_data = data;
+    
+    unsigned int max_data_size = (MAX_PACKET_SIZE-1)&~0x03;
+    
+    int block_size;
+    
+    switch(element_size) {
+      case 1:
+	unaligned = 0;
+	tblcf_cmd = CMD_TBLCF_READ_MEM8;
+	break;
+      case 2:
+	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
+	tblcf_cmd = CMD_TBLCF_READ_MEM16;
+	break;
+      case 4:
+	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
+	tblcf_cmd = CMD_TBLCF_READ_MEM32;
+	break;
+      default:
+	 unaligned = 1;
+    }
+    if (unaligned) {
+      bdm_print("BDMUSB_READ_MEMORY: aligment error\r\n");
+      return BDM_RC_ILLEGAL_PARAMS;
+    }
+    
+    while (byte_count > 0) {
+	block_size = byte_count;
+	if (block_size > max_data_size)
+	    block_size = max_data_size;
+	
+	switch (usb_devs[dev].type) {
+	    case P_USBDM_V2:
+		__assemble_message_header(usb_devs[dev].type, CMD_USBDM_READ_MEM, element_size, block_size, address);
+		break;
+	    case P_TBLCF:
+		if (tblcf_cmd > 0)
+		  __assemble_message_header(usb_devs[dev].type, tblcf_cmd, element_size, block_size, address);
+		break;
+	    case P_USBDM:
+	    case P_OSBDM:
+		__assemble_message_header(usb_devs[dev].type, CMD_CF_READ_MEM, element_size, block_size, address);
+		break;
+	    case P_NONE:
+	    case P_TBDML:
+	    default:
+		break;
+	};
+	
+	//bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+	if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	    ret_val = bdm_usb_transaction(dev, USBDM_MEMORY_HEADER_SIZE, block_size+1, usb_data);
+	else
+	    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+	
+	if (usb_devs[dev].type == P_TBLCF)
+	  ret_val = (!(usb_data[0]==tblcf_cmd));
+	
+	if (ret_val != BDM_RC_OK)
+	  return ret_val;
+	
+	memcpy(data, usb_data+1, block_size);
+	
+	data += block_size;
+	address += block_size;
+	byte_count -= block_size;
+    }
+    element_indx = element_size-1;
+    if (element_indx >2)
+      element_indx = 2;
+    
+    bdm_print("BDMUSB_READ_MEMORY: Read %d %s from address 0x%08lX, (0x%02X)\r\n",
+              (original_byte_count/element_size), mem_size_str[element_indx], address,usb_data[0]);
+    bdm_print_dump(original_data, original_byte_count);
+    
+    return ret_val;
+}
+
+/* reads memory from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_write_memory(int dev, unsigned char element_size, unsigned int  byte_count,
+                                  unsigned int  address, unsigned char *data) {
+    int ret_val;
+    int tblcf_cmd = -1;
+    int element_indx = 0;
+    char unaligned;
+    unsigned char header_size = USBDM_MEMORY_HEADER_SIZE;
+    
+    unsigned int original_byte_count = byte_count;
+    unsigned char *original_data = data;
+    
+    unsigned int max_data_size;
+    
+    int block_size;
+    
+    if (usb_devs[dev].type == P_TBLCF)
+      header_size = TBLCF_MEMORY_HEADER_SIZE;
+    
+    max_data_size = (MAX_PACKET_SIZE-header_size)&~0x03;
+    
+    switch(element_size) {
+      case 1:
+	unaligned = 0;
+	tblcf_cmd = CMD_TBLCF_WRITE_MEM8;
+	break;
+      case 2:
+	unaligned = !(address&1) || !(byte_count&1); // Multiple of 2
+	tblcf_cmd = CMD_TBLCF_WRITE_MEM16;
+	break;
+      case 4:
+	unaligned = !(address&3) || !(byte_count&3); // Multiple of 4
+	tblcf_cmd = CMD_TBLCF_WRITE_MEM32;
+	break;
+      default:
+	 unaligned = 1;
+    }
+    if (unaligned) {
+      bdm_print("BDMUSB_WRITE_MEMORY: aligment error\r\n");
+      return BDM_RC_ILLEGAL_PARAMS;
+    }
+    
+    while (byte_count > 0) {
+	block_size = byte_count;
+	if (block_size > max_data_size)
+	    block_size = max_data_size;
+	
+	switch (usb_devs[dev].type) {
+	    case P_USBDM_V2:
+		__assemble_message_header(usb_devs[dev].type, CMD_USBDM_WRITE_MEM, element_size, block_size, address);
+		break;
+	    case P_TBLCF:
+		if (tblcf_cmd > 0)
+		  __assemble_message_header(usb_devs[dev].type, tblcf_cmd, element_size, block_size, address);
+		break;
+	    case P_USBDM:
+	    case P_OSBDM:
+		__assemble_message_header(usb_devs[dev].type, CMD_CF_WRITE_MEM, element_size, block_size, address);
+		break;
+	    case P_NONE:
+	    case P_TBDML:
+	    default:
+		break;
+	};
+	
+	memcpy(usb_data+header_size, data, block_size);
+	
+	//bdm_usb_send_ep0(&usb_devs[dev], usb_data);
+	if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
+	    ret_val = bdm_usb_transaction(dev, USBDM_MEMORY_HEADER_SIZE+block_size, 1, usb_data);
+	else
+	    ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+	
+	if (usb_devs[dev].type == P_TBLCF)
+	  ret_val = (!(usb_data[0]==tblcf_cmd));
+	
+	if (ret_val != BDM_RC_OK)
+	  return ret_val;
+	
+	data += block_size;
+	address += block_size;
+	byte_count -= block_size;
+    }
+    element_indx = element_size-1;
+    if (element_indx >2)
+      element_indx = 2;
+    
+    bdm_print("BDMUSB_WRITE_MEMORY: Write %d %s from address 0x%08lX, (0x%02X)\r\n",
+              (original_byte_count/element_size), mem_size_str[element_indx], address,usb_data[0]);
+    bdm_print_dump(original_data, original_byte_count);
+    
+    return ret_val;
+}
+
+/* reads byte from the specified address */
+/* returns 0 on success and non-zero on failure */
+unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char * result) {
+    int ret_val;
+    
+    ret_val = bdmusb_read_memory(dev, 1, 1, address, result);
     
     bdm_print("BDMUSB_READ_MEM8: Read byte from address 0x%08lX, result: 0x%02X (0x%02X)\r\n",
               address,*result,usb_data[0]);
-    
-    *result = usb_data[1];
-    
-    if (usb_devs[dev].type == P_TBLCF)
-      ret_val = (!(usb_data[0]==CMD_TBLCF_READ_MEM8));
     
     return ret_val;
 	
@@ -887,54 +1065,9 @@ unsigned char bdmusb_read_mem8(int dev, unsigned long int address, unsigned char
 unsigned char bdmusb_read_mem16(int dev, unsigned long int address, unsigned int * result) {
     int ret_val;
     
-    usb_data[0]=3;	 /* get 3 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    
-    switch (usb_devs[dev].type) {
-      case P_USBDM_V2:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_READ_MEM;
-	    usb_data[2]=2; //element_size
-	    usb_data[3]=2; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    break;
-	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_READ_MEM16;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_READ_MEM;
-	    usb_data[2]=2; //element_size
-	    usb_data[3]=2; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    break;
-	case P_NONE:
-	case P_TBDML:
-	default:
-	    break;
-    };
-    //tblcf_usb_recv_ep0(dev, usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 8, 3, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
-
-    *result = ((unsigned int)usb_data[1]<<8)+usb_data[2];
+    ret_val = bdmusb_read_memory(dev, 2, 2, address, (unsigned char*)result);
     bdm_print("BDMUSB_READ_MEM16: Read word from address 0x%08lX, result: 0x%04X (0x%02X)\r\n",
 	  address,*result,usb_data[0]);
-    
-    if (usb_devs[dev].type == P_TBLCF)
-      ret_val = !(usb_data[0]==CMD_TBLCF_READ_MEM16);
     
     return ret_val;
 }
@@ -944,53 +1077,10 @@ unsigned char bdmusb_read_mem16(int dev, unsigned long int address, unsigned int
 unsigned char bdmusb_read_mem32(int dev, unsigned long int address, unsigned long int * result) {
     int ret_val;
     
-    usb_data[0]=5;	 /* get 5 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    
-    switch (usb_devs[dev].type) {
-      case P_USBDM_V2:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_READ_MEM;
-	    usb_data[2]=4; //element_size
-	    usb_data[3]=4; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    break;
-	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_READ_MEM32;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_READ_MEM;
-	    usb_data[2]=4; //element_size
-	    usb_data[3]=4; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    break;
-	case P_NONE:
-	case P_TBDML:
-	default:
-	    break;
-    };
-    //tblcf_usb_recv_ep0(dev, usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 8, 5, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
+    ret_val = bdmusb_read_memory(dev, 4, 4, address, (unsigned char*)result);
     
     *result = (((unsigned long int)usb_data[1])<<24)+(usb_data[2]<<16)+(usb_data[3]<<8)+usb_data[4];
     bdm_print("BDMUSB_READ_MEM32: Read long word from address 0x%08lX, result: 0x%08lX (0x%02X)\r\n",address,*result,usb_data[0]);
-    
-    if (usb_devs[dev].type == P_TBLCF)
-      ret_val = !(usb_data[0]==CMD_TBLCF_READ_MEM32);
     
     return ret_val;
 }
@@ -999,165 +1089,24 @@ unsigned char bdmusb_read_mem32(int dev, unsigned long int address, unsigned lon
 void bdmusb_write_mem8(int dev, unsigned long int address, unsigned char value) {
     int ret_val;
     
-    usb_data[0]=6;	 /* send 6 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    usb_data[6]=(value)&0xff;
-    
-    switch (usb_devs[dev].type) {
-      case P_USBDM_V2:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_WRITE_MEM;
-	    usb_data[2]=1; //element_size
-	    usb_data[3]=1; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value)&0xff;
-	    break;
-	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_WRITE_MEM8;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_WRITE_MEM;
-	    usb_data[2]=1; //element_size
-	    usb_data[3]=1; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value)&0xff;
-	    break;
-	case P_NONE:
-	case P_TBDML:
-	default:
-	    break;
-    };
+    ret_val = bdmusb_write_memory(dev, 1, 1, address, &value);
     bdm_print("BDMUSB_WRITE_MEM8: Write byte 0x%02X to address 0x%08lX\r\n",value,address);
-    //bdmusb_usb_send_ep0(dev, usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 9, 1, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
 
 /* writes word at the specified address */
 void bdmusb_write_mem16(int dev, unsigned long int address, unsigned int value) {
     int ret_val;
     
-    usb_data[0]=7;	 /* send 7 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    usb_data[6]=(value>>8)&0xff;
-    usb_data[7]=(value)&0xff;
+    ret_val = bdmusb_write_memory(dev, 2, 2, address, (unsigned char*)&value);
     
-    switch (usb_devs[dev].type) {
-      case P_USBDM_V2:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_WRITE_MEM;
-	    usb_data[2]=2; //element_size
-	    usb_data[3]=2; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value>>8)&0xff;
-	    usb_data[9]=(value)&0xff;
-	    break;
-	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_WRITE_MEM16;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_WRITE_MEM;
-	    usb_data[2]=2; //element_size
-	    usb_data[3]=2; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value>>8)&0xff;
-	    usb_data[9]=(value)&0xff;
-	    break;
-	case P_NONE:
-	case P_TBDML:
-	default:
-	    break;
-    };
-
     bdm_print("BDMUSB_WRITE_MEM16: Write word 0x%04X to address 0x%08lX\r\n",value,address);
-    //tblcf_usb_send_ep0(dev, usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 10, 1, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
 
 /* writes long word at the specified address */
 void bdmusb_write_mem32(int dev, unsigned long int address, unsigned long int value) {
     int ret_val;
     
-    usb_data[0]=9;	 /* send 9 bytes */
-    usb_data[2]=(address>>24)&0xff;
-    usb_data[3]=(address>>16)&0xff;
-    usb_data[4]=(address>>8)&0xff;
-    usb_data[5]=(address)&0xff;
-    usb_data[6]=(value>>24)&0xff;
-    usb_data[7]=(value>>16)&0xff;
-    usb_data[8]=(value>>8)&0xff;
-    usb_data[9]=(value)&0xff;
-    
-    switch (usb_devs[dev].type) {
-      case P_USBDM_V2:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_USBDM_WRITE_MEM;
-	    usb_data[2]=4; //element_size
-	    usb_data[3]=4; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value>>24)&0xff;
-	    usb_data[9]=(value>>16)&0xff;
-	    usb_data[10]=(value>>8)&0xff;
-	    usb_data[11]=(value)&0xff;
-	    break;
-	case P_TBLCF:
-	    usb_data[1]=CMD_TBLCF_WRITE_MEM32;
-	    break;
-	case P_USBDM:
-	case P_OSBDM:
-	    usb_data[0]=0;
-	    usb_data[1]=CMD_CF_WRITE_MEM;
-	    usb_data[2]=4; //element_size
-	    usb_data[3]=4; // count (number of bytes)
-	    usb_data[4]=(address>>24)&0xff;
-	    usb_data[5]=(address>>16)&0xff;
-	    usb_data[6]=(address>>8)&0xff;
-	    usb_data[7]=(address)&0xff;
-	    usb_data[8]=(value>>24)&0xff;
-	    usb_data[9]=(value>>16)&0xff;
-	    usb_data[10]=(value>>8)&0xff;
-	    usb_data[11]=(value)&0xff;
-	    break;
-	case P_NONE:
-	case P_TBDML:
-	default:
-	    break;
-    };
+    ret_val = bdmusb_write_memory(dev, 4, 4, address, (unsigned char*)&value);
     
     bdm_print("BDMUSB_WRITE_MEM32: Write long word 0x%08lX to address 0x%08lX\r\n",value,address);
-    //tblcf_usb_send_ep0(dev, usb_data);
-    if ( (usb_devs[dev].type == P_USBDM) || (usb_devs[dev].type == P_USBDM_V2) )
-	ret_val = bdm_usb_transaction(dev, 12, 1, usb_data);
-    else
-	ret_val = bdm_usb_recv_ep0(&usb_devs[dev], usb_data);
 }
