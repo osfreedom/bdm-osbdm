@@ -9,7 +9,7 @@
 ## GNU General Public License for more details.
 ##
 
-AM_CPPFLAGS = -DBDM_DEVICE_USB=1 -I$(srcdir)/../driver -I$(srcdir)/../lib
+AM_CPPFLAGS = -DBDM_DEVICE_USB=1 -I$(srcdir)/../driver -I$(srcdir)/../lib -DBDM_USERLAND_LIB
 AM_CFLAGS = -Wall
 AM_LDFLAGS = 
 
