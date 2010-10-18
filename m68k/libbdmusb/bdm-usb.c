@@ -295,12 +295,16 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		bdmusb_get_version(udev, &usbdm_version);
 		
 		// Know what version we have
-		if (usbdm_version.bdm_soft_ver <= 0x10) 
+		if (usbdm_version.bdm_soft_ver <= 0x10) {
 		    udev->type = P_OSBDM;
-		else if (usbdm_version.bdm_soft_ver <= 0x15)
+		    self->interface = BDM_COLDFIRE_OSBDM;
+		} else if (usbdm_version.bdm_soft_ver <= 0x15) {
 		    udev->type = P_USBDM;
-		else
+		    self->interface = BDM_COLDFIRE_USBDM;
+		} else {
 		    udev->type = P_USBDM_V2;
+		    self->interface = BDM_COLDFIRE_USBDM;
+		}
 		
 		udev->use_only_ep0 = (usbdm_version.icp_hw_ver & 0xC0) == 0;
 		//bdmusb_usb_close(udev->dev_ref);
