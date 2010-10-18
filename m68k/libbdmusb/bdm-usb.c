@@ -134,25 +134,34 @@ static bdm_iface usbIface = {
   .error_str = NULL
 };
 
+static usbdm_options_type_e config_options;
+target_type_e targetType;
+
 int 
-bdm_usb_set_options(int dev_dec, usbdm_options_type_e *cfg_options)
+bdm_usb_set_target(target_type_e type)
+{
+  targetType = type;
+}
+
+int 
+bdm_usb_set_options(usbdm_options_type_e *cfg_options)
 {
 
-  bdmusb_dev *udev = &usb_devs[dev_dec];
+  //bdmusb_dev *udev = &usb_devs[dev_dec];
   
   /* Set the usbdm configurable options */
-  udev->options.targetVdd = cfg_options->targetVdd;
-  udev->options.cycleVddOnReset = cfg_options->cycleVddOnReset;
-  udev->options.cycleVddOnConnect = cfg_options->cycleVddOnConnect;
-  udev->options.leaveTargetPowered = cfg_options->leaveTargetPowered;
-  udev->options.autoReconnect = cfg_options->autoReconnect;
-  udev->options.guessSpeed = cfg_options->guessSpeed;
-  udev->options.useAltBDMClock = cfg_options->useAltBDMClock;
-  udev->options.useResetSignal = cfg_options->useResetSignal;
-  udev->options.targetClockFreq = cfg_options->targetClockFreq;
+  config_options.targetVdd = cfg_options->targetVdd;
+  config_options.cycleVddOnReset = cfg_options->cycleVddOnReset;
+  config_options.cycleVddOnConnect = cfg_options->cycleVddOnConnect;
+  config_options.leaveTargetPowered = cfg_options->leaveTargetPowered;
+  config_options.autoReconnect = cfg_options->autoReconnect;
+  config_options.guessSpeed = cfg_options->guessSpeed;
+  config_options.useAltBDMClock = cfg_options->useAltBDMClock;
+  config_options.useResetSignal = cfg_options->useResetSignal;
+  config_options.targetClockFreq = cfg_options->targetClockFreq;
   
-  if (udev->type == P_USBDM_V2)
-    usbdm_set_options(udev);
+  //if (udev->type == P_USBDM_V2)
+  //  usbdm_set_options(udev);
   
   return 0;
 }
@@ -286,7 +295,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		bdmusb_get_version(udev, &usbdm_version);
 		
 		// Know what version we have
-		if (usbdm_version.bdm_soft_ver <= 0x10)
+		if (usbdm_version.bdm_soft_ver <= 0x10) 
 		    udev->type = P_OSBDM;
 		else if (usbdm_version.bdm_soft_ver <= 0x15)
 		    udev->type = P_USBDM;
@@ -297,7 +306,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		//bdmusb_usb_close(udev->dev_ref);
 		
 		// Set the target type or test it?
-		target_type_e targetType = T_CFV1;
+		//target_type_e targetType = T_CFV1;
 		udev->target = targetType;
 		
 		/* Get the hw capabilities */
@@ -318,7 +327,7 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		  "UsePSTSignals            Disable"
 		  "MiscOptions              0"
 		  */
-		udev->options.targetVdd = 0; // 3.3V
+		/*udev->options.targetVdd = 0; // 3.3V
 		udev->options.cycleVddOnReset = 0;
 		udev->options.cycleVddOnConnect = 0;
 		udev->options.leaveTargetPowered = 0;
@@ -331,6 +340,20 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		udev->options.targetClockFreq = 500;
 		udev->options.usePSTSignals = 0;
 		udev->options.miscOptions = 0;
+		*/
+		
+		/* Set the usbdm configurable options */
+		udev->options.targetVdd = config_options.targetVdd;
+		udev->options.cycleVddOnReset = config_options.cycleVddOnReset;
+		udev->options.cycleVddOnConnect = config_options.cycleVddOnConnect;
+		udev->options.leaveTargetPowered = config_options.leaveTargetPowered;
+		udev->options.autoReconnect = config_options.autoReconnect;
+		udev->options.guessSpeed = config_options.guessSpeed;
+		udev->options.useAltBDMClock = config_options.useAltBDMClock;
+		udev->options.useResetSignal = config_options.useResetSignal;
+		udev->options.targetClockFreq = config_options.targetClockFreq;
+		
+		usbdm_set_options(udev);
 		
 		if (bdmusb_set_target_type(udev->dev_ref, targetType) == 0)
 		    self->cf_running = 1;

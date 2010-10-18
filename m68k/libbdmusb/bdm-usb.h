@@ -31,7 +31,8 @@ extern "C"
 #include "usbdm/usbdm.h"
 
 int bdm_usb_open(const char* name, bdm_iface** iface);
-int bdm_usb_set_options(int dev_dec, usbdm_options_type_e *cfg_options);
+int bdm_usb_set_target(target_type_e type);
+int bdm_usb_set_options(usbdm_options_type_e *cfg_options);
 
 #if __cplusplus
 }

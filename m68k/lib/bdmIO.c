@@ -163,8 +163,19 @@ const char *cfg_en_dis_names[] = {
   "Disable"
 };
 
-usbdm_options_type_e usbdm_config_options;
+const char *cfg_target_type_names[] = {
+  "HC12",
+  "HCS08",
+  "RS08",
+  "CFV1",
+  "CFVx", 	/* Coldfire Version 2,3,4 */
+  "JTAG", 	/* JTAG target - TAP is set to RUN-TEST/IDLE */
+  "EZFLASH", 	/*EzPort Flash interface */
+  "OFF"
+};
 
+usbdm_options_type_e usbdm_config_options;
+target_type_e target_type = T_OFF;
 void
 bdmLogSyslog (void)
 {
@@ -600,11 +611,12 @@ usbOpen (const char *name)
 {
   int fd = -1;
 #if defined (BDM_DEVICE_USB)
+  bdm_usb_set_options(&usbdm_config_options);
+  bdm_usb_set_target(target_type);
+
   if (bdmNoLastError () && ((fd = bdm_usb_open (name, &iface)) < 0))
     if (errno != ENOENT)
       bdmIO_lastErrorString = bdmStrerror (errno);
-    
-  bdm_usb_set_options(fd, &usbdm_config_options);
 #endif
   return fd;
 }
@@ -684,6 +696,49 @@ bdmOpen (const char *user_name)
   /*
    * Getting the USBDM pod config options.
    */
+  /* Target Type ( HC12 (HC12 or HCS12), HCS08, RS08, CFV1, CFVx (Coldfire 
+   * Version 2,3,4), JTAG (JTAG target), EZFLASH (EzPort Flash interface) or OFF) default OFF
+   */
+  while ((mapping = bdmConfigGet ("TargetType", mapping)))
+  {
+    mapping = bdmConfigSkipWhiteSpace (mapping);
+    if (strncmp (mapping, cfg_target_type_names[0], strlen (cfg_target_vdd_names[0])) >= 0)
+    {
+      target_type = T_HC12;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[1], strlen (cfg_target_vdd_names[1])) >= 0)
+    {
+      target_type = T_HCS08;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[2], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      target_type = T_RS08;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[3], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      target_type = T_CFV1;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[4], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      target_type = T_CFVx;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[5], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      target_type = T_JTAG;
+      break;
+    }
+    else if (strncmp (mapping, cfg_target_type_names[6], strlen (cfg_target_vdd_names[2])) >= 0)
+    {
+      target_type = T_EZFLASH;
+      break;
+    }
+  };
+  
   // Target Vdd control (Off, 3.3V or 5 V) default Off
   while ((mapping = bdmConfigGet ("TargetVdd", mapping)))
   {
