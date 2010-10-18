@@ -172,7 +172,7 @@ do_reset (int cpu)
   /*
    * Get the target status
    */
-  if (cpu == BDM_COLDFIRE) {
+  if ( (cpu == BDM_COLDFIRE) || (cpu == BDM_COLDFIRE_V1) ) {
     if (bdmReadSystemRegister (BDM_REG_CSR, &csr) < 0)
       showError ("Reading CSR");
 
@@ -932,6 +932,9 @@ main (int argc, char **argv)
     case BDM_COLDFIRE:
       printf ("Processor  : Coldfire\n");
       break;
+    case BDM_COLDFIRE_V1:
+      printf ("Processor  : Coldfire V1\n");
+      break;
     default:
       printf ("unknown processor type!\n");
       cleanExit (1);
@@ -950,6 +953,12 @@ main (int argc, char **argv)
       break;
     case BDM_COLDFIRE_TBLCF:
       printf ("Interface: TBLCF USB Coldfire\n");
+      break;
+    case BDM_COLDFIRE_OSBDM:
+      printf ("Interface: OSBDM USB Coldfire\n");
+      break;
+    case BDM_COLDFIRE_USBDM:
+      printf ("Interface: USBDM USB Coldfire\n");
       break;
     case BDM_COLDFIRE:
       printf ("Interface  : P&E Coldfire\n");

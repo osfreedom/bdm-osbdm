@@ -359,6 +359,11 @@ bdm_usb_open (const char *device, bdm_iface** iface)
 		
 		usbdm_set_options(udev);
 		
+		if (targetType == T_CFV1)
+		  self->processor = BDM_COLDFIRE_V1;
+		else if (targetType == T_CFVx)
+		  self->processor = BDM_COLDFIRE;
+		
 		if (bdmusb_set_target_type(udev->dev_ref, targetType) == 0)
 		    self->cf_running = 1;
 		else {

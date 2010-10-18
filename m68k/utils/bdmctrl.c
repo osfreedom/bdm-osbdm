@@ -1361,6 +1361,12 @@ cmd_open (size_t argc, char **argv)
       case BDM_COLDFIRE_TBLCF:
         printf ("Interface: TBLCF USB Coldfire\n");
         break;
+      case BDM_COLDFIRE_OSBDM:
+	printf ("Interface: OSBDM USB Coldfire\n");
+	break;
+      case BDM_COLDFIRE_USBDM:
+	printf ("Interface: USBDM USB Coldfire\n");
+	break;
       case BDM_CPU32_PD:
         printf ("Interface: Eric's CPU32\n");
         break;

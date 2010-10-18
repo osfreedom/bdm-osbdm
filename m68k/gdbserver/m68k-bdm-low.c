@@ -528,7 +528,7 @@ m68k_bdm_init_watchpoints(void)
   /*
    * Return 0 if not supported as an error will abort this program.
    */
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return 0;
 
   m68k_bdm_hwatchpoint_max = m68k_bdm_reg_map[m68k_bdm_cpu_type].watchpoints;
@@ -737,7 +737,7 @@ m68k_bdm_insert_breakpoint (char type, CORE_ADDR addr, int len)
    * Hardware breakpoints.
    */
   
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return 1;
 
   hb = m68k_bdm_find_hbreakpoint (M68K_BDM_WP_TYPE_HBREAK, addr, 2);
@@ -822,7 +822,7 @@ m68k_bdm_remove_breakpoint (char type, CORE_ADDR addr, int len)
    * Hardware breakpoints.
    */
   
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return 1;
 
   hb = m68k_bdm_find_hbreakpoint (M68K_BDM_WP_TYPE_HBREAK, addr, 2);
@@ -902,7 +902,7 @@ m68k_bdm_insert_watchpoint (char type, CORE_ADDR addr, int len)
   int           abhr;
   int           hw;
 
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return 1;
 
   hw = m68k_bdm_find_hwatchpoint (type, addr, len);
@@ -980,7 +980,7 @@ m68k_bdm_remove_watchpoint (char type, CORE_ADDR addr, int len)
   unsigned long tdr_value;
   int           hw;
   
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return -1;
 
   hw = m68k_bdm_find_hwatchpoint (type, addr, len);
@@ -1053,7 +1053,7 @@ m68k_bdm_stopped_data_address (void)
   unsigned long tdr;
   unsigned long ablr;
 
-  if (m68k_bdm_cpu_family != BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family != BDM_COLDFIRE) && (m68k_bdm_cpu_family != BDM_COLDFIRE_V1) )
     return 0;
 
   if (bdmReadSystemRegister (BDM_REG_TDR, &tdr) < 0)
@@ -1542,6 +1542,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
       break;
 
     case BDM_COLDFIRE:
+    case BDM_COLDFIRE_V1:
       m68k_bdm_breakpoint_code = m68k_bdm_cf_breakpoint;
       m68k_bdm_breakpoint_size = sizeof m68k_bdm_cf_breakpoint;
 
@@ -1616,7 +1617,7 @@ m68k_bdm_create_inferior (char *program, char *argv[])
 
   printf_filtered ("m68k-bdm: architecture %s connected to %s\n",
                    m68k_bdm_cpu_label, m68k_bdm_dev_name);
-  if (m68k_bdm_cpu_family == BDM_COLDFIRE)
+  if ( (m68k_bdm_cpu_family == BDM_COLDFIRE) || (m68k_bdm_cpu_family == BDM_COLDFIRE_V1) )
   {
     char* cf_type = "5206(e)/5235/5272/5282";
     m68k_bdm_ptid = 0x5200;
